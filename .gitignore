@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+data/raw/        # large files
+data/processed/
+*.qdrant/        # planned for vector db

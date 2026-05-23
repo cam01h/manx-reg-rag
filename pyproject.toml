@@ -7,7 +7,9 @@ authors = [
     { name = "cam01h", email = "cam01houston@gmail.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pymupdf4llm>=1.27.2.3",
+]
 
 [project.scripts]
 manx-reg-rag = "manx_reg_rag:main"
