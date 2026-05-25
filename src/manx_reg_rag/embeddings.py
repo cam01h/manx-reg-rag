@@ -1,6 +1,6 @@
 import json
-from pathlib import Path
 from qdrant_client import QdrantClient
+from globals import AML_CODE_JSONL_PATH, DB_PATH
 
 
 def build_collection(input_path, db_path, collection):
@@ -18,7 +18,4 @@ def build_collection(input_path, db_path, collection):
 
 
 if __name__ == "__main__":
-    project_root = Path(__file__).parent.parent.parent
-    chunks_path = project_root / "data/processed/raw_code.jsonl"
-    db_path = project_root / "data/qdrant"
-    build_collection(chunks_path, db_path, "aml_code_test")
+    build_collection(AML_CODE_JSONL_PATH, DB_PATH, "aml_code_test")
