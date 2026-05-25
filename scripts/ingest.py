@@ -1,5 +1,6 @@
 import pymupdf4llm
 import json
+import re
 from pathlib import Path
 from typing import cast
 
@@ -11,6 +12,15 @@ def aml_code_extract(input_path, output_path):
     md = md.split(start_marker, 1)[1]
     end_marker = "## **43 Revocations** "
     md = md.split(end_marker, 1)[0]
+    md = re.sub(r"\[\d+\]", "", md)  # inline footnote references
+    md = re.sub(r"^> \d+ .*$\n?", "", md, flags=re.MULTILINE)  # footnotes
+
+    # output to md for human read able output / TODO: comment out later
+    md_outpath = Path(
+        "/home/cameron/workspaces/manx-reg-rag/data/processed/raw_code.md"
+    )
+    with md_outpath.open("w") as f:
+        f.write(md)
 
     lines = md.splitlines()
     document = "The AML/CFT Code 2019"
@@ -47,7 +57,7 @@ def aml_code_extract(input_path, output_path):
 
     with output_path.open("w") as f:
         for chunk in chunks:
-            f.write(json.dumps(chunk) + "\n")
+            f.write(json.dumps(chunk, ensure_ascii=False) + "\n")
     print("AML Code 2019 extracted")
 
 
