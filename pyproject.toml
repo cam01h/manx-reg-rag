@@ -8,7 +8,9 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "fastembed>=0.8.0",
     "pymupdf4llm>=1.27.2.3",
+    "qdrant-client>=1.18.0",
 ]
 
 [project.scripts]
