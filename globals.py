@@ -16,7 +16,7 @@ DB_PATH = project_root / "data/qdrant"
 # =========
 # Chunks
 # =========
-MAX_CHUNK_CHAR = 2000
+MAX_CHUNK_CHAR = 1500
 
 # =========
 # Models

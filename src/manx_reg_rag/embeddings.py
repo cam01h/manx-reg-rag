@@ -18,12 +18,13 @@ def build_collection(input_path, db_path, collection):
     )
 
     chunks = [json.loads(line) for line in input_path.read_text().splitlines()]
-    # documents = [chunk["body"] for chunk in chunks]
     points = []
     for i, c in enumerate(chunks):
         point = models.PointStruct(
             id=i + 1,
-            vector=models.Document(text=c["body"], model=EMBEDDING_MODEL),
+            vector=models.Document(
+                text=f"{c['paragraph']}\n---\n{c['body']}", model=EMBEDDING_MODEL
+            ),
             payload=c,
         )
         points.append(point)
