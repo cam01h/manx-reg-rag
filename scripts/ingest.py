@@ -3,6 +3,7 @@ import json
 import re
 from pathlib import Path
 from typing import cast
+from globals import AML_CODE_RAW_PATH, AML_CODE_MD_PATH, AML_CODE_JSONL_PATH
 
 
 def aml_code_extract(input_path, output_path):
@@ -16,9 +17,7 @@ def aml_code_extract(input_path, output_path):
     md = re.sub(r"^> \d+ .*$\n?", "", md, flags=re.MULTILINE)  # footnotes
 
     # output to md for human read able output / TODO: comment out later
-    md_outpath = Path(
-        "/home/cameron/workspaces/manx-reg-rag/data/processed/raw_code.md"
-    )
+    md_outpath = Path(AML_CODE_MD_PATH)
     with md_outpath.open("w") as f:
         f.write(md)
 
@@ -62,7 +61,4 @@ def aml_code_extract(input_path, output_path):
 
 
 if __name__ == "__main__":
-    project_root = Path(__file__).parent.parent
-    input = project_root / "data/raw/custom/the_aml_code_2019.pdf"
-    output = project_root / "data/processed/raw_code.jsonl"
-    aml_code_extract(input, output)
+    aml_code_extract(AML_CODE_RAW_PATH, AML_CODE_JSONL_PATH)

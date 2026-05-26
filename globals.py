@@ -14,6 +14,11 @@ AML_CODE_MD_PATH = project_root / "data/processed/raw_code.md"
 DB_PATH = project_root / "data/qdrant"
 
 # =========
+# Chunks
+# =========
+MAX_CHUNK_CHAR = 2000
+
+# =========
 # Models
 # =========
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
