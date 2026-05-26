@@ -8,11 +8,9 @@ QUERY = "What do i need to do with a customer thats a politically exposed person
 
 
 def retrieve(query: str, collection: str = "aml_code_test", top_n: int = 5):
-    # TODO: refactor to client.upstart()
     results = client.query_points(
         collection_name=collection,
         query=models.Document(text=query, model=EMBEDDING_MODEL),
-        using="fast-bge-small-en",
         limit=top_n,
     )
 
