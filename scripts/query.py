@@ -4,10 +4,11 @@ from globals import DB_PATH, EMBEDDING_MODEL
 
 project_root = Path(__file__).parent.parent
 client = QdrantClient(path=str(DB_PATH))
-QUERY = "under what circumstances is enhanced customer duediligence require?"
+QUERY = "What do i need to do with a customer thats a politically exposed person?"
 
 
 def retrieve(query: str, collection: str = "aml_code_test", top_n: int = 5):
+    # TODO: refactor to client.upstart()
     results = client.query_points(
         collection_name=collection,
         query=models.Document(text=query, model=EMBEDDING_MODEL),
@@ -28,7 +29,10 @@ def retrieve(query: str, collection: str = "aml_code_test", top_n: int = 5):
 
 if __name__ == "__main__":
     results = retrieve(QUERY)
+    print("==========")
+    print(f"Query: {QUERY}")
     for result in results:
         print(f"Rank: {result['rank']}")
         print(f"Score: {result['score']}")
         print(f"Payload: {result['payload']['paragraph']}")
+        print("----------")
