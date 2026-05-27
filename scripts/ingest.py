@@ -1,57 +1,33 @@
 import pymupdf4llm
 import json
-import re
-from typing import cast
-from scripts.extraction_specs.config import MAX_CHUNK_CHAR
+from typing import Callable, cast
+from scripts.extraction_specs.config import MAX_CHUNK_CHAR, MD_1, MD_2, MD_3
 from scripts.extraction_specs.aml_code import AML_CODE
 
 
-def extract_definitions(defs_lines: list) -> dict[str, str]:
-    for line in defs_lines:
-        line = line.replace("“", '"').replace("”", '"')
-    definitions = {}
-    k = ""
-    v = ""
-    for line in defs_lines:
-        if not line.strip():
-            continue
-        if '- **"' in line or '## **"' in line or line.startswith('**"'):
-            if k != "" and v != "":
-                definitions[k] = v
-                k = ""
-                v = ""
-            def_line = line.split('"')
-            for i, w in enumerate(def_line):
-                def_line[i] = (
-                    w.replace("- **", "")
-                    .replace("##", "")
-                    .replace("**", "")
-                    .replace(" — ", "")
-                    .strip()
-                )
-            if len(def_line) == 3:
-                k = def_line[1]
-                v = def_line[2]
-            if len(def_line) == 5:
-                if def_line[2].strip() == "or":
-                    k = f'"{def_line[1]}" {def_line[2]} "{def_line[3]}"'
-                    v = def_line[4]
-                else:
-                    k = def_line[1]
-                    v = f'{def_line[2]} "{def_line[3]}" {def_line[4]}'
-        else:
-            v += "\n" + line.replace("**", "").strip()
-    return definitions
+def load_clean_md(specs: dict) -> list[str]:
+    md = cast(
+        str, pymupdf4llm.to_markdown(specs["input_path"], header=False, footer=False)
+    )
+    md = specs["re_steps"](md)
+    md = md.replace("“", '"').replace("”", '"')
+    md_lines = md.splitlines()
+    trimmed_lines = md_lines[specs["start_line"] : specs["end_line"]]
+    """
+    # Left for testing
+    MD_1.write_text(md)
+    MD_2.write_text("\n".join(trimmed_lines))
+    def_lines = trimmed_lines[specs["defs_start"] : specs["defs_end"]]
+    MD_3.write_text("\n".join(def_lines))
+    """
+    return trimmed_lines
 
 
-def re_pack_chunk(chunk: dict) -> list[dict]:
+def re_pack_chunk(chunk: dict, splitter: Callable) -> list[dict]:
     if len(chunk["body"]) < MAX_CHUNK_CHAR:
         return [chunk.copy()]
-    segments = re.split(r"\n(?=- \(\d+\))", chunk["body"])
+    segments = splitter(chunk["body"])
     if len(segments) == 1:
-        print(
-            f"Warning: {chunk['paragraph']} is over length at {len(chunk['body'])} characters"
-        )
         return [chunk.copy()]
     chunks = []
     buffer = ""
@@ -68,31 +44,51 @@ def re_pack_chunk(chunk: dict) -> list[dict]:
         chunk_copy["body"] = buffer.strip()
         chunks.append(chunk_copy)
 
-    for i, c in enumerate(chunks):
-        if len(c["body"]) > MAX_CHUNK_CHAR:
-            print(
-                f"Warning: {c['paragraph']} chunk number {i + 1} is over length at {len(c['body'])} characters"
-            )
-
     return chunks
 
 
-# TODO: extract logic to function calls
-def extract_doc(specs: dict):
+def extract_definitions(specs: dict) -> dict[str, str]:
+    print(f"Extracting definitions from {specs['document']}...")
+    md_lines = load_clean_md(specs)
+    defs_lines = md_lines[specs["defs_start"] : specs["defs_end"]]
+    definitions = {}
+    keys = []
+    v = ""
+    for line in defs_lines:
+        if not line.strip():
+            continue
+        if specs["is_def_line"](line):
+            if v != "" and keys != []:
+                for k in keys:
+                    definitions[k] = v
+            keys = []
+            v = ""
+            def_line = line.split('"')
+            for i, w in enumerate(def_line):
+                def_line[i] = specs["h_strip_md"](w)
+            if len(def_line) == 3:
+                keys.append(def_line[1])
+                v = def_line[2]
+            if len(def_line) == 5:
+                if specs["is_dub_def_line"](def_line):
+                    keys.append(def_line[1])
+                    keys.append(def_line[3])
+                    v = def_line[4]
+                elif specs["is_f_dub_def"](def_line):
+                    keys.append(def_line[1])
+                    v = f'{def_line[2]} "{def_line[3]}" {def_line[4]}'
+        else:
+            v += "\n" + specs["strip_md"](line)
+    if v != "" and keys != []:
+        for k in keys:
+            definitions[k] = v
+    print(f"In {specs['document']}, {len(definitions)} definitions have been found")
+    return definitions
+
+
+def extract_doc(specs: dict) -> list[dict]:
     print(f"Extracting {specs['document']}...")
-    md = cast(
-        str, pymupdf4llm.to_markdown(specs["input_path"], header=False, footer=False)
-    )
-    md_lines = md.splitlines()
-    md_lines = md_lines[specs["start_line"] : specs["end_line"]]
-    md = "\n".join(md_lines)
-    md = specs["re_steps"](md)
-
-    # output to md for human read able output / TODO: comment out later
-    specs["md_path"].write_text(md)
-
-    lines = md.splitlines()
-    defs_lines = lines[specs["defs_start"] : specs["defs_end"]]
+    lines = load_clean_md(specs)
     chunk_lines = lines[: specs["defs_start"]] + lines[specs["defs_end"] :]
 
     buffer = ""
@@ -106,45 +102,57 @@ def extract_doc(specs: dict):
         specs["minor"]: "",
         "body": "",
     }
-    current_chunk = chunk.copy()
 
     for line in chunk_lines:
         if specs["is_major"](line):
-            if (
-                buffer.strip() != ""
-            ):  # flushes chunk on part lines as long as buffer not empty
-                current_chunk[specs["major"]] = major
-                current_chunk[specs["minor"]] = minor
-                current_chunk["body"] = buffer.strip()
-                chunks.extend(re_pack_chunk(current_chunk))
+            if buffer.strip() != "":
+                chunk[specs["major"]] = major
+                chunk[specs["minor"]] = minor
+                chunk["body"] = buffer.strip()
+                chunks.extend(re_pack_chunk(chunk, specs["re_pack_splitter"]))
                 buffer = ""
             major = specs["strip_md"](line)
-        elif specs["is_minor"](
-            line
-        ):  # flushes chunk on para lines as long as buffer not empty
+        elif specs["is_minor"](line):
             if buffer.strip() != "":
-                current_chunk[specs["major"]] = major
-                current_chunk[specs["minor"]] = minor
-                current_chunk["body"] = buffer.strip()
-                repacked = re_pack_chunk(current_chunk)
+                chunk[specs["major"]] = major
+                chunk[specs["minor"]] = minor
+                chunk["body"] = buffer.strip()
+                repacked = re_pack_chunk(chunk, specs["re_pack_splitter"])
                 chunks.extend(repacked)
                 buffer = ""
             minor = specs["strip_md"](line)
         else:
             buffer += "\n" + line
-    current_chunk["body"] = buffer.strip()
-    repacked = re_pack_chunk(current_chunk)
+    chunk["body"] = buffer.strip()
+    repacked = re_pack_chunk(chunk, specs["re_pack_splitter"])
     chunks.extend(repacked)
+    # for i, c in enumerate(chunks):
+    # print(f"{i + 1}. {c[specs[minor]]}: {len(c['body'])} characters in chunk")
+    print(f"In {specs['document']}, {len(chunks)} were identified")
+    return chunks
 
-    definition_dict = extract_definitions(defs_lines)
-    with specs["def_path"].open("w") as f:
-        json.dump(definition_dict, f, ensure_ascii=False, indent=2)
 
-    with specs["chunk_path"].open("w") as f:
-        for chunk in chunks:
-            f.write(json.dumps(chunk, ensure_ascii=False) + "\n")
-    print(f"{specs['document']} extracted")
+def attach_definitions(chunks: list[dict], definitions: dict) -> list[dict]:
+    print("Attaching definitions to chunks")
+    terms_used = []
+    for chunk in chunks:
+        for term in definitions.keys():
+            if term in chunk["body"]:
+                terms_used.append(term)
+        chunk["terms_used"] = terms_used
+        terms_used = []
+    print("Definitions attached")
+    return chunks
 
 
 if __name__ == "__main__":
-    extract_doc(AML_CODE)
+    docs = [AML_CODE]
+    for doc in docs:
+        definitions = extract_definitions(doc)
+        chunks = extract_doc(doc)
+        chunks = attach_definitions(chunks, definitions)
+        with doc["chunk_path"].open("w") as f:
+            for c in chunks:
+                f.write(json.dumps(c, ensure_ascii=False) + "\n")
+        with doc["def_path"].open("w") as f:
+            json.dump(definitions, f, ensure_ascii=False, indent=2)

@@ -13,6 +13,10 @@ AML_CODE_MD_PATH = project_root / "data/processed/raw_code.md"
 AML_CODE_DEF_PATH = project_root / "data/processed/code_defs.json"
 # db path
 DB_PATH = project_root / "data/qdrant"
+# Testing
+MD_1 = project_root / "tests/md_test_1.md"
+MD_2 = project_root / "tests/md_test_2.md"
+MD_3 = project_root / "tests/md_test_3.md"
 
 # =========
 # Chunks
