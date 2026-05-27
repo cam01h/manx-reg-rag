@@ -7,8 +7,47 @@ from globals import (
     AML_CODE_RAW_PATH,
     AML_CODE_MD_PATH,
     AML_CODE_JSONL_PATH,
+    AML_CODE_DEF_PATH,
     MAX_CHUNK_CHAR,
 )
+
+
+def extract_definitions(text) -> dict[str, str]:
+    clean_text = text.replace("“", '"').replace("”", '"')
+    lines = clean_text.splitlines()
+    definitions = {}
+    k = ""
+    v = ""
+    for line in lines:
+        if not line.strip():
+            continue
+        if '- **"' in line or '## **"' in line or line.startswith('**"'):
+            if k != "" and v != "":
+                definitions[k] = v
+                k = ""
+                v = ""
+            def_line = line.split('"')
+            for i, w in enumerate(def_line):
+                def_line[i] = (
+                    w.replace("- **", "")
+                    .replace("##", "")
+                    .replace("**", "")
+                    .replace(" — ", "")
+                    .strip()
+                )
+            if len(def_line) == 3:
+                k = def_line[1]
+                v = def_line[2]
+            if len(def_line) == 5:
+                if def_line[2].strip() == "or":
+                    k = f'"{def_line[1]}" {def_line[2]} "{def_line[3]}"'
+                    v = def_line[4]
+                else:
+                    k = def_line[1]
+                    v = f'{def_line[2]} "{def_line[3]}" {def_line[4]}'
+        else:
+            v += "\n" + line.replace("**", "").strip()
+    return definitions
 
 
 def re_pack_chunk(chunk: dict) -> list[dict]:
@@ -53,7 +92,8 @@ def aml_code_extract(input_path: Path, output_path: Path):
     end_marker = "## **43 Revocations** "
     md = md.split(end_marker, 1)[0]
     md = re.sub(r"\[\d+\]", "", md)  # inline footnote references
-    md = re.sub(r"^> \d+ .*$\n?", "", md, flags=re.MULTILINE)  # footnotes
+    md = re.sub(r"^> \d+ .*$\n?", "", md, flags=re.MULTILINE)  # blockquoted footnotes
+    md = re.sub(r"^\d+ (Section|SD) .*$\n?", "", md, flags=re.MULTILINE)  # footnotes
 
     # output to md for human read able output / TODO: comment out later
     AML_CODE_MD_PATH.write_text(md)
@@ -65,9 +105,12 @@ def aml_code_extract(input_path: Path, output_path: Path):
     paragraph = ""
     chunks = []
     buffer = ""
+    definitions = ""
     for line in lines:
         if line.startswith("## **PART"):
-            if buffer.strip() != "":
+            if (
+                buffer.strip() != ""
+            ):  # flushes chunk on part lines as long as buffer not empty
                 current_chunk = {
                     "document": document,
                     "hierarchy": hierarchy,
@@ -78,7 +121,9 @@ def aml_code_extract(input_path: Path, output_path: Path):
                 chunks.extend(re_pack_chunk(current_chunk))
                 buffer = ""
             part = line.replace("## **", "").replace("**", "")
-        elif line.startswith("## **") and line[5].isdigit():
+        elif (
+            line.startswith("## **") and line[5].isdigit()
+        ):  # flushes chunk on para lines as long as buffer not empty
             if buffer.strip() != "":
                 current_chunk = {
                     "document": document,
@@ -92,8 +137,10 @@ def aml_code_extract(input_path: Path, output_path: Path):
                 buffer = ""
             paragraph = line.replace("## **", "").replace("**", "")
         else:
-            buffer += "\n" + line
-    chunk = {
+            buffer += "\n" + line  # build definitions text
+            if "3 Interpretation" in paragraph:
+                definitions += "\n" + line
+    chunk = {  # flushes last chunk left over
         "document": document,
         "hierarchy": hierarchy,
         "part": part,
@@ -102,6 +149,10 @@ def aml_code_extract(input_path: Path, output_path: Path):
     }
     repacked = re_pack_chunk(chunk)
     chunks.extend(repacked)
+
+    definition_dict = extract_definitions(definitions)
+    with AML_CODE_DEF_PATH.open("w") as f:
+        json.dump(definition_dict, f, ensure_ascii=False, indent=2)
 
     with output_path.open("w") as f:
         for chunk in chunks:

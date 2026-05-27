@@ -10,6 +10,7 @@ AML_HANDBOOK_PATH = project_root / "data/raw/custom/aml_handbook_april_2026.pdf"
 # Intermediate
 AML_CODE_JSONL_PATH = project_root / "data/processed/raw_code.jsonl"
 AML_CODE_MD_PATH = project_root / "data/processed/raw_code.md"
+AML_CODE_DEF_PATH = project_root / "data/processed/code_defs.json"
 # db path
 DB_PATH = project_root / "data/qdrant"
 
