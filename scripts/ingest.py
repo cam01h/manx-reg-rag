@@ -1,24 +1,18 @@
 import pymupdf4llm
 import json
 import re
-from pathlib import Path
 from typing import cast
-from globals import (
-    AML_CODE_RAW_PATH,
-    AML_CODE_MD_PATH,
-    AML_CODE_JSONL_PATH,
-    AML_CODE_DEF_PATH,
-    MAX_CHUNK_CHAR,
-)
+from scripts.extraction_specs.config import MAX_CHUNK_CHAR
+from scripts.extraction_specs.aml_code import AML_CODE
 
 
-def extract_definitions(text) -> dict[str, str]:
-    clean_text = text.replace("“", '"').replace("”", '"')
-    lines = clean_text.splitlines()
+def extract_definitions(defs_lines: list) -> dict[str, str]:
+    for line in defs_lines:
+        line = line.replace("“", '"').replace("”", '"')
     definitions = {}
     k = ""
     v = ""
-    for line in lines:
+    for line in defs_lines:
         if not line.strip():
             continue
         if '- **"' in line or '## **"' in line or line.startswith('**"'):
@@ -52,13 +46,13 @@ def extract_definitions(text) -> dict[str, str]:
 
 def re_pack_chunk(chunk: dict) -> list[dict]:
     if len(chunk["body"]) < MAX_CHUNK_CHAR:
-        return [chunk]
+        return [chunk.copy()]
     segments = re.split(r"\n(?=- \(\d+\))", chunk["body"])
     if len(segments) == 1:
         print(
             f"Warning: {chunk['paragraph']} is over length at {len(chunk['body'])} characters"
         )
-        return [chunk]
+        return [chunk.copy()]
     chunks = []
     buffer = ""
     for s in segments:
@@ -84,81 +78,73 @@ def re_pack_chunk(chunk: dict) -> list[dict]:
 
 
 # TODO: extract logic to function calls
-def aml_code_extract(input_path: Path, output_path: Path):
-    print("Extracting AML Code 2019...")
-    md = cast(str, pymupdf4llm.to_markdown(input_path, header=False, footer=False))
-    start_marker = "The Department of Home Affairs makes the following Code under section 157 of the Proceeds of Crime Act 2008 and section 68 of the Terrorism and Other Crime (Financial . Restrictions) Act 2014, after carrying out the consultation required by those sections[1] "
-    md = md.split(start_marker, 1)[1]
-    end_marker = "## **43 Revocations** "
-    md = md.split(end_marker, 1)[0]
-    md = re.sub(r"\[\d+\]", "", md)  # inline footnote references
-    md = re.sub(r"^> \d+ .*$\n?", "", md, flags=re.MULTILINE)  # blockquoted footnotes
-    md = re.sub(r"^\d+ (Section|SD) .*$\n?", "", md, flags=re.MULTILINE)  # footnotes
+def extract_doc(specs: dict):
+    print(f"Extracting {specs['document']}...")
+    md = cast(
+        str, pymupdf4llm.to_markdown(specs["input_path"], header=False, footer=False)
+    )
+    md_lines = md.splitlines()
+    md_lines = md_lines[specs["start_line"] : specs["end_line"]]
+    md = "\n".join(md_lines)
+    md = specs["re_steps"](md)
 
     # output to md for human read able output / TODO: comment out later
-    AML_CODE_MD_PATH.write_text(md)
+    specs["md_path"].write_text(md)
 
     lines = md.splitlines()
-    document = "The AML/CFT Code 2019"
-    hierarchy = "legislation"
-    part = ""
-    paragraph = ""
-    chunks = []
+    defs_lines = lines[specs["defs_start"] : specs["defs_end"]]
+    chunk_lines = lines[: specs["defs_start"]] + lines[specs["defs_end"] :]
+
     buffer = ""
-    definitions = ""
-    for line in lines:
-        if line.startswith("## **PART"):
+    chunks = []
+    major = ""
+    minor = ""
+    chunk = {
+        "document": specs["document"],
+        "hierarchy": specs["hierarchy"],
+        specs["major"]: "",
+        specs["minor"]: "",
+        "body": "",
+    }
+    current_chunk = chunk.copy()
+
+    for line in chunk_lines:
+        if specs["is_major"](line):
             if (
                 buffer.strip() != ""
             ):  # flushes chunk on part lines as long as buffer not empty
-                current_chunk = {
-                    "document": document,
-                    "hierarchy": hierarchy,
-                    "part": part,
-                    "paragraph": paragraph,
-                    "body": buffer.strip(),
-                }
+                current_chunk[specs["major"]] = major
+                current_chunk[specs["minor"]] = minor
+                current_chunk["body"] = buffer.strip()
                 chunks.extend(re_pack_chunk(current_chunk))
                 buffer = ""
-            part = line.replace("## **", "").replace("**", "")
-        elif (
-            line.startswith("## **") and line[5].isdigit()
+            major = specs["strip_md"](line)
+        elif specs["is_minor"](
+            line
         ):  # flushes chunk on para lines as long as buffer not empty
             if buffer.strip() != "":
-                current_chunk = {
-                    "document": document,
-                    "hierarchy": hierarchy,
-                    "part": part,
-                    "paragraph": paragraph,
-                    "body": buffer.strip(),
-                }
+                current_chunk[specs["major"]] = major
+                current_chunk[specs["minor"]] = minor
+                current_chunk["body"] = buffer.strip()
                 repacked = re_pack_chunk(current_chunk)
                 chunks.extend(repacked)
                 buffer = ""
-            paragraph = line.replace("## **", "").replace("**", "")
+            minor = specs["strip_md"](line)
         else:
-            buffer += "\n" + line  # build definitions text
-            if "3 Interpretation" in paragraph:
-                definitions += "\n" + line
-    chunk = {  # flushes last chunk left over
-        "document": document,
-        "hierarchy": hierarchy,
-        "part": part,
-        "paragraph": paragraph,
-        "body": buffer.strip(),
-    }
-    repacked = re_pack_chunk(chunk)
+            buffer += "\n" + line
+    current_chunk["body"] = buffer.strip()
+    repacked = re_pack_chunk(current_chunk)
     chunks.extend(repacked)
 
-    definition_dict = extract_definitions(definitions)
-    with AML_CODE_DEF_PATH.open("w") as f:
+    definition_dict = extract_definitions(defs_lines)
+    with specs["def_path"].open("w") as f:
         json.dump(definition_dict, f, ensure_ascii=False, indent=2)
 
-    with output_path.open("w") as f:
+    with specs["chunk_path"].open("w") as f:
         for chunk in chunks:
             f.write(json.dumps(chunk, ensure_ascii=False) + "\n")
-    print("AML Code 2019 extracted")
+    print(f"{specs['document']} extracted")
 
 
 if __name__ == "__main__":
-    aml_code_extract(AML_CODE_RAW_PATH, AML_CODE_JSONL_PATH)
+    extract_doc(AML_CODE)
