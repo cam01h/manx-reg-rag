@@ -1,7 +1,8 @@
 import pymupdf4llm
 import json
 from typing import Callable, cast
-from scripts.extraction_specs.config import MAX_CHUNK_CHAR, MD_1, MD_2, MD_3
+from scripts.extraction_specs.aml_handbook import AML_HANDBOOK
+from scripts.extraction_specs.config import MAX_CHUNK_CHAR
 from scripts.extraction_specs.aml_code import AML_CODE
 
 
@@ -14,13 +15,6 @@ def load_clean_md(specs: dict) -> list[str]:
     md = md.replace("“", '"').replace("”", '"')
     md_lines = md.splitlines()
     trimmed_lines = md_lines[specs["start_line"] : specs["end_line"]]
-    """
-    # Left for testing
-    MD_1.write_text(md)
-    MD_2.write_text("\n".join(trimmed_lines))
-    def_lines = trimmed_lines[specs["defs_start"] : specs["defs_end"]]
-    MD_3.write_text("\n".join(def_lines))
-    """
     print("Extraction complete.")
     return trimmed_lines
 
@@ -51,8 +45,6 @@ def re_pack_chunk(chunk: dict, splitter: Callable) -> list[dict]:
 
 def extract_definitions(specs: dict, lines: list[str]) -> dict[str, str]:
     print(f"{specs['document']}: formatting defintions...")
-    # md_lines = load_clean_md(specs)
-    # lines = lines[specs["defs_start"] : specs["defs_end"]]
     definitions = {}
     keys = []
     v = ""
@@ -90,7 +82,6 @@ def extract_definitions(specs: dict, lines: list[str]) -> dict[str, str]:
 
 def extract_doc(specs: dict, lines: list[str]) -> list[dict]:
     print(f"{specs['document']}: formatting chunks...")
-    # lines = load_clean_md(specs)
     lines = lines[: specs["defs_start"]] + lines[specs["defs_end"] :]
 
     buffer = ""
@@ -148,9 +139,12 @@ def attach_definitions(chunks: list[dict], definitions: dict) -> list[dict]:
 
 
 if __name__ == "__main__":
-    docs = [AML_CODE]
-    md = load_clean_md(AML_CODE)
+    docs = [
+        AML_CODE,
+        AML_HANDBOOK,
+    ]
     for doc in docs:
+        md = load_clean_md(doc)
         definitions = extract_definitions(doc, md)
         chunks = extract_doc(doc, md)
         chunks = attach_definitions(chunks, definitions)
