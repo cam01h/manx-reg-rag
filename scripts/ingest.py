@@ -6,6 +6,7 @@ from scripts.extraction_specs.aml_code import AML_CODE
 
 
 def load_clean_md(specs: dict) -> list[str]:
+    print(f"Loading {specs['document']} to md...")
     md = cast(
         str, pymupdf4llm.to_markdown(specs["input_path"], header=False, footer=False)
     )
@@ -20,6 +21,7 @@ def load_clean_md(specs: dict) -> list[str]:
     def_lines = trimmed_lines[specs["defs_start"] : specs["defs_end"]]
     MD_3.write_text("\n".join(def_lines))
     """
+    print("Extraction complete.")
     return trimmed_lines
 
 
@@ -47,14 +49,14 @@ def re_pack_chunk(chunk: dict, splitter: Callable) -> list[dict]:
     return chunks
 
 
-def extract_definitions(specs: dict) -> dict[str, str]:
-    print(f"Extracting definitions from {specs['document']}...")
-    md_lines = load_clean_md(specs)
-    defs_lines = md_lines[specs["defs_start"] : specs["defs_end"]]
+def extract_definitions(specs: dict, lines: list[str]) -> dict[str, str]:
+    print(f"{specs['document']}: formatting defintions...")
+    # md_lines = load_clean_md(specs)
+    # lines = lines[specs["defs_start"] : specs["defs_end"]]
     definitions = {}
     keys = []
     v = ""
-    for line in defs_lines:
+    for line in lines:
         if not line.strip():
             continue
         if specs["is_def_line"](line):
@@ -82,14 +84,14 @@ def extract_definitions(specs: dict) -> dict[str, str]:
     if v != "" and keys != []:
         for k in keys:
             definitions[k] = v
-    print(f"In {specs['document']}, {len(definitions)} definitions have been found")
+    print(f"{len(definitions)} definitions have been formatted.")
     return definitions
 
 
-def extract_doc(specs: dict) -> list[dict]:
-    print(f"Extracting {specs['document']}...")
-    lines = load_clean_md(specs)
-    chunk_lines = lines[: specs["defs_start"]] + lines[specs["defs_end"] :]
+def extract_doc(specs: dict, lines: list[str]) -> list[dict]:
+    print(f"{specs['document']}: formatting chunks...")
+    # lines = load_clean_md(specs)
+    lines = lines[: specs["defs_start"]] + lines[specs["defs_end"] :]
 
     buffer = ""
     chunks = []
@@ -103,13 +105,13 @@ def extract_doc(specs: dict) -> list[dict]:
         "body": "",
     }
 
-    for line in chunk_lines:
+    for line in lines:
         if specs["is_major"](line):
             if buffer.strip() != "":
                 chunk[specs["major"]] = major
                 chunk[specs["minor"]] = minor
                 chunk["body"] = buffer.strip()
-                chunks.extend(re_pack_chunk(chunk, specs["re_pack_splitter"]))
+                chunks.extend(re_pack_chunk(chunk.copy(), specs["re_pack_splitter"]))
                 buffer = ""
             major = specs["strip_md"](line)
         elif specs["is_minor"](line):
@@ -117,23 +119,23 @@ def extract_doc(specs: dict) -> list[dict]:
                 chunk[specs["major"]] = major
                 chunk[specs["minor"]] = minor
                 chunk["body"] = buffer.strip()
-                repacked = re_pack_chunk(chunk, specs["re_pack_splitter"])
+                repacked = re_pack_chunk(chunk.copy(), specs["re_pack_splitter"])
                 chunks.extend(repacked)
                 buffer = ""
             minor = specs["strip_md"](line)
         else:
             buffer += "\n" + line
     chunk["body"] = buffer.strip()
-    repacked = re_pack_chunk(chunk, specs["re_pack_splitter"])
+    repacked = re_pack_chunk(chunk.copy(), specs["re_pack_splitter"])
     chunks.extend(repacked)
     # for i, c in enumerate(chunks):
     # print(f"{i + 1}. {c[specs[minor]]}: {len(c['body'])} characters in chunk")
-    print(f"In {specs['document']}, {len(chunks)} were identified")
+    print(f"{len(chunks)} chunks were fromatted.")
     return chunks
 
 
 def attach_definitions(chunks: list[dict], definitions: dict) -> list[dict]:
-    print("Attaching definitions to chunks")
+    print("Attaching definitions to chunks...")
     terms_used = []
     for chunk in chunks:
         for term in definitions.keys():
@@ -141,15 +143,16 @@ def attach_definitions(chunks: list[dict], definitions: dict) -> list[dict]:
                 terms_used.append(term)
         chunk["terms_used"] = terms_used
         terms_used = []
-    print("Definitions attached")
+    print("Definitions attached.")
     return chunks
 
 
 if __name__ == "__main__":
     docs = [AML_CODE]
+    md = load_clean_md(AML_CODE)
     for doc in docs:
-        definitions = extract_definitions(doc)
-        chunks = extract_doc(doc)
+        definitions = extract_definitions(doc, md)
+        chunks = extract_doc(doc, md)
         chunks = attach_definitions(chunks, definitions)
         with doc["chunk_path"].open("w") as f:
             for c in chunks:

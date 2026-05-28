@@ -12,5 +12,4 @@ wheels/
 data/raw/       # large files
 data/processed/
 data/qdrant/    # planned for vector db
-tests/          # testing
 /tests
