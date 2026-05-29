@@ -5,6 +5,11 @@ from scripts.extraction_specs.config import project_root
 def re_steps(text: str) -> str:
     text = re.sub(r"^\|.*\|$\n?", "", text, flags=re.MULTILINE)
     text = re.sub(r"\n\s*\n+", "\n\n", text)
+    text = re.sub(
+        r"^(- |> )Code [\d\(\),\s]+\s+(?=[A-Z])", r"\1", text, flags=re.MULTILINE
+    )
+    text = re.sub(r"^Code [\d\(\),\s\|]+\s*$\n?", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^## Code .*\*\*\d+ [A-Z].*$\n?", "", text, flags=re.MULTILINE)
     return text
 
 

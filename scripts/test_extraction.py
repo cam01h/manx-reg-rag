@@ -1,8 +1,23 @@
 import pymupdf4llm
+import difflib
 from typing import cast
-
+from pathlib import Path
 from scripts.extraction_specs.aml_handbook import AML_HANDBOOK
-from scripts.extraction_specs.config import MD_1, MD_2
+from scripts.extraction_specs.config import MD_1, MD_2, MD_3
+
+
+def write_diff(before: Path, after: Path, write_path: Path) -> None:
+    text_before = before.read_text()  # whatever you had previously
+    text_after = after.read_text()  # after the new regex
+
+    diff = difflib.unified_diff(
+        text_before.splitlines(),
+        text_after.splitlines(),
+        lineterm="",
+        n=2,  # context lines (lines of unchanged content around each change)
+    )
+
+    write_path.write_text("\n---\n".join(diff))
 
 
 def load_clean_md(specs: dict) -> list[str]:
@@ -27,6 +42,7 @@ if __name__ == "__main__":
     ]
     for doc in docs:
         md_lines = load_clean_md(doc)
-        MD_1.write_text("\n".join(md_lines))
+        MD_2.write_text("\n".join(md_lines))
         # definition_lines = trimmed_lines[: doc["defs_start"]] + trimmed_lines[doc["defs_end"] :]
         # MD_2.write_text("\n".join(definition_lines))
+        write_diff(MD_1, MD_2, MD_3)
