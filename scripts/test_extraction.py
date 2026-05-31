@@ -3,7 +3,8 @@ import difflib
 from typing import cast
 from pathlib import Path
 from scripts.extraction_specs.aml_handbook import AML_HANDBOOK
-from scripts.extraction_specs.config import MD_1, MD_2, MD_3
+from scripts.extraction_specs.aml_code import AML_CODE
+from config import MD_1, MD_2, MD_3
 
 
 def write_diff(before: Path, after: Path, write_path: Path) -> None:
@@ -37,7 +38,7 @@ def load_clean_md(specs: dict) -> list[str]:
 
 if __name__ == "__main__":
     docs = [
-        # AML_CODE,
+        AML_CODE,
         AML_HANDBOOK,
     ]
     for doc in docs:

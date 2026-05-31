@@ -1,5 +1,5 @@
 import re
-from scripts.extraction_specs.config import project_root
+from config import project_root
 
 
 def re_steps(text: str) -> str:
@@ -15,6 +15,7 @@ def re_steps(text: str) -> str:
 
 AML_CODE = {
     "document": "The AML Code 2019",
+    # /home/cameron/workspaces/manx-reg-rag/data/raw/custom/the_aml_code_2019.pdf
     "input_path": project_root / "data/raw/custom/the_aml_code_2019.pdf",
     "md_path": project_root / "data/processed/raw_code.md",
     "chunk_path": project_root / "data/processed/raw_code.jsonl",

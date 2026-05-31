@@ -1,6 +1,6 @@
 import json
 from qdrant_client import QdrantClient, models
-from globals import AML_CODE_JSONL_PATH, DB_PATH, EMBEDDING_MODEL, get_embedding_dim
+from config import AML_CODE_JSONL_PATH, DB_PATH, EMBEDDING_MODEL, get_embedding_dim
 
 
 def build_collection(input_path, db_path, collection):

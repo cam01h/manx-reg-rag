@@ -3,7 +3,7 @@ from pathlib import Path
 # ==========
 # file paths
 # ==========
-project_root = Path(__file__).parent.parent.parent
+project_root = Path(__file__).parent
 # inputs
 AML_CODE_RAW_PATH = project_root / "data/raw/custom/the_aml_code_2019.pdf"
 AML_HANDBOOK_PATH = project_root / "data/raw/custom/aml_handbook_april_2026.pdf"

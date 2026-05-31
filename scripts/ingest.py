@@ -2,7 +2,7 @@ import pymupdf4llm
 import json
 from typing import Callable, cast
 from scripts.extraction_specs.aml_handbook import AML_HANDBOOK
-from scripts.extraction_specs.config import (
+from config import (
     DELETE_LEN,
     MAX_CHUNK_CHAR,
     MIN_CHUNK_CHAR,
@@ -92,6 +92,8 @@ def extract_definitions(specs: dict, lines: list[str]) -> dict[str, str]:
 
 def extract_doc(specs: dict, lines: list[str]) -> list[dict]:
     print(f"{specs['document']}: formatting chunks...")
+    if specs["has_def_section"]:
+        lines = lines[: specs["defs_start"]] + lines[specs["defs_end"] :]
 
     buffer = ""
     chunks = []
@@ -198,7 +200,7 @@ def re_pack_undersized_chunks(specs: dict, chunks: list[dict]) -> list[dict]:
 if __name__ == "__main__":
     # TODO: change from dict to class
     docs = [
-        # AML_CODE,
+        AML_CODE,
         AML_HANDBOOK,
     ]
     for doc in docs:

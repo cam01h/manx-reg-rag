@@ -1,5 +1,5 @@
 import re
-from scripts.extraction_specs.config import project_root
+from config import project_root
 
 
 def re_steps(text: str) -> str:
@@ -34,7 +34,7 @@ AML_HANDBOOK = {
     "hierarchy": "guidnace",
     "major": "chapter",
     "minor": "section",
-    "start_line": 317,
+    "start_line": 317,  # TODO: chapter 1 not included
     "end_line": 5933,
     "defs_start": None,
     "defs_end": None,
