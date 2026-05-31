@@ -22,6 +22,9 @@ MD_3 = project_root / "tests/md_test_3.md"
 # Chunks
 # =========
 MAX_CHUNK_CHAR = 1500
+TARGET_CHUNK_CHAR = 1000
+MIN_CHUNK_CHAR = 500
+DELETE_LEN = 40
 
 # =========
 # Models

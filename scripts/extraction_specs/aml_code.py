@@ -29,6 +29,7 @@ AML_CODE = {
     "re_steps": re_steps,
     "is_major": lambda line: line.startswith("## **PART"),
     "is_minor": lambda line: line.startswith("## **") and line[5].isdigit(),
+    "has_def_section": True,
     "is_def_line": lambda line: (
         '- **"' in line or '## **"' in line or line.startswith('**"')
     ),
