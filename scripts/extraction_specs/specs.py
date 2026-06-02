@@ -22,11 +22,11 @@ class DocSpecs:
     has_definition_section: bool
     is_definition_line: Callable[[str], bool] | None
     is_double_def_line: (
-        Callable[[str], bool]
+        Callable[[list[str]], bool]
         | None  # useed for 'the terms "x" and "Y" should be taken to mean...'
     )
     is_false_dub_def: (
-        Callable[[str], bool] | None
+        Callable[[list[str]], bool] | None
     )  # looks like a double definition line but is not
     re_pack_splitter: Callable[[str], list[str]]
     strip_md: Callable[[str], str]
