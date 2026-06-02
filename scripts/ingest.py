@@ -1,25 +1,26 @@
 import pymupdf4llm
 import json
 from typing import Callable, cast
-from scripts.extraction_specs.aml_handbook import AML_HANDBOOK
+from scripts.extraction_specs.aml_handbook import AmlHandbook
+from scripts.extraction_specs.aml_code import AmlCode
 from config import (
     DELETE_LEN,
     MAX_CHUNK_CHAR,
     MIN_CHUNK_CHAR,
     TARGET_CHUNK_CHAR,
 )
-from scripts.extraction_specs.aml_code import AML_CODE
+from scripts.extraction_specs.specs import DocSpecs
 
 
-def load_clean_md(specs: dict) -> list[str]:
-    print(f"Loading {specs['document']} to md...")
+def load_clean_md(specs: DocSpecs) -> list[str]:
+    print(f"Loading {specs.document} to md...")
     md = cast(
-        str, pymupdf4llm.to_markdown(specs["input_path"], header=False, footer=False)
+        str, pymupdf4llm.to_markdown(specs.input_path, header=False, footer=False)
     )
     md_lines = md.splitlines()
-    trimmed_lines = md_lines[specs["start_line"] : specs["end_line"]]
+    trimmed_lines = md_lines[specs.start_line : specs.end_line]
     md = "\n".join(trimmed_lines)
-    md = specs["re_steps"](md)
+    md = specs.re_steps(md)
     md = md.replace("“", '"').replace("”", '"')
     trimmed_lines = md.splitlines()
     print("Extraction complete.")
@@ -53,15 +54,23 @@ def re_pack_oversized_chunk(chunk: dict, splitter: Callable) -> list[dict]:
     return chunks
 
 
-def extract_definitions(specs: dict, lines: list[str]) -> dict[str, str]:
-    print(f"{specs['document']}: formatting defintions...")
+def extract_definitions(specs: DocSpecs, lines: list[str]) -> dict[str, str]:
+    if not (
+        specs.is_definition_line is not None
+        and specs.is_double_def_line is not None
+        and specs.is_false_dub_def is not None
+    ):
+        return {}
+
+    print(f"{specs.document}: formatting defintions...")
     definitions = {}
     keys = []
     v = ""
+
     for line in lines:
         if not line.strip():
             continue
-        if specs["is_def_line"](line):
+        if specs.is_definition_line(line):
             if v != "" and keys != []:
                 for k in keys:
                     definitions[k] = v
@@ -69,20 +78,20 @@ def extract_definitions(specs: dict, lines: list[str]) -> dict[str, str]:
             v = ""
             def_line = line.split('"')
             for i, w in enumerate(def_line):
-                def_line[i] = specs["h_strip_md"](w)
+                def_line[i] = specs.h_strip_md(w)
             if len(def_line) == 3:
                 keys.append(def_line[1])
                 v = def_line[2]
             if len(def_line) == 5:
-                if specs["is_dub_def_line"](def_line):
+                if specs.is_double_def_line(def_line):
                     keys.append(def_line[1])
                     keys.append(def_line[3])
                     v = def_line[4]
-                elif specs["is_f_dub_def"](def_line):
+                elif specs.is_false_dub_def(def_line):
                     keys.append(def_line[1])
                     v = f'{def_line[2]} "{def_line[3]}" {def_line[4]}'
         else:
-            v += "\n" + specs["strip_md"](line)
+            v += "\n" + specs.strip_md(line)
     if v != "" and keys != []:
         for k in keys:
             definitions[k] = v
@@ -90,51 +99,49 @@ def extract_definitions(specs: dict, lines: list[str]) -> dict[str, str]:
     return definitions
 
 
-def extract_doc(specs: dict, lines: list[str]) -> list[dict]:
-    print(f"{specs['document']}: formatting chunks...")
-    if specs["has_def_section"]:
-        lines = lines[: specs["defs_start"]] + lines[specs["defs_end"] :]
+def extract_doc(specs: DocSpecs, lines: list[str]) -> list[dict]:
+    print(f"{specs.document}: formatting chunks...")
+    if specs.has_definition_section:
+        lines = lines[: specs.definitions_start] + lines[specs.definitions_end :]
 
     buffer = ""
     chunks = []
     major = ""
     minor = ""
     chunk = {
-        "document": specs["document"],
-        "hierarchy": specs["hierarchy"],
-        specs["major"]: "",
-        specs["minor"]: "",
+        "document": specs.document,
+        "hierarchy": specs.hierarchy,
+        "major": "",
+        "minor": "",
         "body": "",
     }
 
     for line in lines:
-        if specs["is_major"](line):
+        if specs.is_major_header_line(line):
             if buffer.strip() != "":
-                chunk[specs["major"]] = major  # TODO: repeated 3 times: extract to func
-                chunk[specs["minor"]] = minor
+                chunk["major"] = major  # TODO: repeated 3 times: extract to func
+                chunk["minor"] = minor
                 chunk["body"] = buffer.strip()
                 chunks.extend(
-                    re_pack_oversized_chunk(chunk.copy(), specs["re_pack_splitter"])
+                    re_pack_oversized_chunk(chunk.copy(), specs.re_pack_splitter)
                 )
                 buffer = ""
-            major = specs["strip_md"](line)
-        elif specs["is_minor"](line):
+            major = specs.strip_md(line)
+        elif specs.is_minor_header_line(line):
             if buffer.strip() != "":
-                chunk[specs["major"]] = major
-                chunk[specs["minor"]] = minor
+                chunk["major"] = major
+                chunk["minor"] = minor
                 chunk["body"] = buffer.strip()
-                repacked = re_pack_oversized_chunk(
-                    chunk.copy(), specs["re_pack_splitter"]
-                )
+                repacked = re_pack_oversized_chunk(chunk.copy(), specs.re_pack_splitter)
                 chunks.extend(repacked)
                 buffer = ""
-            minor = specs["strip_md"](line)
+            minor = specs.strip_md(line)
         else:
             buffer += "\n" + line
-    chunk[specs["major"]] = major
-    chunk[specs["minor"]] = minor
+    chunk["major"] = major
+    chunk["minor"] = minor
     chunk["body"] = buffer.strip()
-    repacked = re_pack_oversized_chunk(chunk.copy(), specs["re_pack_splitter"])
+    repacked = re_pack_oversized_chunk(chunk.copy(), specs.re_pack_splitter)
     chunks.extend(repacked)
     filtered_chunks = []
     delted_chunks = 0
@@ -163,14 +170,14 @@ def attach_definitions(chunks: list[dict], definitions: dict) -> list[dict]:
     return chunks
 
 
-def re_pack_undersized_chunks(specs: dict, chunks: list[dict]) -> list[dict]:
+def re_pack_undersized_chunks(chunks: list[dict]) -> list[dict]:
 
     def should_merge(chunk: dict[str, str], previous_chunk: dict) -> bool:
         if previous_chunk != {}:
             is_too_short = len(chunk["body"]) < MIN_CHUNK_CHAR
             not_at_boundary = (
-                chunk[specs["major"]] == previous_chunk[specs["major"]]
-                and chunk[specs["minor"]] == previous_chunk[specs["minor"]]
+                chunk["major"] == previous_chunk["major"]
+                and chunk["minor"] == previous_chunk["minor"]
             )
             previous_chunk_not_too_big = (
                 len(previous_chunk["body"]) + len(chunk["body"]) < TARGET_CHUNK_CHAR
@@ -185,7 +192,7 @@ def re_pack_undersized_chunks(specs: dict, chunks: list[dict]) -> list[dict]:
             chunk, previous_chunk
         ):  # TODO: undersized chunks following a large chunk never merge. Accepted for now
             previous_chunk["body"] = (
-                f"{previous_chunk['body']}\n\n{chunk[specs['minor']]} - {chunk['body']}"
+                f"{previous_chunk['body']}\n\n{chunk['minor']} - {chunk['body']}"
             )
         else:
             if previous_chunk:
@@ -198,22 +205,21 @@ def re_pack_undersized_chunks(specs: dict, chunks: list[dict]) -> list[dict]:
 
 
 if __name__ == "__main__":
-    # TODO: change from dict to class
     docs = [
-        AML_CODE,
-        AML_HANDBOOK,
+        AmlCode,
+        AmlHandbook,
     ]
     for doc in docs:
         md = load_clean_md(doc)
         chunks = extract_doc(doc, md)
         chunks = re_pack_undersized_chunks(
-            doc, chunks
+            chunks
         )  # TODO: pull all chunk sizing funcs together in order
-        if doc["has_def_section"]:
+        if doc.has_definition_section:
             definitions = extract_definitions(doc, md)
             chunks = attach_definitions(chunks, definitions)
-            with doc["def_path"].open("w") as f:
+            with doc.definition_path.open("w") as f:
                 json.dump(definitions, f, ensure_ascii=False, indent=2)
-        with doc["chunk_path"].open("w") as f:
+        with doc.chunk_path.open("w") as f:
             for c in chunks:
                 f.write(json.dumps(c, ensure_ascii=False) + "\n")
