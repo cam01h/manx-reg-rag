@@ -1,5 +1,6 @@
 import re
 from config import project_root
+from specs import DocSpecs
 
 
 def re_steps(text: str) -> str:
@@ -25,33 +26,34 @@ def re_steps(text: str) -> str:
     return text
 
 
-AML_HANDBOOK = {
-    "document": "The AML Handbook (April 2026)",
-    "input_path": project_root / "data/raw/custom/aml_handbook_april_2026.pdf",
-    "md_path": project_root / "data/processed/raw_handbook.md",
-    "chunk_path": project_root / "data/processed/handbook_chunks.jsonl",
-    "def_path": project_root / "data/processed/handbook_defs.json",
-    "hierarchy": "guidnace",
-    "major": "chapter",
-    "minor": "section",
-    "start_line": 317,  # TODO: chapter 1 not included
-    "end_line": 5933,
-    "defs_start": None,
-    "defs_end": None,
-    "re_steps": re_steps,
-    "is_major": lambda line: bool(re.match(r"^\s*Chapter\s*\d", line.strip())),
-    "is_minor": lambda line: bool(re.match(r"^\s*\d+(?:\.\d+){1,5}\s", line.strip())),
-    "has_def_section": False,
-    "is_def_line": None,
-    "is_dub_def_line": None,
-    "is_f_dub_def": None,
-    "re_pack_splitter": lambda text: text.split("\n\n"),
-    "strip_md": lambda line: line.replace("*", "").replace("#", "").strip(),
-    "h_strip_md": lambda line: (
+AmlHandbook = DocSpecs(
+    document="The AML Handbook (April 2026)",
+    input_path=project_root / "data/raw/custom/aml_handbook_april_2026.pdf",
+    chunk_path=project_root / "data/processed/handbook_chunks.jsonl",
+    definition_path=project_root / "data/processed/handbook_defs.json",
+    hierarchy="guidanace",
+    major_name="chapter",
+    minor_name="section",
+    start_line=317,  # TODO: chapter 1 not included
+    end_line=5933,
+    definitions_start=None,
+    definitions_end=None,
+    re_steps=re_steps,
+    is_major_header_line=lambda line: bool(re.match(r"^\s*Chapter\s*\d", line.strip())),
+    is_minor_header_line=lambda line: bool(
+        re.match(r"^\s*\d+(?:\.\d+){1,5}\s", line.strip())
+    ),
+    has_definition_section=False,
+    is_definition_line=None,
+    is_double_def_line=None,
+    is_false_dub_def=None,
+    re_pack_splitter=lambda text: text.split("\n\n"),
+    strip_md=lambda line: line.replace("*", "").replace("#", "").strip(),
+    h_strip_md=lambda line: (
         line.replace("- **", "")
         .replace("#", "")
         .replace("*", "")
         .replace(" — ", "")
         .strip()
     ),
-}
+)
