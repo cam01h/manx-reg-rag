@@ -1,6 +1,8 @@
+from dataclasses import asdict, replace
 import pymupdf4llm
 import json
 from typing import Callable, cast
+from scripts.extraction_specs.chunk import Chunk
 from scripts.extraction_specs.aml_handbook import AmlHandbook
 from scripts.extraction_specs.aml_code import AmlCode
 from config import (
@@ -27,31 +29,31 @@ def load_clean_md(specs: DocSpecs) -> list[str]:
     return trimmed_lines
 
 
-def re_pack_oversized_chunk(chunk: dict, splitter: Callable) -> list[dict]:
-    if len(chunk["body"]) < MAX_CHUNK_CHAR:
-        return [chunk.copy()]
-    segments = splitter(
-        chunk["body"]
-    )  # TODO: Unsplittable chunks slip through oversized, maybe add a fallback splitter
+def re_pack_oversized_chunk(chunk: Chunk, splitter: Callable) -> list[Chunk]:
+    if len(chunk.body) < MAX_CHUNK_CHAR:
+        return [chunk]
+    # TODO: Unsplittable chunks slip through oversized, maybe add a fallback splitter
+    segments = splitter(chunk.body)
     if len(segments) == 1:
-        return [chunk.copy()]
-    chunks = []
+        return [chunk]
+
+    split_chunks = []
     buffer = ""
+
+    def flush(body: str):
+        split_chunks.append(replace(chunk, body=body.strip()))
+
     for s in segments:
         if len(s) > MAX_CHUNK_CHAR:
             print(f"Unsplittable chunk over sized at {len(s)} characters")
         if buffer != "" and len(buffer + s) > MAX_CHUNK_CHAR:
-            chunk_copy = chunk.copy()
-            chunk_copy["body"] = buffer.strip()
-            chunks.append(chunk_copy)
+            flush(buffer)
             buffer = s
         else:
             buffer += "\n" + s
     if buffer != "":
-        chunk_copy = chunk.copy()
-        chunk_copy["body"] = buffer.strip()
-        chunks.append(chunk_copy)
-    return chunks
+        flush(buffer)
+    return split_chunks
 
 
 def extract_definitions(specs: DocSpecs, lines: list[str]) -> dict[str, str]:
@@ -99,108 +101,100 @@ def extract_definitions(specs: DocSpecs, lines: list[str]) -> dict[str, str]:
     return definitions
 
 
-def extract_doc(specs: DocSpecs, lines: list[str]) -> list[dict]:
+def extract_doc(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
     print(f"{specs.document}: formatting chunks...")
     if specs.has_definition_section:
         lines = lines[: specs.definitions_start] + lines[specs.definitions_end :]
+
+    def pack_chunk(major: str, minor: str, body: str) -> Chunk:
+        current_chunk = Chunk(
+            document=specs.document, major=major, minor=minor, body=body.strip()
+        )
+        return current_chunk
 
     buffer = ""
     chunks = []
     major = ""
     minor = ""
-    chunk = {
-        "document": specs.document,
-        "hierarchy": specs.hierarchy,
-        "major": "",
-        "minor": "",
-        "body": "",
-    }
 
     for line in lines:
         if specs.is_major_header_line(line):
             if buffer.strip() != "":
-                chunk["major"] = major  # TODO: repeated 3 times: extract to func
-                chunk["minor"] = minor
-                chunk["body"] = buffer.strip()
-                chunks.extend(
-                    re_pack_oversized_chunk(chunk.copy(), specs.re_pack_splitter)
-                )
+                chunks.append(pack_chunk(major, minor, buffer))
                 buffer = ""
             major = specs.strip_md(line)
         elif specs.is_minor_header_line(line):
             if buffer.strip() != "":
-                chunk["major"] = major
-                chunk["minor"] = minor
-                chunk["body"] = buffer.strip()
-                repacked = re_pack_oversized_chunk(chunk.copy(), specs.re_pack_splitter)
-                chunks.extend(repacked)
+                chunks.append(pack_chunk(major, minor, buffer))
                 buffer = ""
             minor = specs.strip_md(line)
         else:
             buffer += "\n" + line
-    chunk["major"] = major
-    chunk["minor"] = minor
-    chunk["body"] = buffer.strip()
-    repacked = re_pack_oversized_chunk(chunk.copy(), specs.re_pack_splitter)
-    chunks.extend(repacked)
-    filtered_chunks = []
-    delted_chunks = 0
-    for (
-        c
-    ) in chunks:  # TODO: this is aggressive and runs before merge: needs further work
-        if len(c["body"]) >= DELETE_LEN:
-            filtered_chunks.append(c)
-        else:
-            delted_chunks += 1
-    print(f"{delted_chunks} were filtered")
-    print(f"{len(filtered_chunks)} chunks were fromatted.")
-    return filtered_chunks
-
-
-def attach_definitions(chunks: list[dict], definitions: dict) -> list[dict]:
-    print("Attaching definitions to chunks...")
-    terms_used = []
-    for chunk in chunks:
-        for term in definitions.keys():
-            if term in chunk["body"]:
-                terms_used.append(term)
-        chunk["terms_used"] = terms_used
-        terms_used = []
-    print("Definitions attached.")
+    chunks.append(pack_chunk(major, minor, buffer))
+    print(f"{len(chunks)} initial chunks were fromatted.")
     return chunks
 
 
-def re_pack_undersized_chunks(chunks: list[dict]) -> list[dict]:
+def filter_chunks(chunks: list[Chunk]) -> list[Chunk]:
+    filtered_chunks = []
+    delted_chunks = 0
+    for c in chunks:
+        if len(c.body) >= DELETE_LEN:
+            filtered_chunks.append(c)
+        else:
+            delted_chunks += 1
+    print(f"{delted_chunks} chunks were filtered")
+    return filtered_chunks
 
-    def should_merge(chunk: dict[str, str], previous_chunk: dict) -> bool:
-        if previous_chunk != {}:
-            is_too_short = len(chunk["body"]) < MIN_CHUNK_CHAR
-            not_at_boundary = (
-                chunk["major"] == previous_chunk["major"]
-                and chunk["minor"] == previous_chunk["minor"]
-            )
-            previous_chunk_not_too_big = (
-                len(previous_chunk["body"]) + len(chunk["body"]) < TARGET_CHUNK_CHAR
-            )
-            return is_too_short and not_at_boundary and previous_chunk_not_too_big
-        return False
+
+def attach_definitions(chunks: list[Chunk], definitions: dict) -> list[Chunk]:
+    print("Attaching definitions to chunks...")
+    chunks_with_terms = []
+    terms_used = []
+    for chunk in chunks:
+        for term in definitions.keys():
+            if term in chunk.body:
+                terms_used.append(term)
+        chunks_with_terms.append(replace(chunk, terms_used=terms_used))
+        terms_used = []
+    print("Definitions attached.")
+    return chunks_with_terms
+
+
+def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
+
+    def should_merge(chunk: Chunk, previous_chunk: Chunk) -> bool:
+        is_too_short = len(chunk.body) < MIN_CHUNK_CHAR
+        not_at_boundary = (
+            chunk.major == previous_chunk.major and chunk.minor == previous_chunk.minor
+        )
+        previous_chunk_not_too_big = (
+            len(previous_chunk.body) + len(chunk.body) < TARGET_CHUNK_CHAR
+        )
+        return is_too_short and not_at_boundary and previous_chunk_not_too_big
 
     checked_chunks = []
-    previous_chunk = {}
+    previous_chunk = None
     for chunk in chunks:
-        if should_merge(
-            chunk, previous_chunk
-        ):  # TODO: undersized chunks following a large chunk never merge. Accepted for now
-            previous_chunk["body"] = (
-                f"{previous_chunk['body']}\n\n{chunk['minor']} - {chunk['body']}"
-            )
+        if previous_chunk is not None:
+            if should_merge(chunk, previous_chunk):
+                # TODO: undersized chunks following a large chunk never merge. Accepted for now
+                previous_chunk = replace(
+                    previous_chunk,
+                    body=f"{previous_chunk.body}\n\n{chunk.minor} - {chunk.body}",
+                )
+            else:
+                if previous_chunk is not None:
+                    checked_chunks.append(previous_chunk)
+                previous_chunk = chunk
         else:
-            if previous_chunk:
-                checked_chunks.append(previous_chunk.copy())
-            previous_chunk = chunk.copy()
+            previous_chunk = chunk
     if previous_chunk:
-        checked_chunks.append(previous_chunk.copy())
-    print(f"{len(chunks)} were repacked into {len(checked_chunks)}")
+        checked_chunks.append(previous_chunk)
+    if len(chunks) != len(checked_chunks):
+        print(f"{len(chunks)} were merged into {len(checked_chunks)}")
+    else:
+        print("No chunks were merged")
     return checked_chunks
 
 
@@ -212,9 +206,13 @@ if __name__ == "__main__":
     for doc in docs:
         md = load_clean_md(doc)
         chunks = extract_doc(doc, md)
-        chunks = re_pack_undersized_chunks(
-            chunks
-        )  # TODO: pull all chunk sizing funcs together in order
+        chunks = [
+            out
+            for c in chunks
+            for out in re_pack_oversized_chunk(c, doc.re_pack_splitter)
+        ]
+        chunks = re_pack_undersized_chunks(chunks)
+        chunks = filter_chunks(chunks)
         if doc.has_definition_section:
             definitions = extract_definitions(doc, md)
             chunks = attach_definitions(chunks, definitions)
@@ -222,4 +220,4 @@ if __name__ == "__main__":
                 json.dump(definitions, f, ensure_ascii=False, indent=2)
         with doc.chunk_path.open("w") as f:
             for c in chunks:
-                f.write(json.dumps(c, ensure_ascii=False) + "\n")
+                f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")

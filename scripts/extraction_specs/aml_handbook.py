@@ -1,6 +1,6 @@
 import re
 from config import project_root
-from specs import DocSpecs
+from scripts.extraction_specs.specs import DocSpecs
 
 
 def re_steps(text: str) -> str:
