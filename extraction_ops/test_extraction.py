@@ -2,8 +2,8 @@ import pymupdf4llm
 import difflib
 from typing import cast
 from pathlib import Path
-from scripts.extraction_specs.aml_handbook import AML_HANDBOOK
-from scripts.extraction_specs.aml_code import AML_CODE
+from extraction_ops.specs.aml_handbook import AmlHandbook
+from extraction_ops.specs.aml_code import AmlCode
 from config import MD_1, MD_2, MD_3
 
 
@@ -36,14 +36,17 @@ def load_clean_md(specs: dict) -> list[str]:
     return trimmed_lines
 
 
+# TODO: needs reworking to match dataclass structure
+"""
 if __name__ == "__main__":
     docs = [
-        AML_CODE,
-        AML_HANDBOOK,
+        AmlCode,
+        AmlHandbook,
     ]
     for doc in docs:
-        md_lines = load_clean_md(doc)
+        md_lines = load_clean_md(doc.input_path)
         MD_2.write_text("\n".join(md_lines))
         # definition_lines = trimmed_lines[: doc["defs_start"]] + trimmed_lines[doc["defs_end"] :]
         # MD_2.write_text("\n".join(definition_lines))
         write_diff(MD_1, MD_2, MD_3)
+"""

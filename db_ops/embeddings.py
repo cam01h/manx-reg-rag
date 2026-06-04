@@ -1,6 +1,6 @@
 import json
 from qdrant_client import QdrantClient, models
-from config import AML_CODE_JSONL_PATH, DB_PATH, EMBEDDING_MODEL, get_embedding_dim
+from config import CHUNKS_JSONL_PATH, DB_PATH, EMBEDDING_MODEL, get_embedding_dim
 
 
 def build_collection(input_path, db_path, collection):
@@ -36,4 +36,4 @@ def build_collection(input_path, db_path, collection):
 
 
 if __name__ == "__main__":
-    build_collection(AML_CODE_JSONL_PATH, DB_PATH, "aml_code_test")
+    build_collection(CHUNKS_JSONL_PATH, DB_PATH, "aml_code_test")
