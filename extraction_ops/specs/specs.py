@@ -7,8 +7,6 @@ from typing import Callable
 class DocSpecs:
     document: str
     input_path: Path
-    chunk_path: Path
-    definition_path: Path
     hierarchy: str
     major_name: str  # TODO: needst to replaced before write to JSONL
     minor_name: str

@@ -1,6 +1,6 @@
 import re
 from config import project_root
-from scripts.extraction_specs.specs import DocSpecs
+from specs import DocSpecs
 
 
 def re_steps(text: str) -> str:
@@ -17,8 +17,6 @@ def re_steps(text: str) -> str:
 AmlCode = DocSpecs(
     document="The AML Code 2019",
     input_path=project_root / "data/raw/custom/the_aml_code_2019.pdf",
-    chunk_path=project_root / "data/processed/raw_code.jsonl",
-    definition_path=project_root / "data/processed/code_defs.json",
     hierarchy="legislation",
     major_name="part",
     minor_name="paragraph",

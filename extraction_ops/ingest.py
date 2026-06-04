@@ -2,16 +2,18 @@ from dataclasses import asdict, replace
 import pymupdf4llm
 import json
 from typing import Callable, cast
-from scripts.extraction_specs.chunk import Chunk
-from scripts.extraction_specs.aml_handbook import AmlHandbook
-from scripts.extraction_specs.aml_code import AmlCode
+from extraction_ops.chunk import Chunk
+from extraction_ops.specs.aml_handbook import AmlHandbook
+from extraction_ops.specs.aml_code import AmlCode
+from extraction_ops.specs.specs import DocSpecs
 from config import (
+    CHUNKS_JSONL_PATH,
+    DEFINITIONS_JSONL_PATH,
     DELETE_LEN,
     MAX_CHUNK_CHAR,
     MIN_CHUNK_CHAR,
     TARGET_CHUNK_CHAR,
 )
-from scripts.extraction_specs.specs import DocSpecs
 
 
 def load_clean_md(specs: DocSpecs) -> list[str]:
@@ -108,7 +110,11 @@ def extract_doc(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
 
     def pack_chunk(major: str, minor: str, body: str) -> Chunk:
         current_chunk = Chunk(
-            document=specs.document, major=major, minor=minor, body=body.strip()
+            document=specs.document,
+            hierarchy=specs.hierarchy,
+            major=major,
+            minor=minor,
+            body=body.strip(),
         )
         return current_chunk
 
@@ -203,6 +209,8 @@ if __name__ == "__main__":
         AmlCode,
         AmlHandbook,
     ]
+    all_chunks = []
+    all_definitions = {}
     for doc in docs:
         md = load_clean_md(doc)
         chunks = extract_doc(doc, md)
@@ -213,11 +221,19 @@ if __name__ == "__main__":
         ]
         chunks = re_pack_undersized_chunks(chunks)
         chunks = filter_chunks(chunks)
+        print(f"{len(chunks)} chunks after normalisation")
         if doc.has_definition_section:
             definitions = extract_definitions(doc, md)
             chunks = attach_definitions(chunks, definitions)
-            with doc.definition_path.open("w") as f:
-                json.dump(definitions, f, ensure_ascii=False, indent=2)
-        with doc.chunk_path.open("w") as f:
-            for c in chunks:
-                f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")
+            all_definitions[doc.document] = definitions
+        all_chunks.extend(chunks)
+    with CHUNKS_JSONL_PATH.open("w") as f:
+        for c in all_chunks:
+            f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")
+    print(f"Across all documents, {len(all_chunks)} were extracted")
+    with DEFINITIONS_JSONL_PATH.open("w") as f:
+        json.dump(all_definitions, f, ensure_ascii=False, indent=2)
+    defintions = 0
+    for defs in all_definitions:
+        defintions += len(defs)
+    print(f"Across all documents, {len(all_definitions)} were formatted")

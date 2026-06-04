@@ -1,6 +1,6 @@
 import re
 from config import project_root
-from scripts.extraction_specs.specs import DocSpecs
+from specs import DocSpecs
 
 
 def re_steps(text: str) -> str:
@@ -29,8 +29,6 @@ def re_steps(text: str) -> str:
 AmlHandbook = DocSpecs(
     document="The AML Handbook (April 2026)",
     input_path=project_root / "data/raw/custom/aml_handbook_april_2026.pdf",
-    chunk_path=project_root / "data/processed/handbook_chunks.jsonl",
-    definition_path=project_root / "data/processed/handbook_defs.json",
     hierarchy="guidanace",
     major_name="chapter",
     minor_name="section",
