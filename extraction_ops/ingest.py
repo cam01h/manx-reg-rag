@@ -2,10 +2,10 @@ from dataclasses import asdict, replace
 import pymupdf4llm
 import json
 from typing import Callable, cast
-from extraction_ops.chunk import Chunk
-from extraction_ops.specs.aml_handbook import AmlHandbook
-from extraction_ops.specs.aml_code import AmlCode
-from extraction_ops.specs.specs import DocSpecs
+from .chunk import Chunk
+from .specs.aml_handbook import AmlHandbook
+from .specs.aml_code import AmlCode
+from .specs.specs import DocSpecs
 from config import (
     CHUNKS_JSONL_PATH,
     DEFINITIONS_JSONL_PATH,

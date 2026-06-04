@@ -1,6 +1,6 @@
 import re
 from config import project_root
-from specs import DocSpecs
+from .specs import DocSpecs
 
 
 def re_steps(text: str) -> str:
@@ -14,7 +14,6 @@ def re_steps(text: str) -> str:
     )
     text = re.sub(r"^\s*[-]?>\s*", "", text, flags=re.MULTILINE)
     text = re.sub(r" {2,}", " ", text)
-    text = text.replace("*", "").replace("#", "").replace("_", "")
     text = re.sub(r"\n\s*\n+", "\n\n", text)
     text = re.sub(
         r"\n\n(\s*(?:\([a-z]{1,2}\)|\(\d{1,2}\)|\([ivxlcdm]+\)))",
@@ -22,6 +21,13 @@ def re_steps(text: str) -> str:
         text,
         flags=re.IGNORECASE,
     )
+    text = re.sub(
+        r"^(\s*[-*]?\s*)\*\*(\d+(?:\.\d+){1,5}\s[^*\n]*?)\*\*\s+(?=\S)",
+        r"\1**\2**\n",
+        text,
+        flags=re.MULTILINE,
+    )
+    text = text.replace("*", "").replace("#", "").replace("_", "")
     # TODO: there are AML Code bloc quotes in the handbook which is a duplication of embeddings.
     return text
 
@@ -39,7 +45,7 @@ AmlHandbook = DocSpecs(
     re_steps=re_steps,
     is_major_header_line=lambda line: bool(re.match(r"^\s*Chapter\s*\d", line.strip())),
     is_minor_header_line=lambda line: bool(
-        re.match(r"^\s*\d+(?:\.\d+){1,5}\s", line.strip())
+        re.match(r"^\s*[-*]?\s*\d+(?:\.\d+){1,5}\s", line.strip())
     ),
     has_definition_section=False,
     is_definition_line=None,

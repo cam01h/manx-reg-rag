@@ -351,9 +351,10 @@ wheels = [
 [[package]]
 name = "manx-reg-rag"
 version = "0.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "fastembed" },
+    { name = "pydantic" },
     { name = "pymupdf4llm" },
     { name = "qdrant-client" },
 ]
@@ -361,6 +362,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastembed", specifier = ">=0.8.0" },
+    { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pymupdf4llm", specifier = ">=1.27.2.3" },
     { name = "qdrant-client", specifier = ">=1.18.0" },
 ]

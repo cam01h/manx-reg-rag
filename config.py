@@ -26,6 +26,7 @@ DELETE_LEN = 40
 # Models
 # =========
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+COLLECTION = "manx-reg-rag-db"
 
 
 def get_embedding_dim(embedding_model):

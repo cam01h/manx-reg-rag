@@ -6,7 +6,6 @@ from config import CHUNKS_JSONL_PATH, DB_PATH, EMBEDDING_MODEL, get_embedding_di
 def build_collection(input_path, db_path, collection):
     client = QdrantClient(path=str(db_path))
 
-    # TODO: locate all jsonl files in the processed directory
     if client.collection_exists(collection):
         client.delete_collection(collection)
 
@@ -23,7 +22,7 @@ def build_collection(input_path, db_path, collection):
         point = models.PointStruct(
             id=i + 1,
             vector=models.Document(
-                text=f"{c['paragraph']}\n---\n{c['body']}", model=EMBEDDING_MODEL
+                text=f"{c['major']}\n{c['minor']}\n{c['body']}", model=EMBEDDING_MODEL
             ),
             payload=c,
         )
@@ -36,4 +35,4 @@ def build_collection(input_path, db_path, collection):
 
 
 if __name__ == "__main__":
-    build_collection(CHUNKS_JSONL_PATH, DB_PATH, "aml_code_test")
+    build_collection(CHUNKS_JSONL_PATH, DB_PATH, "manx-reg-rag-db")
