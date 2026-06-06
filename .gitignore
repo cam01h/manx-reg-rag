@@ -13,3 +13,5 @@ data/raw/       # large files
 data/processed/
 data/qdrant/    # planned for vector db
 /tests
+/.env
+/data/qdrant/collection/manx-reg-rag-db/storage.sqlite

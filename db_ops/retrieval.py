@@ -1,11 +1,17 @@
 import json
 from qdrant_client import QdrantClient, models
-from config import DB_PATH, COLLECTION, EMBEDDING_MODEL, DEFINITIONS_JSONL_PATH
+from config import (
+    DB_PATH,
+    COLLECTION,
+    DEFAULT_CHUNKS_RETREIVED,
+    EMBEDDING_MODEL,
+    DEFINITIONS_JSONL_PATH,
+)
 from db_ops.retrieved_chunk import RetrievedChunk, Definition
 
 
 def get_chunks(
-    query: str, collection: str = COLLECTION, top_n: int = 5
+    query: str, collection: str = COLLECTION, top_n: int = DEFAULT_CHUNKS_RETREIVED
 ) -> list[RetrievedChunk]:
     client = QdrantClient(path=str(DB_PATH))
     results = client.query_points(
@@ -19,6 +25,7 @@ def get_chunks(
         if result.payload is None:
             raise ValueError(f"{result.id} returned no payload")
         retrieved_chunk = RetrievedChunk(
+            chunk_id=result.payload["chunk_id"],
             rank=i + 1,
             score=result.score,
             document=result.payload["document"],
@@ -54,6 +61,8 @@ def get_definitions(chunks: list[RetrievedChunk]) -> list[Definition]:
 def get_chunks_with_definitions(
     query: str,
 ) -> tuple[list[RetrievedChunk], list[Definition]]:
+    """Search the Isle of Man AML legislation and guidance for content relevant to the query.
+    Returns the most relevant text chunks from the regulations and any defined terms used in them."""
     chunks = get_chunks(query)
     definitions = get_definitions(chunks)
     return chunks, definitions
