@@ -20,7 +20,7 @@ I am a compliance professional by trade and manx-reg-rag is far from complete an
 
 ### 2.1 Ingestion of documents
 
-Documents are entered in PDF format and extracted to and md format PyMuPDF4LL. The lines are trimmed and regex is used to clean the md file ready for chunking. The chunking function extracts the text into a jsonl format with rich and descriptive meta data that currently includes:
+Documents are entered in PDF format and extracted to an md format PyMuPDF4LL. The lines are trimmed and regex is used to clean the md file ready for chunking. The chunking function extracts the text into a jsonl format with rich and descriptive meta data that currently includes:
 
 - the document title
 - legal hierarchy (legislation, guidance, etc)
@@ -35,7 +35,7 @@ One of the key failings of most RAG projects that tackle legal text is the chunk
 
 ### 2.3 Embedding and retrieval
 
-The stack uses a Qdrant vector database. If that means nothing to you, you're not alone — and you don't need to follow the exact mechanics. As a simple metaphor, books can be grouped by subject at a library. For example books on cars and trains are both about transport so they have some semantic similarities so they might be in the same section but maybe not right next to each other. If you had a books about electric cars and hybrid cars, they might be right next to each other. That's essentially what the vector DB is doing, it groups the chunks by semantic similarity. That's roughly what happens here. Every chunk of legislation is read once and given a position — not on a physical shelf, but in a kind of map of meaning. Chunks about similar things end up close together on the map, even when they use different words.
+The stack uses a Qdrant vector database. If that means nothing to you, you're not alone — and you don't need to follow the exact mechanics. As a simple metaphor, books can be grouped by subject at a library. For example books on cars and trains are both about transport so they have some semantic similarities so they might be in the same section but maybe not right next to each other. If you had two books about electric cars and hybrid cars, they might be right next to each other. That's essentially what the vector DB is doing, it groups the chunks by semantic similarity. That's roughly what happens here. Every chunk of legislation is read once and given a position — not on a physical shelf, but in a kind of map of meaning. Chunks about similar things end up close together on the map, even when they use different words.
 
 When you ask a question, the question gets a position on the same map. We then grab the chunks sitting nearest to it — the ones most likely to be talking about what you asked.
 
@@ -72,7 +72,7 @@ Currently OpenAI is hard coded into the project but in due course, it will be mo
 ### **Example 1**
 
 ```
-System prompt: You are an expert in Isle of Man financial services regulation that is advising the user on the opperations of an Isle of Man regulated business. For every question, call the retrieval tool first to get relevant chunks from the legislation and guidance. Answer only from the retrieved content — do not draw on outside knowledge. If the retrieved chunks don't contain the answer, say so explicitly rather than guessing. For each chunk you draw on, include a Citation explaining what it contributed to your answer.
+System prompt: You are an expert in Isle of Man financial services regulation that is advising the user on the operations of an Isle of Man regulated business. For every question, call the retrieval tool first to get relevant chunks from the legislation and guidance. Answer only from the retrieved content — do not draw on outside knowledge. If the retrieved chunks don't contain the answer, say so explicitly rather than guessing. For each chunk you draw on, include a Citation explaining what it contributed to your answer.
 Q: what should be included in terms of statistics in my BRA?
 A: In your Business Risk Assessment (BRA), you should include several statistical elements:
 
@@ -153,7 +153,7 @@ Importance of maintaining reporting procedures
 #### **Example 3**
 
 ```
-System prompt: You are an expert in Isle of Man financial services regulation that is advising the user on the opperations of an Isle of Man regulated business. For every question, call the retrieval tool first to get relevant chunks from the legislation and guidance. Answer only from the retrieved content — do not draw on outside knowledge. If the retrieved chunks don't contain the answer, say so explicitly rather than guessing. For each chunk you draw on, include a Citation explaining what it contributed to your answer.
+System prompt: You are an expert in Isle of Man financial services regulation that is advising the user on the operations of an Isle of Man regulated business. For every question, call the retrieval tool first to get relevant chunks from the legislation and guidance. Answer only from the retrieved content — do not draw on outside knowledge. If the retrieved chunks don't contain the answer, say so explicitly rather than guessing. For each chunk you draw on, include a Citation explaining what it contributed to your answer.
 Q: I am about to review my CRA, what factors need to be included?
 A: When reviewing your Customer Risk Assessment (CRA), several key factors must be considered:
 
