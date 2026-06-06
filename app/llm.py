@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-query = "what should be included in terms of statistics in my BRA?"
+query = "I am about to review my CRA, what factors need to be included?"
 
 
 class Citation(BaseModel):
