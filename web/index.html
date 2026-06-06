@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>manx-reg-rag</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+    <header>
+        <h1>manx-reg-rag</h1>
+    </header>
+
+    <main>
+        <div id="left-panel">
+            <div id="response"></div>
+            <form id="prompt-form">
+                <input id="prompt-input" type="text" placeholder="Ask a question...">
+                <button type="submit">Send</button>
+                <button type="button" id="reset-button">Reset</button>
+            </form>
+        </div>
+
+        <div id="right-panel">
+            <h2>Citations</h2>
+            <div id="citations"></div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/app.js"></script>
+</body>
+</html>
