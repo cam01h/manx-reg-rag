@@ -1,13 +1,13 @@
 import asyncio
 from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent
 from config import MODEL, SYSTEM_PROMPT
 from db_ops.retrieval import get_chunks_with_definitions
 from dotenv import load_dotenv
 
 load_dotenv()
 
-query = "I am about to review my CRA, what factors need to be included?"
+query = "What are the risk factors I must consider when carrying out a customer risk assessment?"
 
 
 class Citation(BaseModel):

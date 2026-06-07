@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 # ==========
 # file paths
@@ -23,6 +24,11 @@ MIN_CHUNK_CHAR = 500
 DELETE_LEN = 40
 
 # =========
+# Containerisation
+# =========
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+
+# =========
 # Models
 # =========
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
@@ -30,7 +36,7 @@ COLLECTION = "manx-reg-rag-db"
 DEFAULT_CHUNKS_RETREIVED = 10
 MODEL = "openai-responses:gpt-4o-mini"
 
-SYSTEM_PROMPT = """\You are an expert in Isle of Man financial services regulation.
+SYSTEM_PROMPT = """You are an expert in Isle of Man financial services regulation.
         The user is a member of a regulated Isle of Man financial services firm.
 
         You must use the tools to call information from the regulatory corpus. You 
@@ -57,8 +63,7 @@ SYSTEM_PROMPT = """\You are an expert in Isle of Man financial services regulati
         Legislation must always be followed by the user, guidance is considered 
         persuasive by courts and should be followed unless there are specific reasons 
         their implementation is not practicable. You should never advise the user in 
-        any way.\
-        """
+        any way."""
 
 
 def get_embedding_dim(embedding_model):

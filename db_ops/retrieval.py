@@ -1,11 +1,11 @@
 import json
 from qdrant_client import QdrantClient, models
 from config import (
-    DB_PATH,
     COLLECTION,
     DEFAULT_CHUNKS_RETREIVED,
     EMBEDDING_MODEL,
     DEFINITIONS_JSONL_PATH,
+    QDRANT_URL,
 )
 from db_ops.retrieved_chunk import RetrievedChunk, Definition
 
@@ -13,7 +13,7 @@ from db_ops.retrieved_chunk import RetrievedChunk, Definition
 def get_chunks(
     query: str, collection: str = COLLECTION, top_n: int = DEFAULT_CHUNKS_RETREIVED
 ) -> list[RetrievedChunk]:
-    client = QdrantClient(path=str(DB_PATH))
+    client = QdrantClient(url=QDRANT_URL)
     results = client.query_points(
         collection_name=collection,
         query=models.Document(text=query, model=EMBEDDING_MODEL),
@@ -65,5 +65,8 @@ def get_chunks_with_definitions(
     Returns the most relevant sections from the regulations and any defined terms used in them."""
     chunks = get_chunks(query)
     definitions = get_definitions(chunks)
+    print(f"query ran for {query}")
+    for chunk in chunks:
+        print({chunk.major} - {chunk.minor})
 
     return chunks, definitions

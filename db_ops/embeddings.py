@@ -1,12 +1,13 @@
 import json
 import uuid
+from pathlib import Path
 from qdrant_client import QdrantClient, models
-from config import CHUNKS_JSONL_PATH, DB_PATH, EMBEDDING_MODEL, get_embedding_dim
+from config import CHUNKS_JSONL_PATH, EMBEDDING_MODEL, QDRANT_URL, get_embedding_dim
 import hashlib
 
 
-def build_collection(input_path, db_path, collection):
-    client = QdrantClient(path=str(db_path))
+def build_collection(input_path: Path, collection: str):
+    client = QdrantClient(url=QDRANT_URL)
 
     if client.collection_exists(collection):
         client.delete_collection(collection)
@@ -42,4 +43,4 @@ def build_collection(input_path, db_path, collection):
 
 
 if __name__ == "__main__":
-    build_collection(CHUNKS_JSONL_PATH, DB_PATH, "manx-reg-rag-db")
+    build_collection(CHUNKS_JSONL_PATH, "manx-reg-rag-db")
