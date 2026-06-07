@@ -62,7 +62,8 @@ def get_chunks_with_definitions(
     query: str,
 ) -> tuple[list[RetrievedChunk], list[Definition]]:
     """Search the Isle of Man AML legislation and guidance for content relevant to the query.
-    Returns the most relevant text chunks from the regulations and any defined terms used in them."""
+    Returns the most relevant sections from the regulations and any defined terms used in them."""
     chunks = get_chunks(query)
     definitions = get_definitions(chunks)
+
     return chunks, definitions
