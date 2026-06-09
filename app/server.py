@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from app.llm import agent
+from config import setup_logging
+
+setup_logging("app")
 
 app = FastAPI()
 

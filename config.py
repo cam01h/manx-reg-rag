@@ -1,3 +1,6 @@
+import logging
+import logging.config
+import datetime as dt
 from pathlib import Path
 import os
 
@@ -70,3 +73,49 @@ def get_embedding_dim(embedding_model):
     from fastembed import TextEmbedding
 
     return TextEmbedding(model_name=embedding_model).embedding_size
+
+
+def setup_logging(entry_point: str) -> None:
+    date = dt.datetime.today()
+    logfile = (
+        project_root
+        / f"logs/{entry_point}-{date.year}-{date.month:02d}-{date.day:02d}.log"
+    )
+    logfile.parent.mkdir(exist_ok=True)
+    config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {"format": "%(asctime)s::%(name)s::%(levelname)s::%(message)s"}
+        },
+        "handlers": {
+            "file": {
+                "class": "logging.FileHandler",
+                "formatter": "default",
+                "filename": str(logfile),
+                "encoding": "utf-8",
+                "level": "DEBUG",
+            },
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "default",
+                "level": "INFO",
+            },
+        },
+        "loggers": {
+            # mute all but warnings from built in loggers
+            "uvicorn": {"level": "WARNING"},
+            "uvicorn.access": {"level": "WARNING"},
+            "uvicorn.error": {"level": "INFO"},
+            "httpx": {"level": "WARNING"},
+            "httpcore": {"level": "WARNING"},
+            "qdrant_client": {"level": "WARNING"},
+            "fastembed": {"level": "WARNING"},
+            "openai": {"level": "WARNING"},
+        },
+        "root": {
+            "level": "DEBUG",
+            "handlers": ["file", "console"],
+        },
+    }
+    logging.config.dictConfig(config)

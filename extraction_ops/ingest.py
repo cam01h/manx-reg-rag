@@ -13,6 +13,7 @@ from config import (
     MAX_CHUNK_CHAR,
     MIN_CHUNK_CHAR,
     TARGET_CHUNK_CHAR,
+    setup_logging,
 )
 
 
@@ -205,6 +206,7 @@ def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
 
 
 if __name__ == "__main__":
+    setup_logging("ingest")
     docs = [
         AmlCode,
         AmlHandbook,
