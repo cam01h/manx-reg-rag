@@ -36,7 +36,7 @@ QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 # =========
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 COLLECTION = "manx-reg-rag-db"
-DEFAULT_CHUNKS_RETREIVED = 10
+DEFAULT_CHUNKS_RETRIEVED = 10
 MODEL = "openai-responses:gpt-4o-mini"
 
 SYSTEM_PROMPT = """You are an expert in Isle of Man financial services regulation.

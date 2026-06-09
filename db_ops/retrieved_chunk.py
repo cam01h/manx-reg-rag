@@ -16,5 +16,5 @@ class RetrievedChunk(BaseModel):
 
 class Definition(BaseModel):
     term: str
-    defintion: str
+    definition: str
     source: str
