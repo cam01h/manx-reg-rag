@@ -1,11 +1,13 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from app.llm import agent
+# setup_logging must run before importing app.llm so the agents init log is caught by the handler
 from config import setup_logging
-import logging
 
 setup_logging("app")
+import logging  # noqa: E402
+from fastapi import FastAPI  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+from pydantic import BaseModel  # noqa: E402
+from app.llm import agent  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
