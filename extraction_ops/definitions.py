@@ -82,6 +82,7 @@ def attach_definitions(chunks: list[Chunk], definitions: dict) -> list[Chunk]:
     for chunk in chunks:
         terms_used = []
         for term in definitions:
+            # TODO: calling term_in_body is inefficient and should be pre computed
             if term_in_body(term, chunk.body):
                 terms_used.append(term)
         chunks_with_terms.append(replace(chunk, terms_used=terms_used))
