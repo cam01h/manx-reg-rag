@@ -14,6 +14,11 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
         lines = lines[: specs.definitions_start] + lines[specs.definitions_end :]
         logger.info("definition section removed")
 
+    buffer = ""
+    chunks = []
+    major = ""
+    minor = ""
+
     def pack_chunk(major: str, minor: str, body: str) -> Chunk:
         current_chunk = Chunk(
             document=specs.document,
@@ -24,30 +29,27 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
         )
         return current_chunk
 
-    buffer = ""
-    chunks = []
-    major = ""
-    minor = ""
+    def flush():
+        nonlocal buffer
+        if buffer.strip():
+            chunks.append(pack_chunk(major, minor, buffer))
+            buffer = ""
 
     for line in lines:
         if specs.is_major_header_line(line):
-            if buffer.strip() != "":
-                chunks.append(pack_chunk(major, minor, buffer))
-                buffer = ""
+            flush()
             major = specs.strip_md(line)
         elif specs.is_minor_header_line(line):
-            if buffer.strip() != "":
-                chunks.append(pack_chunk(major, minor, buffer))
-                buffer = ""
+            flush()
             minor = specs.strip_md(line)
         else:
             buffer += "\n" + line
-    chunks.append(pack_chunk(major, minor, buffer))
+    flush()
     logger.info("initial chunk count: %d", len(chunks))
     return chunks
 
 
-def re_pack_oversized_chunk(chunk: Chunk, splitter: Callable) -> list[Chunk]:
+def _split_one_chunk(chunk: Chunk, splitter: Callable) -> list[Chunk]:
     if len(chunk.body) < MAX_CHUNK_CHAR:
         return [chunk]
     # TODO: Unsplittable chunks slip through oversized, maybe add a fallback splitter
@@ -72,6 +74,10 @@ def re_pack_oversized_chunk(chunk: Chunk, splitter: Callable) -> list[Chunk]:
     if buffer != "":
         flush(buffer)
     return split_chunks
+
+
+def re_pack_oversized_chunks(chunks: list[Chunk], splitter: Callable):
+    return [out for c in chunks for out in _split_one_chunk(c, splitter)]
 
 
 def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
@@ -129,11 +135,7 @@ def filter_chunks(chunks: list[Chunk]) -> list[Chunk]:
 
 
 def normalise_chunk_size(chunks: list[Chunk], specs: DocSpecs) -> list[Chunk]:
-    chunks = [
-        out
-        for c in chunks
-        for out in re_pack_oversized_chunk(c, specs.re_pack_splitter)
-    ]
+    chunks = re_pack_oversized_chunks(chunks, specs.re_pack_splitter)
     chunks = re_pack_undersized_chunks(chunks)
     chunks = filter_chunks(chunks)
     return chunks
