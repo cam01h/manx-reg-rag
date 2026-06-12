@@ -20,37 +20,48 @@ def extract_to_definitions(specs: DocSpecs, lines: list[str]) -> dict[str, str]:
 
     logger.info("loading definitions from %s", specs.document)
     definitions = {}
-    keys = []
-    v = ""
+    pending_terms = []
+    pending_value = ""
+
+    def flush():
+        nonlocal pending_value
+        if pending_value and pending_terms:
+            for term in pending_terms:
+                definitions[term] = pending_value
+        pending_terms.clear()
+        pending_value = ""
 
     for line in lines:
         if not line.strip():
             continue
-        if specs.is_definition_line(line):
-            if v != "" and keys != []:
-                for k in keys:
-                    definitions[k] = v
-            keys = []
-            v = ""
-            def_line = line.split('"')
-            for i, w in enumerate(def_line):
-                def_line[i] = specs.h_strip_md(w)
+        elif specs.is_definition_line(line):
+            flush()
+            def_line = [specs.h_strip_md(segment) for segment in line.split('"')]
             if len(def_line) == 3:
-                keys.append(def_line[1])
-                v = def_line[2]
-            if len(def_line) == 5:
+                pending_terms.append(def_line[1])
+                pending_value = def_line[2]
+            elif len(def_line) == 5:
                 if specs.is_double_def_line(def_line):
-                    keys.append(def_line[1])
-                    keys.append(def_line[3])
-                    v = def_line[4]
+                    pending_terms.append(def_line[1])
+                    pending_terms.append(def_line[3])
+                    pending_value = def_line[4]
                 elif specs.is_false_dub_def(def_line):
-                    keys.append(def_line[1])
-                    v = f'{def_line[2]} "{def_line[3]}" {def_line[4]}'
+                    pending_terms.append(def_line[1])
+                    pending_value = f'{def_line[2]} "{def_line[3]}" {def_line[4]}'
+                else:
+                    logger.warning(
+                        "looks like two quoted terms but unable to parse: |%s|",
+                        line.strip(),
+                    )
+            else:
+                logger.warning(
+                    "unexpected def_line shape, %d segments found: |%s|",
+                    len(def_line),
+                    line.strip(),
+                )
         else:
-            v += "\n" + specs.strip_md(line)
-    if v != "" and keys != []:
-        for k in keys:
-            definitions[k] = v
+            pending_value += "\n" + specs.strip_md(line)
+    flush()
     logger.info("%d definitions formatted.", len(definitions))
     return definitions
 
