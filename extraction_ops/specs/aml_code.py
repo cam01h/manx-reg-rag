@@ -16,8 +16,9 @@ def re_steps(text: str) -> str:
 
 AmlCode = DocSpecs(
     document="The AML Code 2019",
-    input_path=project_root / "data/raw/custom/the_aml_code_2019.pdf",
+    input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0202/2019-0202_2.pdf",
     hierarchy="legislation",
+    input_path=project_root / "data/raw/custom/the_aml_code_2019.pdf",
     major_name="part",
     minor_name="paragraph",
     start_line=87,

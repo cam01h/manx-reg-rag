@@ -6,8 +6,9 @@ from typing import Callable
 @dataclass(frozen=True)
 class DocSpecs:
     document: str
-    input_path: Path
     hierarchy: str
+    input_url: str
+    input_path: Path
     major_name: str  # TODO: needst to replaced before write to JSONL
     minor_name: str
     start_line: int

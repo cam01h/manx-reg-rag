@@ -18,7 +18,7 @@ def extract_to_definitions(specs: DocSpecs, lines: list[str]) -> dict[str, str]:
         logger.info("no definition section")
         return {}
 
-    logger.info("loading definitions from %s", specs.document)
+    logger.info("loading definitions from [%s]", specs.document)
     definitions = {}
     pending_terms = []
     pending_value = ""
@@ -50,19 +50,22 @@ def extract_to_definitions(specs: DocSpecs, lines: list[str]) -> dict[str, str]:
                     pending_value = f'{def_line[2]} "{def_line[3]}" {def_line[4]}'
                 else:
                     logger.warning(
-                        "looks like two quoted terms but unable to parse: |%s|",
+                        "looks like two quoted terms but unable to parse: [%s]",
                         line.strip(),
                     )
             else:
+                pending_terms.append(def_line[1])
+                pending_value = " ".join(def_line[2:])
                 logger.warning(
-                    "unexpected def_line shape, %d segments found: |%s|",
+                    "unexpected def_line shape, [%d] segments found, took [%s] as term and buffer set to [%s]",
                     len(def_line),
-                    line.strip(),
+                    def_line[1],
+                    pending_value,
                 )
         else:
             pending_value += "\n" + specs.strip_md(line)
     flush()
-    logger.info("%d definitions formatted.", len(definitions))
+    logger.info("[%d] definitions formatted.", len(definitions))
     return definitions
 
 

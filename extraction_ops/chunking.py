@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
-    logger.info("chunking %s", specs.document)
+    logger.info("chunking [%s]", specs.document)
     if specs.has_definition_section:
         lines = lines[: specs.definitions_start] + lines[specs.definitions_end :]
         logger.info("definition section removed")
@@ -45,7 +45,7 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
         else:
             buffer += "\n" + line
     flush()
-    logger.info("initial chunk count: %d", len(chunks))
+    logger.info("initial chunk count: [%d]", len(chunks))
     return chunks
 
 
@@ -65,7 +65,7 @@ def _split_one_chunk(chunk: Chunk, splitter: Callable) -> list[Chunk]:
 
     for s in segments:
         if len(s) > MAX_CHUNK_CHAR:
-            logger.warning("unsplitable chunk oversized at %d chars", len(s))
+            logger.warning("unsplitable chunk oversized at [%d] chars", len(s))
         if buffer != "" and len(buffer + s) > MAX_CHUNK_CHAR:
             flush(buffer)
             buffer = s
@@ -112,7 +112,7 @@ def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
     if len(chunks) != len(checked_chunks):
         reduction = len(chunks) - len(checked_chunks)
         logger.info(
-            "%d were merged into %d (%d merges)",
+            "[%d] were merged into %d ([%d] merges)",
             len(chunks),
             len(checked_chunks),
             reduction,
@@ -130,7 +130,7 @@ def filter_chunks(chunks: list[Chunk]) -> list[Chunk]:
             filtered_chunks.append(c)
         else:
             deleted_chunks += 1
-    logger.info("%d chunks removed by length", deleted_chunks)
+    logger.info("[%d] chunks removed by length", deleted_chunks)
     return filtered_chunks
 
 

@@ -1,6 +1,7 @@
 from dataclasses import asdict
 import pymupdf4llm
 import json
+import httpx
 from typing import cast
 from .specs.aml_handbook import AmlHandbook
 from .specs.aml_code import AmlCode
@@ -17,8 +18,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def get_pdf_from_url(specs: DocSpecs) -> None:
+    logger.info("downloading [%s]", specs.document)
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+        }
+        response = httpx.get(
+            url=specs.input_url, timeout=20, follow_redirects=True, headers=headers
+        )
+        response.raise_for_status()
+    except httpx.HTTPError:
+        logger.exception("failed httpx request for [%s]", specs.document)
+        raise
+    if not response.content.startswith(b"%PDF"):
+        logger.critical("[%s] did not return a pdf", specs.document)
+        raise ValueError(f"{specs.document} did not return a pdf")
+    try:
+        with open(specs.input_path, "wb") as f:
+            f.write(response.content)
+    except Exception:
+        logger.exception("failed to write pdf to [%s]", specs.input_path)
+        raise
+
+
 def load_clean_md(specs: DocSpecs) -> list[str]:
-    logger.info("Loading %s to md", specs.document)
+    logger.info("Loading [%s] to md", specs.document)
     try:
         md = cast(
             str, pymupdf4llm.to_markdown(specs.input_path, header=False, footer=False)
@@ -45,10 +70,11 @@ if __name__ == "__main__":
     all_chunks = []
     all_definitions = {}
     for doc in docs:
+        get_pdf_from_url(doc)
         md = load_clean_md(doc)
         chunks = extract_to_chunks(doc, md)
         chunks = normalise_chunk_size(chunks, doc)
-        logger.info("%d normalised chunks", len(chunks))
+        logger.info("[%d] normalised chunks", len(chunks))
         if doc.has_definition_section:
             definitions = extract_to_definitions(doc, md)
             chunks = attach_definitions(chunks, definitions)
@@ -58,17 +84,19 @@ if __name__ == "__main__":
         with CHUNKS_JSONL_PATH.open("w") as f:
             for c in all_chunks:
                 f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")
-        logger.info("%d chunks written to %s", len(all_chunks), CHUNKS_JSONL_PATH)
+        logger.info("[%d] chunks written to [%s]", len(all_chunks), CHUNKS_JSONL_PATH)
     except Exception:
-        logger.exception("failed to write chunks to %s", CHUNKS_JSONL_PATH)
+        logger.exception("failed to write chunks to [%s]", CHUNKS_JSONL_PATH)
         raise
     try:
         with DEFINITIONS_JSONL_PATH.open("w") as f:
             json.dump(all_definitions, f, ensure_ascii=False, indent=2)
         total_definitions = sum(len(defs) for defs in all_definitions.values())
         logger.info(
-            "%d definitions written to %s", total_definitions, DEFINITIONS_JSONL_PATH
+            "[%d] definitions written to [%s]",
+            total_definitions,
+            DEFINITIONS_JSONL_PATH,
         )
     except Exception:
-        logger.exception("failed to write definitions to %s", DEFINITIONS_JSONL_PATH)
+        logger.exception("failed to write definitions to [%s]", DEFINITIONS_JSONL_PATH)
         raise
