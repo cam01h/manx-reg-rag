@@ -18,6 +18,7 @@ def get_chunks(
 ) -> list[RetrievedChunk]:
     logger.info("qdrant queried with [%s]", query)
     try:
+        # TODO: creates a qdrant client every call which is inefficient
         client = QdrantClient(url=QDRANT_URL)
         results = client.query_points(
             collection_name=collection,
