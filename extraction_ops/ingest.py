@@ -51,12 +51,10 @@ def load_clean_md(specs: DocSpecs) -> list[str]:
     except Exception:
         logger.exception("failed pymupdf4llm conversion")
         raise
-    md_lines = md.splitlines()
-    trimmed_lines = md_lines[specs.start_line : specs.end_line]
-    md = "\n".join(trimmed_lines)
     md = specs.re_steps(md)
     md = md.replace("“", '"').replace("”", '"')
-    trimmed_lines = md.splitlines()
+    md_lines = md.splitlines()
+    trimmed_lines = md_lines[specs.start_line : specs.end_line]
     logger.info("Extraction to md complete.")
     return trimmed_lines
 

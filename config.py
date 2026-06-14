@@ -14,9 +14,10 @@ DEFINITIONS_JSONL_PATH = project_root / "data/processed/definitions.json"
 # db path
 DB_PATH = project_root / "data/qdrant"
 # Testing
-MD_1 = project_root / "tests/md_test_1.md"
-MD_2 = project_root / "tests/md_test_2.md"
-MD_3 = project_root / "tests/md_test_3.md"
+CLEAN_MD = project_root / "tests/clean.md"
+TRIMMED_MD = project_root / "tests/trimmed.md"
+CHUNKS_MD = project_root / "tests/chunks.md"
+DEFINITIONS_MD = project_root / "tests/definitions.md"
 
 # =========
 # Chunks

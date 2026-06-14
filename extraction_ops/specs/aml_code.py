@@ -11,6 +11,7 @@ def re_steps(text: str) -> str:
     text = re.sub(
         r"^\d+ (Section|SD) .*$\n?", "", text, flags=re.MULTILINE
     )  # footnotes
+    text = text.replace("\n\n", "\n")
     return text
 
 
@@ -21,10 +22,10 @@ AmlCode = DocSpecs(
     input_path=project_root / "data/raw/custom/the_aml_code_2019.pdf",
     major_name="part",
     minor_name="paragraph",
-    start_line=87,
-    end_line=1859,
-    definitions_start=11,
-    definitions_end=346,
+    start_line=74,
+    end_line=956,
+    definitions_start=7,
+    definitions_end=174,
     re_steps=re_steps,
     is_major_header_line=lambda line: line.startswith("## **PART"),
     is_minor_header_line=lambda line: line.startswith("## **") and line[5].isdigit(),

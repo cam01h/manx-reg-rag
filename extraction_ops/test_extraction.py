@@ -1,10 +1,12 @@
 import pymupdf4llm
 import difflib
+import httpx
+from .specs.specs import DocSpecs
 from typing import cast
 from pathlib import Path
 from extraction_ops.specs.aml_handbook import AmlHandbook
 from extraction_ops.specs.aml_code import AmlCode
-from config import MD_1, MD_2, MD_3
+from config import CLEAN_MD, CHUNKS_MD, DEFINITIONS_MD, TRIMMED_MD
 
 
 def write_diff(before: Path, after: Path, write_path: Path) -> None:
@@ -21,32 +23,65 @@ def write_diff(before: Path, after: Path, write_path: Path) -> None:
     write_path.write_text("\n---\n".join(diff))
 
 
-def load_clean_md(specs: dict) -> list[str]:
-    print(f"Loading {specs['document']} to md...")
+def get_pdf_from_url(specs: DocSpecs) -> None:
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+        }
+        response = httpx.get(
+            url=specs.input_url, timeout=20, follow_redirects=True, headers=headers
+        )
+        response.raise_for_status()
+    except httpx.HTTPError:
+        raise
+    if not response.content.startswith(b"%PDF"):
+        raise ValueError(f"{specs.document} did not return a pdf")
+    try:
+        with open(specs.input_path, "wb") as f:
+            f.write(response.content)
+    except Exception:
+        raise
+
+
+def load_clean_md(specs: DocSpecs) -> list[str]:
     md = cast(
-        str, pymupdf4llm.to_markdown(specs["input_path"], header=False, footer=False)
+        str, pymupdf4llm.to_markdown(specs.input_path, header=False, footer=False)
     )
-    md_lines = md.splitlines()
-    trimmed_lines = md_lines[specs["start_line"] : specs["end_line"]]
-    md = "\n".join(trimmed_lines)
-    md = specs["re_steps"](md)
+    md = specs.re_steps(md)
     md = md.replace("“", '"').replace("”", '"')
-    trimmed_lines = md.splitlines()
-    print("Extraction complete.")
+    md_lines = md.splitlines()
+    return md_lines
+
+
+def load_clean_trimmed_md(specs: DocSpecs) -> list[str]:
+    try:
+        md = cast(
+            str, pymupdf4llm.to_markdown(specs.input_path, header=False, footer=False)
+        )
+    except Exception:
+        raise
+    md = specs.re_steps(md)
+    md = md.replace("“", '"').replace("”", '"')
+    md_lines = md.splitlines()
+    trimmed_lines = md_lines[specs.start_line : specs.end_line]
     return trimmed_lines
 
 
-# TODO: needs reworking to match dataclass structure
-"""
 if __name__ == "__main__":
+    # comment out all but one for testing
     docs = [
-        AmlCode,
+        # AmlCode,
         AmlHandbook,
     ]
     for doc in docs:
-        md_lines = load_clean_md(doc.input_path)
-        MD_2.write_text("\n".join(md_lines))
-        # definition_lines = trimmed_lines[: doc["defs_start"]] + trimmed_lines[doc["defs_end"] :]
-        # MD_2.write_text("\n".join(definition_lines))
-        write_diff(MD_1, MD_2, MD_3)
-"""
+        clean_md_lines = load_clean_md(doc)
+        CLEAN_MD.write_text("\n".join(clean_md_lines))
+        trimmed_md_lines = load_clean_trimmed_md(doc)
+        TRIMMED_MD.write_text("\n".join(trimmed_md_lines))
+        chunk_lines = (
+            trimmed_md_lines[: doc.definitions_start]
+            + trimmed_md_lines[doc.definitions_end :]
+        )
+        CHUNKS_MD.write_text("\n".join(chunk_lines))
+        definition_lines = trimmed_md_lines[doc.definitions_start : doc.definitions_end]
+        DEFINITIONS_MD.write_text("\n".join(definition_lines))

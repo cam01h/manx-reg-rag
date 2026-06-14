@@ -35,12 +35,12 @@ def re_steps(text: str) -> str:
 AmlHandbook = DocSpecs(
     document="The AML Handbook (April 2026)",
     input_url="https://www.iomfsa.im/media/3590/handbook-april-2026-clean.pdf",
-    hierarchy="guidanace",
+    hierarchy="guidance",
     input_path=project_root / "data/raw/custom/aml_handbook_april_2026.pdf",
     major_name="chapter",
     minor_name="section",
-    start_line=317,  # TODO: chapter 1 not included
-    end_line=5933,
+    start_line=136,  # TODO: chapter 1 not included
+    end_line=4565,
     definitions_start=None,
     definitions_end=None,
     re_steps=re_steps,
