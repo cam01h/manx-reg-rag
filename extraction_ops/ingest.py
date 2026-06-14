@@ -5,6 +5,7 @@ import httpx
 from typing import cast
 from .specs.aml_handbook import AmlHandbook
 from .specs.aml_code import AmlCode
+from .specs.supplemental_information_document import SupplementalInformation
 from .specs.specs import DocSpecs
 from .chunking import extract_to_chunks, normalise_chunk_size
 from .definitions import extract_to_definitions, attach_definitions
@@ -61,10 +62,7 @@ def load_clean_md(specs: DocSpecs) -> list[str]:
 
 if __name__ == "__main__":
     setup_logging("ingest")
-    docs = [
-        AmlCode,
-        AmlHandbook,
-    ]
+    docs = [AmlCode, AmlHandbook, SupplementalInformation]
     all_chunks = []
     all_definitions = {}
     for doc in docs:

@@ -39,6 +39,7 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
         if specs.is_major_header_line(line):
             flush()
             major = specs.strip_md(line)
+            minor = ""
         elif specs.is_minor_header_line(line):
             flush()
             minor = specs.strip_md(line)

@@ -1,0 +1,33 @@
+2026-06-14 22:12:54,676::__main__::INFO::build collection called on /home/cameron/workspaces/manx-reg-rag/data/processed/chunks.jsonl to create collection: manx-reg-rag-db
+2026-06-14 22:12:54,725::__main__::INFO::existing manx-reg-rag-db collection deleted
+2026-06-14 22:12:55,817::filelock::DEBUG::Attempting to acquire lock 140624763776576 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/0d7726d0cdccb62ee17c03bd1595cff07199b8f8.lock
+2026-06-14 22:12:55,817::filelock::DEBUG::Lock 140624763776576 acquired on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/0d7726d0cdccb62ee17c03bd1595cff07199b8f8.lock
+2026-06-14 22:12:55,850::filelock::DEBUG::Attempting to acquire lock 140624763524496 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/51f1bd0addd6e859e42c2c8021a5e5461385bb676a649f4b269aa445449f2431.lock
+2026-06-14 22:12:55,851::filelock::DEBUG::Lock 140624763524496 acquired on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/51f1bd0addd6e859e42c2c8021a5e5461385bb676a649f4b269aa445449f2431.lock
+2026-06-14 22:12:55,851::filelock::DEBUG::Attempting to release lock 140624763776576 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/0d7726d0cdccb62ee17c03bd1595cff07199b8f8.lock
+2026-06-14 22:12:55,855::huggingface_hub.utils._http::WARNING::Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-06-14 22:12:55,856::filelock::DEBUG::Lock 140624763776576 released on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/0d7726d0cdccb62ee17c03bd1595cff07199b8f8.lock
+2026-06-14 22:12:55,863::filelock::DEBUG::Attempting to acquire lock 140624763530896 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/9bbecc17cabbcbd3112c14d6982b51403b264bfa.lock
+2026-06-14 22:12:55,871::filelock::DEBUG::Lock 140624763530896 acquired on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/9bbecc17cabbcbd3112c14d6982b51403b264bfa.lock
+2026-06-14 22:12:55,874::filelock::DEBUG::Attempting to acquire lock 140624766136576 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/688882a79f44442ddc1f60d70334a7ff5df0fb47.lock
+2026-06-14 22:12:55,875::filelock::DEBUG::Lock 140624766136576 acquired on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/688882a79f44442ddc1f60d70334a7ff5df0fb47.lock
+2026-06-14 22:12:55,886::filelock::DEBUG::Attempting to acquire lock 140624766135968 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/75305659f7795d4549f0e23688b52fa20a32f925.lock
+2026-06-14 22:12:55,889::filelock::DEBUG::Lock 140624766135968 acquired on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/75305659f7795d4549f0e23688b52fa20a32f925.lock
+2026-06-14 22:12:55,892::filelock::DEBUG::Attempting to release lock 140624763530896 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/9bbecc17cabbcbd3112c14d6982b51403b264bfa.lock
+2026-06-14 22:12:55,892::filelock::DEBUG::Lock 140624763530896 released on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/9bbecc17cabbcbd3112c14d6982b51403b264bfa.lock
+2026-06-14 22:12:55,913::filelock::DEBUG::Attempting to release lock 140624766135968 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/75305659f7795d4549f0e23688b52fa20a32f925.lock
+2026-06-14 22:12:55,913::filelock::DEBUG::Lock 140624766135968 released on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/75305659f7795d4549f0e23688b52fa20a32f925.lock
+2026-06-14 22:12:55,960::filelock::DEBUG::Attempting to release lock 140624766136576 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/688882a79f44442ddc1f60d70334a7ff5df0fb47.lock
+2026-06-14 22:12:55,960::filelock::DEBUG::Lock 140624766136576 released on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/688882a79f44442ddc1f60d70334a7ff5df0fb47.lock
+2026-06-14 22:12:59,853::filelock::DEBUG::Attempting to release lock 140624763524496 on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/51f1bd0addd6e859e42c2c8021a5e5461385bb676a649f4b269aa445449f2431.lock
+2026-06-14 22:12:59,854::filelock::DEBUG::Lock 140624763524496 released on /tmp/fastembed_cache/.locks/models--qdrant--bge-small-en-v1.5-onnx-q/51f1bd0addd6e859e42c2c8021a5e5461385bb676a649f4b269aa445449f2431.lock
+2026-06-14 22:13:00,465::__main__::INFO::collection manx-reg-rag-db created
+2026-06-14 22:13:00,481::__main__::INFO::loaded /home/cameron/workspaces/manx-reg-rag/data/processed/chunks.jsonl into 505 chunks
+2026-06-14 22:13:00,512::__main__::INFO::505 points created from 505 chunks
+2026-06-14 22:13:53,422::__main__::INFO::upsert complete, 505 points embedded
+2026-06-14 22:18:00,709::__main__::INFO::build collection called on /home/cameron/workspaces/manx-reg-rag/data/processed/chunks.jsonl to create collection: manx-reg-rag-db
+2026-06-14 22:18:00,742::__main__::INFO::existing manx-reg-rag-db collection deleted
+2026-06-14 22:18:01,276::__main__::INFO::collection manx-reg-rag-db created
+2026-06-14 22:18:01,291::__main__::INFO::loaded /home/cameron/workspaces/manx-reg-rag/data/processed/chunks.jsonl into 505 chunks
+2026-06-14 22:18:01,323::__main__::INFO::505 points created from 505 chunks
+2026-06-14 22:18:53,271::__main__::INFO::upsert complete, 505 points embedded
