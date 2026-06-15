@@ -18,6 +18,7 @@ CLEAN_MD = project_root / "tests/clean.md"
 TRIMMED_MD = project_root / "tests/trimmed.md"
 CHUNKS_MD = project_root / "tests/chunks.md"
 DEFINITIONS_MD = project_root / "tests/definitions.md"
+REGEX_TEST = project_root / "tests/regex_test.md"
 
 # =========
 # Chunks

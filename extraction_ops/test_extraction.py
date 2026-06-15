@@ -1,4 +1,5 @@
 import pymupdf4llm
+import re
 import difflib
 import httpx
 from .specs.specs import DocSpecs
@@ -9,6 +10,7 @@ from extraction_ops.specs.aml_code import AmlCode
 from extraction_ops.specs.supplemental_information_document import (
     SupplementalInformation,
 )
+from extraction_ops.specs.poca_2008 import Poca
 from config import CLEAN_MD, CHUNKS_MD, DEFINITIONS_MD, TRIMMED_MD
 
 
@@ -50,23 +52,28 @@ def get_pdf_from_url(specs: DocSpecs) -> None:
         raise
 
 
-def load_clean_md(specs: DocSpecs) -> list[str]:
+def load_md(specs: DocSpecs) -> str:
     md = cast(
         str, pymupdf4llm.to_markdown(specs.input_path, header=False, footer=False)
     )
+    return md
+
+
+def text_regex(md: str):
+    lines = md.splitlines()
+    affected_lines = [line for line in lines if re.match(r"^## \*\*\d+\. ", line)]
+    for line in affected_lines:
+        print(line)
+
+
+def load_clean_md(md: str, specs: DocSpecs) -> list[str]:
     md = specs.re_steps(md)
     md = md.replace("“", '"').replace("”", '"')
     md_lines = md.splitlines()
     return md_lines
 
 
-def load_clean_trimmed_md(specs: DocSpecs) -> list[str]:
-    try:
-        md = cast(
-            str, pymupdf4llm.to_markdown(specs.input_path, header=False, footer=False)
-        )
-    except Exception:
-        raise
+def load_clean_trimmed_md(md: str, specs: DocSpecs) -> list[str]:
     md = specs.re_steps(md)
     md = md.replace("“", '"').replace("”", '"')
     md_lines = md.splitlines()
@@ -78,14 +85,18 @@ if __name__ == "__main__":
     # comment out all but one for testing
     docs = [
         # AmlCode,
-        # AmlHandbook,
-        SupplementalInformation
+        AmlHandbook,
+        # SupplementalInformation,
+        # Poca
     ]
     for doc in docs:
         get_pdf_from_url(doc)
-        clean_md_lines = load_clean_md(doc)
+        md = load_md(doc)
+        text_regex(md)
+        """
+        clean_md_lines = load_clean_md(md, doc)
         CLEAN_MD.write_text("\n".join(clean_md_lines))
-        trimmed_md_lines = load_clean_trimmed_md(doc)
+        trimmed_md_lines = load_clean_trimmed_md(md, doc)
         TRIMMED_MD.write_text("\n".join(trimmed_md_lines))
         chunk_lines = (
             trimmed_md_lines[: doc.definitions_start]
@@ -94,3 +105,4 @@ if __name__ == "__main__":
         CHUNKS_MD.write_text("\n".join(chunk_lines))
         definition_lines = trimmed_md_lines[doc.definitions_start : doc.definitions_end]
         DEFINITIONS_MD.write_text("\n".join(definition_lines))
+        """

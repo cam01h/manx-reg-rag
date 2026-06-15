@@ -7,8 +7,7 @@ class RetrievedChunk(BaseModel):
     score: float
     document: str
     hierarchy: str
-    major: str
-    minor: str
+    headers: list[str]
     body: str
     terms_used: list[str] | None = None
     citation: str | None = None

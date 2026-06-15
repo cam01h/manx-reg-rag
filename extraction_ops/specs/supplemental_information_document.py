@@ -46,8 +46,10 @@ SupplementalInformation = DocSpecs(
     definitions_start=None,
     definitions_end=None,
     re_steps=re_steps,
-    is_major_header_line=lambda line: bool(re.match(r"^## \*\*\d+\.\s", line)),
-    is_minor_header_line=lambda line: bool(re.match(r"^## \*\*\d+\.\d", line)),
+    header_matchers=[
+        lambda line: bool(re.match(r"^## \*\*\d+\.\s", line)),
+        lambda line: bool(re.match(r"^## \*\*\d+\.\d", line)),
+    ],
     has_definition_section=False,
     is_definition_line=None,
     is_double_def_line=None,

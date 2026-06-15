@@ -16,8 +16,7 @@ class DocSpecs:
     definitions_start: int | None
     definitions_end: int | None
     re_steps: Callable[[str], str]
-    is_major_header_line: Callable[[str], bool]
-    is_minor_header_line: Callable[[str], bool]
+    header_matchers: list[Callable[[str], bool]]
     has_definition_section: bool
     is_definition_line: Callable[[str], bool] | None
     is_double_def_line: (

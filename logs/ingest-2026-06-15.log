@@ -1,0 +1,78 @@
+2026-06-15 22:18:45,236::__main__::INFO::downloading [The AML Code 2019]
+2026-06-15 22:18:47,676::__main__::INFO::Loading [The AML Code 2019] to md
+2026-06-15 22:18:57,870::__main__::INFO::Extraction to md complete.
+2026-06-15 22:18:57,870::extraction_ops.chunking::INFO::chunking [The AML Code 2019]
+2026-06-15 22:18:57,871::extraction_ops.chunking::INFO::definition section removed
+2026-06-15 22:18:57,872::extraction_ops.chunking::INFO::initial chunk count: [42]
+2026-06-15 22:18:57,872::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [1746] chars
+2026-06-15 22:18:57,872::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [2966] chars
+2026-06-15 22:18:57,873::extraction_ops.chunking::INFO::No chunks were merged
+2026-06-15 22:18:57,873::extraction_ops.chunking::INFO::[0] chunks removed by length
+2026-06-15 22:18:57,873::__main__::INFO::[79] normalised chunks
+2026-06-15 22:18:57,873::extraction_ops.definitions::INFO::loading definitions from [The AML Code 2019]
+2026-06-15 22:18:57,873::extraction_ops.definitions::WARNING::unexpected def_line shape, [9] segments found, took [financing of terrorism] as term and buffer set to [includes the financing of proliferation and is to be construed in accordance with the definitions of financing , terrorism and proliferation in section 3 of the Terrorism and Other Crime (Financial Restrictions) Act 2014;]
+2026-06-15 22:18:57,886::extraction_ops.definitions::INFO::[70] definitions formatted.
+2026-06-15 22:18:57,886::extraction_ops.definitions::INFO::Attaching definitions to chunks
+2026-06-15 22:18:58,683::extraction_ops.definitions::INFO::Definitions attached
+2026-06-15 22:18:58,683::__main__::INFO::downloading [The AML Handbook (April 2026)]
+2026-06-15 22:18:59,268::__main__::INFO::Loading [The AML Handbook (April 2026)] to md
+2026-06-15 22:19:47,970::__main__::INFO::Extraction to md complete.
+2026-06-15 22:19:47,971::extraction_ops.chunking::INFO::chunking [The AML Handbook (April 2026)]
+2026-06-15 22:19:47,979::extraction_ops.chunking::INFO::initial chunk count: [187]
+2026-06-15 22:19:47,980::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [2299] chars
+2026-06-15 22:19:47,980::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [1607] chars
+2026-06-15 22:19:47,982::extraction_ops.chunking::INFO::No chunks were merged
+2026-06-15 22:19:47,982::extraction_ops.chunking::INFO::[3] chunks removed by length
+2026-06-15 22:19:47,982::__main__::INFO::[392] normalised chunks
+2026-06-15 22:19:47,982::__main__::INFO::downloading [AML/CFT Supplemental Information Document (July 2021)]
+2026-06-15 22:19:48,511::__main__::INFO::Loading [AML/CFT Supplemental Information Document (July 2021)] to md
+2026-06-15 22:19:53,308::__main__::INFO::Extraction to md complete.
+2026-06-15 22:19:53,308::extraction_ops.chunking::INFO::chunking [AML/CFT Supplemental Information Document (July 2021)]
+2026-06-15 22:19:53,309::extraction_ops.chunking::INFO::initial chunk count: [22]
+2026-06-15 22:19:53,309::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [1661] chars
+2026-06-15 22:19:53,310::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [2274] chars
+2026-06-15 22:19:53,310::extraction_ops.chunking::INFO::No chunks were merged
+2026-06-15 22:19:53,310::extraction_ops.chunking::INFO::[0] chunks removed by length
+2026-06-15 22:19:53,310::__main__::INFO::[34] normalised chunks
+2026-06-15 22:19:53,322::__main__::INFO::[505] chunks written to [/home/cameron/workspaces/manx-reg-rag/data/processed/chunks.jsonl]
+2026-06-15 22:19:53,323::__main__::INFO::[70] definitions written to [/home/cameron/workspaces/manx-reg-rag/data/processed/definitions.json]
+2026-06-15 23:17:23,328::__main__::INFO::downloading [The AML Code 2019]
+2026-06-15 23:17:25,989::__main__::INFO::Loading [The AML Code 2019] to md
+2026-06-15 23:17:36,145::__main__::INFO::Extraction to md complete.
+2026-06-15 23:17:36,146::extraction_ops.chunking::INFO::chunking [The AML Code 2019]
+2026-06-15 23:17:36,146::extraction_ops.chunking::INFO::definition section removed
+2026-06-15 23:17:36,147::extraction_ops.chunking::INFO::initial chunk count: [42]
+2026-06-15 23:17:36,147::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [1709] chars
+2026-06-15 23:17:36,148::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [2880] chars
+2026-06-15 23:17:36,148::extraction_ops.chunking::INFO::No chunks were merged
+2026-06-15 23:17:36,148::extraction_ops.chunking::INFO::[0] chunks removed by length
+2026-06-15 23:17:36,148::__main__::INFO::[78] normalised chunks
+2026-06-15 23:17:36,148::extraction_ops.definitions::INFO::loading definitions from [The AML Code 2019]
+2026-06-15 23:17:36,149::extraction_ops.definitions::WARNING::unexpected def_line shape, [9] segments found, took [financing of terrorism] as term and buffer set to [includes the financing of proliferation and is to be construed in accordance with the definitions of financing , terrorism and proliferation in section 3 of the Terrorism and Other Crime (Financial Restrictions) Act 2014;]
+2026-06-15 23:17:36,151::extraction_ops.definitions::INFO::[70] definitions formatted.
+2026-06-15 23:17:36,151::extraction_ops.definitions::INFO::Attaching definitions to chunks
+2026-06-15 23:17:36,932::extraction_ops.definitions::INFO::Definitions attached
+2026-06-15 23:17:36,933::__main__::INFO::downloading [The AML Handbook (April 2026)]
+2026-06-15 23:17:37,527::__main__::INFO::Loading [The AML Handbook (April 2026)] to md
+2026-06-15 23:18:25,699::__main__::INFO::Extraction to md complete.
+2026-06-15 23:18:25,699::extraction_ops.chunking::INFO::chunking [The AML Handbook (April 2026)]
+2026-06-15 23:18:25,707::extraction_ops.chunking::INFO::initial chunk count: [182]
+2026-06-15 23:18:25,708::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [2299] chars
+2026-06-15 23:18:25,708::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [1604] chars
+2026-06-15 23:18:25,709::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [1856] chars
+2026-06-15 23:18:25,709::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [2164] chars
+2026-06-15 23:18:25,710::extraction_ops.chunking::INFO::No chunks were merged
+2026-06-15 23:18:25,710::extraction_ops.chunking::INFO::[0] chunks removed by length
+2026-06-15 23:18:25,710::__main__::INFO::[391] normalised chunks
+2026-06-15 23:18:25,710::__main__::INFO::downloading [AML/CFT Supplemental Information Document (July 2021)]
+2026-06-15 23:18:26,343::__main__::INFO::Loading [AML/CFT Supplemental Information Document (July 2021)] to md
+2026-06-15 23:18:31,232::__main__::INFO::Extraction to md complete.
+2026-06-15 23:18:31,232::extraction_ops.chunking::INFO::chunking [AML/CFT Supplemental Information Document (July 2021)]
+2026-06-15 23:18:31,233::extraction_ops.chunking::INFO::initial chunk count: [22]
+2026-06-15 23:18:31,233::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [1661] chars
+2026-06-15 23:18:31,234::extraction_ops.chunking::WARNING::unsplitable chunk oversized at [2273] chars
+2026-06-15 23:18:31,234::extraction_ops.chunking::INFO::No chunks were merged
+2026-06-15 23:18:31,234::extraction_ops.chunking::INFO::[0] chunks removed by length
+2026-06-15 23:18:31,234::__main__::INFO::[34] normalised chunks
+2026-06-15 23:18:31,247::__main__::INFO::[503] chunks written to [/home/cameron/workspaces/manx-reg-rag/data/processed/chunks.jsonl]
+2026-06-15 23:18:31,248::__main__::INFO::[70] definitions written to [/home/cameron/workspaces/manx-reg-rag/data/processed/definitions.json]

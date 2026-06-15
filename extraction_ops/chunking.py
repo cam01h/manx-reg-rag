@@ -16,15 +16,13 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
 
     buffer = ""
     chunks = []
-    major = ""
-    minor = ""
+    headers = [""] * len(specs.header_matchers)
 
-    def pack_chunk(major: str, minor: str, body: str) -> Chunk:
+    def pack_chunk(headers: list[str], body: str) -> Chunk:
         current_chunk = Chunk(
             document=specs.document,
             hierarchy=specs.hierarchy,
-            major=major,
-            minor=minor,
+            headers=[h for h in headers],
             body=body.strip(),
         )
         return current_chunk
@@ -32,19 +30,24 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
     def flush():
         nonlocal buffer
         if buffer.strip():
-            chunks.append(pack_chunk(major, minor, buffer))
+            chunks.append(pack_chunk(headers, buffer))
             buffer = ""
 
+    def match_level(line: str, matchers: list[Callable[[str], bool]]) -> int | None:
+        for level, is_header in enumerate(matchers):
+            if is_header(line):
+                return level
+        return None
+
     for line in lines:
-        if specs.is_major_header_line(line):
-            flush()
-            major = specs.strip_md(line)
-            minor = ""
-        elif specs.is_minor_header_line(line):
-            flush()
-            minor = specs.strip_md(line)
+        level = match_level(line, specs.header_matchers)
+        if level is None:
+            buffer += "\n" + line.strip()
         else:
-            buffer += "\n" + line
+            flush()
+            headers[level] = specs.strip_md(line)
+            for i in range(level + 1, len(headers)):
+                headers[i] = ""
     flush()
     logger.info("initial chunk count: [%d]", len(chunks))
     return chunks
@@ -85,9 +88,7 @@ def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
 
     def should_merge(chunk: Chunk, previous_chunk: Chunk) -> bool:
         is_too_short = len(chunk.body) < MIN_CHUNK_CHAR
-        not_at_boundary = (
-            chunk.major == previous_chunk.major and chunk.minor == previous_chunk.minor
-        )
+        not_at_boundary = previous_chunk.headers == chunk.headers
         previous_chunk_not_too_big = (
             len(previous_chunk.body) + len(chunk.body) < TARGET_CHUNK_CHAR
         )
@@ -103,7 +104,7 @@ def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
             # TODO: undersized chunks following a large chunk never merge. Accepted for now
             previous_chunk = replace(
                 previous_chunk,
-                body=f"{previous_chunk.body}\n\n{chunk.minor} - {chunk.body}",
+                body=f"{previous_chunk.body}\n\n{chunk.headers[-1]} - {chunk.body}",
             )
         else:
             checked_chunks.append(previous_chunk)

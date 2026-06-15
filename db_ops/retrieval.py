@@ -39,8 +39,7 @@ def get_chunks(
             score=result.score,
             document=result.payload["document"],
             hierarchy=result.payload["hierarchy"],
-            major=result.payload["major"],
-            minor=result.payload["minor"],
+            headers=result.payload["headers"],
             body=result.payload["body"],
             terms_used=result.payload["terms_used"],
         )

@@ -4,26 +4,19 @@ from .specs import DocSpecs
 
 
 def re_steps(text: str) -> str:
-    text = re.sub(r"\[\d+\]", "", text)  # inline footnote references
-    text = re.sub(
-        r"^> \d+ .*$\n?", "", text, flags=re.MULTILINE
-    )  # blockquoted footnotes
-    text = re.sub(
-        r"^\d+ (Section|SD) .*$\n?", "", text, flags=re.MULTILINE
-    )  # footnotes
-    text = text.replace("\n\n", "\n")
     return text
 
 
-AmlCode = DocSpecs(
-    document="The AML Code 2019",
-    input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0202/2019-0202_2.pdf",
+Poca = DocSpecs(
+    document="The Proceeds of Crime Act (POCA) 2008",
+    input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2008/2008-0013/2008-0013.pdf?zoom_highlight=proceeds+of+crime+act#search=%22proceeds%20of%20crime%20act%22",
     hierarchy="legislation",
-    input_path=project_root / "data/raw/custom/the_aml_code_2019.pdf",
+    input_path=project_root / "data/raw/custom/poca.pdf",
     major_name="part",
     minor_name="paragraph",
-    start_line=74,
-    end_line=956,
+    start_line=0,
+    end_line=-1,
+    has_definition_section=False,
     definitions_start=7,
     definitions_end=174,
     re_steps=re_steps,
@@ -31,7 +24,6 @@ AmlCode = DocSpecs(
         lambda line: line.startswith("## **PART"),
         lambda line: line.startswith("## **") and line[5].isdigit(),
     ],
-    has_definition_section=True,
     is_definition_line=lambda line: (
         '- **"' in line or '## **"' in line or line.startswith('**"')
     ),

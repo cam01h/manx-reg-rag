@@ -51,13 +51,13 @@ def build_collection(input_path: Path, collection: str) -> None:
     points = []
     for c in chunks:
         chunk_id = (
-            f"{c['document']}::{c['major']}::{c['minor']}::{get_body_hash(c['body'])}"
+            f"{c['document']}::{'::'.join(c['headers'])}::{get_body_hash(c['body'])}"
         )
         try:
             point = models.PointStruct(
                 id=str(uuid.uuid5(uuid.NAMESPACE_URL, chunk_id)),
                 vector=models.Document(
-                    text=f"{c['major']}\n{c['minor']}\n{c['body']}",
+                    text=f"{'\n'.join(c['headers'])}\n{c['body']}",
                     model=EMBEDDING_MODEL,
                 ),
                 payload={**c, "chunk_id": chunk_id},

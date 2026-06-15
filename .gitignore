@@ -15,3 +15,4 @@ data/qdrant/    # planned for vector db
 /tests
 /.env
 /data/qdrant/collection/manx-reg-rag-db/storage.sqlite
+/data/raw/custom/poca.pdf

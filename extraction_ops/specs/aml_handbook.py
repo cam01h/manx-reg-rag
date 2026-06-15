@@ -4,6 +4,7 @@ from .specs import DocSpecs
 
 
 def re_steps(text: str) -> str:
+    text = re.sub(r"^## \*\*\d+\. .*$\n?", "", text, flags=re.MULTILINE)
     text = re.sub(r"^\|.*\|$\n?", "", text, flags=re.MULTILINE)
     text = re.sub(r"^[#]*\s*Code\s*[\d\(\),\.\s\-|]*$\n?", "", text, flags=re.MULTILINE)
     text = re.sub(
@@ -44,10 +45,10 @@ AmlHandbook = DocSpecs(
     definitions_start=None,
     definitions_end=None,
     re_steps=re_steps,
-    is_major_header_line=lambda line: bool(re.match(r"^\s*Chapter\s*\d", line.strip())),
-    is_minor_header_line=lambda line: bool(
-        re.match(r"^\s*[-*]?\s*\d+(?:\.\d+){1,5}\s", line.strip())
-    ),
+    header_matchers=[
+        lambda line: bool(re.match(r"^\s*Chapter\s*\d", line.strip())),
+        lambda line: bool(re.match(r"^\s*[-*]?\s*\d+(?:\.\d+){1,5}\s", line.strip())),
+    ],
     has_definition_section=False,
     is_definition_line=None,
     is_double_def_line=None,

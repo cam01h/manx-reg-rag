@@ -5,7 +5,6 @@ from dataclasses import dataclass
 class Chunk:
     document: str
     hierarchy: str
-    major: str
-    minor: str
+    headers: list[str]
     body: str
     terms_used: list[str] | None = None
