@@ -23,7 +23,7 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
             document=specs.document,
             hierarchy=specs.hierarchy,
             headers=[h for h in headers],
-            body=body.strip(),
+            body=specs.strip_md(body.strip()),
         )
         return current_chunk
 
@@ -69,7 +69,9 @@ def _split_one_chunk(chunk: Chunk, splitter: Callable) -> list[Chunk]:
 
     for s in segments:
         if len(s) > MAX_CHUNK_CHAR:
-            logger.warning("unsplitable chunk oversized at [%d] chars", len(s))
+            logger.warning(
+                "unsplitable chunk oversized at [%d] chars: %s", len(s), chunk.headers
+            )
         if buffer != "" and len(buffer + s) > MAX_CHUNK_CHAR:
             flush(buffer)
             buffer = s
@@ -126,12 +128,14 @@ def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
 
 def filter_chunks(chunks: list[Chunk]) -> list[Chunk]:
     filtered_chunks = []
-    deleted_chunks = 0
+    deleted_chunks = []
     for c in chunks:
         if len(c.body) >= DELETE_LEN:
             filtered_chunks.append(c)
         else:
-            deleted_chunks += 1
+            deleted_chunks.append(c)
+    for chunk in deleted_chunks:
+        logger.debug("filtered chunk: %s", chunk)
     logger.info("[%d] chunks removed by length", deleted_chunks)
     return filtered_chunks
 

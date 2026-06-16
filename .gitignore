@@ -16,3 +16,7 @@ data/qdrant/    # planned for vector db
 /.env
 /data/qdrant/collection/manx-reg-rag-db/storage.sqlite
 /data/raw/custom/poca.pdf
+/logs
+/logs
+/logs
+/logs/embedding-2026-06-16.log

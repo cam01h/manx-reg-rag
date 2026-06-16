@@ -61,7 +61,7 @@ def load_md(specs: DocSpecs) -> str:
 
 def text_regex(md: str):
     lines = md.splitlines()
-    affected_lines = [line for line in lines if re.match(r"^## \*\*\d+\. ", line)]
+    affected_lines = [line for line in lines if re.match(r"\[[^\]]*\]", line)]
     for line in affected_lines:
         print(line)
 
@@ -85,9 +85,9 @@ if __name__ == "__main__":
     # comment out all but one for testing
     docs = [
         # AmlCode,
-        AmlHandbook,
+        # AmlHandbook,
         # SupplementalInformation,
-        # Poca
+        Poca
     ]
     for doc in docs:
         get_pdf_from_url(doc)
