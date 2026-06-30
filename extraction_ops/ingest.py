@@ -3,6 +3,8 @@ import pymupdf4llm
 import json
 import httpx
 from typing import cast
+
+from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
 from .specs.aml_handbook import AmlHandbook
 from .specs.aml_code import AmlCode
 from .specs.supplemental_information_document import SupplementalInformation
@@ -63,7 +65,13 @@ def load_clean_md(specs: DocSpecs) -> list[str]:
 
 if __name__ == "__main__":
     setup_logging("ingest")
-    docs = [AmlCode, AmlHandbook, SupplementalInformation, Poca]
+    docs = [
+        # AmlCode,
+        # AmlHandbook,
+        # SupplementalInformation,
+        # Poca,
+        TerrorismAndCrime
+    ]
     all_chunks = []
     all_definitions = {}
     for doc in docs:

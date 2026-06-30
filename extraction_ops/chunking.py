@@ -136,7 +136,7 @@ def filter_chunks(chunks: list[Chunk]) -> list[Chunk]:
             deleted_chunks.append(c)
     for chunk in deleted_chunks:
         logger.debug("filtered chunk: %s", chunk)
-    logger.info("[%d] chunks removed by length", deleted_chunks)
+    logger.info("[%d] chunks removed by length", len(deleted_chunks))
     return filtered_chunks
 
 

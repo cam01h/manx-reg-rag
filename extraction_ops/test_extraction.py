@@ -2,6 +2,8 @@ import pymupdf4llm
 import re
 import difflib
 import httpx
+
+from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
 from .specs.specs import DocSpecs
 from typing import cast
 from pathlib import Path
@@ -87,17 +89,18 @@ if __name__ == "__main__":
         # AmlCode,
         # AmlHandbook,
         # SupplementalInformation,
-        Poca
+        # Poca,
+        TerrorismAndCrime
     ]
     for doc in docs:
-        get_pdf_from_url(doc)
+        # get_pdf_from_url(doc)
         md = load_md(doc)
-        text_regex(md)
-        """
+        # text_regex(md)
         clean_md_lines = load_clean_md(md, doc)
         CLEAN_MD.write_text("\n".join(clean_md_lines))
         trimmed_md_lines = load_clean_trimmed_md(md, doc)
         TRIMMED_MD.write_text("\n".join(trimmed_md_lines))
+        """
         chunk_lines = (
             trimmed_md_lines[: doc.definitions_start]
             + trimmed_md_lines[doc.definitions_end :]
