@@ -12,7 +12,7 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
     logger.info("chunking [%s]", specs.document)
     if specs.has_definition_section:
         lines = lines[: specs.definitions_start] + lines[specs.definitions_end :]
-        logger.info("definition section removed")
+        logger.info("definition section removed from chunking text")
 
     buffer = ""
     chunks = []
@@ -22,7 +22,7 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
         current_chunk = Chunk(
             document=specs.document,
             hierarchy=specs.hierarchy,
-            headers=[h for h in headers],
+            headers=[specs.h_strip_md(h) for h in headers],
             body=specs.strip_md(body.strip()),
         )
         return current_chunk
@@ -59,6 +59,12 @@ def _split_one_chunk(chunk: Chunk, splitter: Callable) -> list[Chunk]:
     # TODO: Unsplittable chunks slip through oversized, maybe add a fallback splitter
     segments = splitter(chunk.body)
     if len(segments) == 1:
+        if len(chunk.body) > MAX_CHUNK_CHAR:
+            logger.warning(
+                "unsplitable chunk oversized at [%d] chars: %s",
+                len(chunk.body),
+                chunk.headers,
+            )
         return [chunk]
 
     split_chunks = []

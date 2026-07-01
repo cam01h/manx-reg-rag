@@ -61,9 +61,13 @@ def load_md(specs: DocSpecs) -> str:
     return md
 
 
-def text_regex(md: str):
+def test_regex(md: str):
     lines = md.splitlines()
-    affected_lines = [line for line in lines if re.match(r"\[[^\]]*\]", line)]
+    affected_lines = [
+        line
+        for line in lines
+        if re.match(r"\n(?=\d+[A-Z]?\.\s*\(\d+\)|\(\d+\)\s)", line)
+    ]
     for line in affected_lines:
         print(line)
 
@@ -95,12 +99,12 @@ if __name__ == "__main__":
     for doc in docs:
         # get_pdf_from_url(doc)
         md = load_md(doc)
-        # text_regex(md)
         clean_md_lines = load_clean_md(md, doc)
+        test_regex(md)
+        """
         CLEAN_MD.write_text("\n".join(clean_md_lines))
         trimmed_md_lines = load_clean_trimmed_md(md, doc)
         TRIMMED_MD.write_text("\n".join(trimmed_md_lines))
-        """
         chunk_lines = (
             trimmed_md_lines[: doc.definitions_start]
             + trimmed_md_lines[doc.definitions_end :]

@@ -65,13 +65,7 @@ def load_clean_md(specs: DocSpecs) -> list[str]:
 
 if __name__ == "__main__":
     setup_logging("ingest")
-    docs = [
-        # AmlCode,
-        # AmlHandbook,
-        # SupplementalInformation,
-        # Poca,
-        TerrorismAndCrime
-    ]
+    docs = [AmlCode, AmlHandbook, SupplementalInformation, Poca, TerrorismAndCrime]
     all_chunks = []
     all_definitions = {}
     for doc in docs:
@@ -81,7 +75,9 @@ if __name__ == "__main__":
         chunks = normalise_chunk_size(chunks, doc)
         logger.info("[%d] normalised chunks", len(chunks))
         if doc.has_definition_section:
-            definitions = extract_to_definitions(doc, md)
+            definitions = extract_to_definitions(
+                doc, md[doc.definitions_start : doc.definitions_end]
+            )
             chunks = attach_definitions(chunks, definitions)
             all_definitions[doc.document] = definitions
         all_chunks.extend(chunks)
