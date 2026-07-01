@@ -1,212 +1,115 @@
-# **manx-reg-rag**
+# manx-reg-rag
 
-A Retrieval Augmented Generation tool for Isle of Man Licence holders and Designated Businesses. Make any LLM an expert in financial services legislation and regulation.
+A question-and-answer tool for Isle of Man Licence Holders and Designated Businesses. Make any AI an expert in Isle of Man financial services legislation and regulation.
 
-## 1. Why did I build this tool?
+## What this is
 
-#### The problem
+manx-reg-rag answers compliance questions using the actual text of Isle of Man financial services legislation and guidance — not general knowledge. Ask it something in plain English, and it tells you what the source material actually says, and exactly which document and section the answer came from.
 
-AIs are trained on vast quantities of data and this training data forms the backbone of their system knowledge where there isn't enough data, there isn't a good basis for system knowledge. Financial Services Regulation and legislation is a complicated field with a wide variety of overlapped sources. Most Isle of Man financial services compliance practitioners will already be aware that LLM's that are prompted regarding specific regulatory requirements will often refer to the UK laws (because its a bigger data set) or less capable models will simply hallucinate.
+I'm a compliance professional, not a developer, and this is my first real attempt at building something like this. It's a genuine work in progress — see [Limitations](#limitations) before relying on anything it tells you.
 
-#### The solution
+## Why I built this
 
-The ideal way for an AI to call the specific knowledge it needs when lacking system knowledge is through Retrieval Augmented Generation (RAG). This is a well trodden path and far from a new technology but the first time it will be available in an open a free format (free from me at least, you will have to bring your own LLM and if your using an API, you will have to pay for that but I'm afraid).
+**The problem.** AI tools are trained on huge amounts of text, and that's where their "knowledge" comes from. Where the training data is thin, so is the understanding. Isle of Man financial services regulation is a small, specific field sitting inside a much bigger pool of UK and international material. Most IOM compliance practitioners will already have noticed that general-purpose AI, asked about IOM-specific requirements, tends to answer with UK law instead — because there's far more UK material to draw on — or, with weaker tools, simply makes something up.
 
-## 2. How does it work?
+**The solution.** The reliable way to give an AI knowledge it doesn't have is to hand it the actual source text at the moment you ask the question, and have it answer from that alone — a technique usually called Retrieval Augmented Generation, or RAG. It's not new technology, but as far as I know this is the first time it's been made available for Isle of Man regulation in an open, free format — free from me, at least. You'll still need to bring your own AI model, and if you're using a paid one, that cost is yours.
 
-#### Caveats
+## How it works
 
-I am a compliance professional by trade and manx-reg-rag is far from complete and currently only prints to the terminal and though in testing I have started getting some high quality answers with citations, this is not a tool ready for implementation by any firm in its current format.
+Every answer is built from the actual text of Isle of Man legislation and guidance, retrieved fresh for each question — not from the AI's memory.
 
-### 2.1 Ingestion of documents
+**Getting the documents ready.** Each source document is converted to text and broken into chunks — roughly section-sized pieces — along with exactly where in the document each piece sits (which Part, which paragraph) and which document it came from.
 
-Documents are entered in PDF format and extracted to an md format PyMuPDF4LL. The lines are trimmed and regex is used to clean the md file ready for chunking. The chunking function extracts the text into a jsonl format with rich and descriptive meta data that currently includes:
+**Definitions.** Legal text is full of defined terms, and a chunk that uses one without its definition can be misleading on its own. So every defined term in each document is captured separately, and whenever a chunk uses one of those terms, its definition is pulled in alongside it automatically.
 
-- the document title
-- legal hierarchy (legislation, guidance, etc)
-- the major heading (part, chapter, etc.)
-- the minor heading (paragraph, sub-section, etc)
-- defined terms
-- defined terms used (see below)
+**Finding the right chunks.** All of this is stored in what's called a vector database. If that means nothing to you, you don't need it to — a rough picture: imagine a library where passages are shelved not alphabetically, but by what they're actually about, so chunks discussing similar things end up near each other even if they use completely different words. When you ask a question, it gets placed on that same shelf, and the tool pulls back whatever's sitting closest to it.
 
-### 2.2 Definitions
+**The answer.** The retrieved chunks and their definitions are handed to the AI, which is instructed to answer only from what it's been given — not its own general knowledge — and to say so plainly if the material it retrieved doesn't actually answer your question, rather than guess. It also distinguishes legislation, which you must follow, from guidance, which is persuasive rather than binding. Alongside the answer, it lists exactly which passages it used and how. It's built to point you to the material, not to advise you — the judgement calls stay with you.
 
-One of the key failings of most RAG projects that tackle legal text is the chunk it served to the LLM without any specific legal definitions attached to the terms used in said chunk. Among the currently accessible documents, all defined terms are also extracted.
+## What it covers right now
 
-### 2.3 Embedding and retrieval
-
-The stack uses a Qdrant vector database. If that means nothing to you, you're not alone — and you don't need to follow the exact mechanics. As a simple metaphor, books can be grouped by subject at a library. For example books on cars and trains are both about transport so they have some semantic similarities so they might be in the same section but maybe not right next to each other. If you had two books about electric cars and hybrid cars, they might be right next to each other. That's essentially what the vector DB is doing, it groups the chunks by semantic similarity. That's roughly what happens here. Every chunk of legislation is read once and given a position — not on a physical shelf, but in a kind of map of meaning. Chunks about similar things end up close together on the map, even when they use different words.
-
-When you ask a question, the question gets a position on the same map. We then grab the chunks sitting nearest to it — the ones most likely to be talking about what you asked.
-
-### 2.4 The response
-
-Once the chunks are retrieved, the chunks are served to the LLM and it can see the chunks and the metadata around those chunks, as well as any definitions required to interpret them and give an evidence based answer grounded in the IOM legislation and guidance it is served with.
-
-The agent is managed via the Pydantic AI ecosystem so the LLM gives a structured response including:
-
-- the text response
-- citations: this currently comes in the form of listing the chunks it used and describing the relevance of the chunk and how it used the chunk to answer the question.
-
-## 3. Current state of the project
-
-This is a solo project started in May 2026 and progress will occur as time allows. This is my first full project and feedback is very much welcome from on both the compliance side and the software side.
-
-### 3.1 Documents
-
-Though more will be added in due course, to date there are only two documents ingested and embedded:
+Right now the tool only knows AML/CFT-related material. Five documents are loaded:
 
 - The AML/CFT Code 2019
-- The AML Handbook Apr 2026
+- The AML Handbook (April 2026)
+- The AML/CFT Supplemental Information Document
+- The Proceeds of Crime Act 2008
+- The Terrorism and Crime Act 2008
 
-### 3.2 UI
+More areas of Isle of Man financial services regulation are planned. For now, if your question falls outside AML/CFT, the tool doesn't have the material to answer it well — and it's built to tell you that rather than guess.
 
-The output is currently to a terminal but a full GUI will be allowing for the expected prompt and answer will be added in due course.
+## See it in action
 
-### 3.3 Usability
+A few real questions, asked directly through the interface:
 
-Currently OpenAI is hard coded into the project but in due course, it will be model agnostic allowing for a range of cloud and local options.
+![Screenshot: example query and answer with citations](readme_images/test001.png)
 
-## 4. Example prompt and answers
+![Screenshot: example query and answer with citations](readme_images/test002.png)
 
-### **Example 1**
+![Screenshot: example query and answer with citations](readme_images/test003.png)
 
-```
-System prompt: You are an expert in Isle of Man financial services regulation that is advising the user on the operations of an Isle of Man regulated business. For every question, call the retrieval tool first to get relevant chunks from the legislation and guidance. Answer only from the retrieved content — do not draw on outside knowledge. If the retrieved chunks don't contain the answer, say so explicitly rather than guessing. For each chunk you draw on, include a Citation explaining what it contributed to your answer.
-Q: what should be included in terms of statistics in my BRA?
-A: In your Business Risk Assessment (BRA), you should include several statistical elements:
+![Screenshot: example query and answer with citations](readme_images/test004.png)
 
-1. **Findings, Trends, and Vulnerabilities**: Incorporate an assessment of any identified findings, trends, vulnerabilities, and risks associated with your sector as outlined in the Isle's latest National Risk Assessment (NRA). This ensures that your BRA reflects current industry insights and risks.
-   - *Citation*: Chapter 2, Section 2.2.8.3 of the AML Handbook highlights the importance of considering sectoral and topical NRAs in the BRA.
+![Screenshot: example query and answer with citations](readme_images/test005.png)
 
-2. **Quantitative and Qualitative Information**: Utilize quantitative and qualitative data from both internal and external sources to assess risks appropriately. This should not rely on a single source but rather a variety to capture a comprehensive risk profile.
-   - *Citation*: Chapter 2, Section 2.2.4.1.1 illustrates the need for varying information sources, including statistical organizations and academia.
+## Try it yourself
 
-3. **Estimations of ML/FT Risks**: Your BRA should include estimations of the risk of money laundering and financing of terrorism (ML/FT) posed by your business and customers. This encompasses the inherent risks, exposure levels, and probability statistics related to financial crime.
-   - *Citation*: Chapter 2, Section 2.2.8 outlines that the BRA should document estimation of the firm's residual risk to financial crime.
+This isn't a one-click install yet, but if you want to run it on your own machine, here's what's involved.
 
-4. **Customer Risk Assessments**: Integrate customer risk profiles which include assessment metrics that highlight customer activities, relationship complexities, and any third-party involvement in customer due diligence processes.
-   - *Citation*: Chapter 2, Section 2.2.9.2 indicates that the nature, scale, and complexity of customer activities can present higher risks and should be assessed.
+**You'll need:**
 
-5. **Regular Updates and Reviews**: Ensure your BRA is treated as a living document that is regularly updated with new data, findings, and trends to maintain its relevance and effectiveness.
-   - *Citation*: Chapter 2, Section 2.2.8 explains the necessity for ongoing reviews of the BRA to keep it current.
+- [Docker](https://www.docker.com/products/docker-desktop/) installed and running
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) installed — only needed for the first-time setup below
+- An OpenAI API key — this needs an OpenAI account with billing set up, separate from a ChatGPT subscription. You'll be billed by OpenAI directly, based on usage.
+- A terminal. On Windows, use WSL or Git Bash — the setup script is written for Mac/Linux-style shells.
 
-By including these statistical elements, your BRA will be well-positioned to reflect the risks associated with your operations effectively and comply with relevant guidelines
------------------------------
+**First-time setup (only needed once):**
 
-The AML Handbook (April 2026)::Chapter 2 - General Requirements and Risk Based Approach::2.2.8.3 Relevant risk factors::9ec84fed
-Highlights the need for assessment based on sectoral NRAs
------------------------------
+1. Clone or download this repository, and open a terminal in the project folder.
+2. Create a file named `.env` in that folder containing:
 
-The AML Handbook (April 2026)::Chapter 2 - General Requirements and Risk Based Approach Emphasizes the importance of using diverse data sources
------------------------------
+   ```env
+   OPENAI_API_KEY=your-key-here
+   ```
 
-The AML Handbook (April 2026)::Chapter 2 - General Requirements and Risk Based Approach::2.2.8 Business risk assessment ("BRA") Code 5(1) 5 Business risk assessment::232d2490
-Describes the need for estimating ML/FT risks
------------------------------
+3. Install dependencies and build the document index:
 
-The AML Handbook (April 2026)::Chapter 2 - General Requirements and Risk Based Approach::2.2.9.2 Relevant risk factors including matters that pose or may pose higher
-ML/FT/PF risks::ab5959f3
-Discusses assessments related to customer activities that pose risks
------------------------------
+   ```bash
+   uv sync
+   uv run python -m extraction_ops.ingest
+   ```
 
-The AML Handbook (April 2026)::Chapter 2 - General Requirements and Risk Based Approach::2.2.8.3 Relevant risk factors::5121cbf5
-Mentions the requirement for regular updates to the BRA
-==============================
-```
+4. Start the database and load the index into it:
 
-#### **Example 2**
+   ```bash
+   docker compose up -d qdrant
+   uv run python -m db_ops.embeddings
+   ```
 
-```
-System prompt: You are an expert in Isle of Man financial services regulation that is advising the user on the operations of an Isle of Man regulated business. For every question, call the retrieval tool first to get relevant chunks from the legislation and guidance. Answer only from the retrieved content — do not draw on outside knowledge. If the retrieved chunks don't contain the answer, say so explicitly rather than guessing. For each chunk you draw on, include a Citation explaining what it contributed to your answer.
-Q: What does the position of MLRO entail?
-A: The position of the Money Laundering Reporting Officer (MLRO) entails several critical responsibilities as defined in the AML Code 2019. The MLRO must be appointed by a relevant person to oversee essential functions, including:
+**Running it, from here on:**
 
-1. **Senior Position**: The MLRO must be sufficiently senior within the organization or possess adequate experience and authority to fulfill the role effectively (The AML Code 2019, PART 7 – REPORTING AND REGISTERS, 23 Money Laundering Reporting Officer).
-
-2. **Direct Access**: The MLRO must have direct access to the organization's officers to facilitate communication and reporting (The AML Code 2019, PART 7 – REPORTING AND REGISTERS, 23 Money Laundering Reporting Officer).
-
-3. **Time and Resources**: The MLRO should have sufficient time and resources dedicated to discharge their responsibilities (The AML Code 2019, PART 7 – REPORTING AND REGISTERS, 23 Money Laundering Reporting Officer).
-
-4. **External Disclosures**: The MLRO is responsible for all external disclosures, particularly concerning money laundering or financing of terrorism (ML/FT). This includes making disclosures to the Financial Intelligence Unit when necessary (The AML Code 2019, PART 7 – REPORTING AND REGISTERS, 27 External disclosures).
-
-5. **Evaluation of Internal Disclosures**: The MLRO must assess internal disclosures for suspected ML/FT activities and must report externally if there are reasonable grounds for suspicion (The AML Code 2019, PART 7 – REPORTING AND REGISTERS, 27 External disclosures).
-
-6. **Maintain Reporting Procedures**: The MLRO must ensure that robust reporting procedures are maintained within the organization, guiding how employees should report suspicious activities (The AML Code 2019, PART 7 – REPORTING AND REGISTERS, 25 Reporting procedures).
-
-Additionally, organizations may appoint a Deputy MLRO to assist in these duties, especially in the absence of the MLRO (The AML Code 2019, PART 7 – REPORTING AND REGISTERS, 23 Money Laundering Reporting Officer)
------------------------------
-
-The AML Code 2019::PART 7 – REPORTING AND REGISTERS::23 Money Laundering Reporting Officer::0d69f0ce
-Overview of MLRO role and responsibilities
------------------------------
-
-The AML Code 2019::PART 7 – REPORTING AND REGISTERS::27 External disclosures::4d4fe04d
-Responsibilities regarding external disclosures
------------------------------
-
-The AML Code 2019::PART 7 – REPORTING AND REGISTERS::25 Reporting procedures::223c1e4d
-Importance of maintaining reporting procedures
-==============================
+```bash
+./launch.sh up
 ```
 
-#### **Example 3**
+Then open `http://localhost:8000` in your browser.
 
-```
-System prompt: You are an expert in Isle of Man financial services regulation that is advising the user on the operations of an Isle of Man regulated business. For every question, call the retrieval tool first to get relevant chunks from the legislation and guidance. Answer only from the retrieved content — do not draw on outside knowledge. If the retrieved chunks don't contain the answer, say so explicitly rather than guessing. For each chunk you draw on, include a Citation explaining what it contributed to your answer.
-Q: I am about to review my CRA, what factors need to be included?
-A: When reviewing your Customer Risk Assessment (CRA), several key factors must be considered:
+*(If `./launch.sh` won't run, try `chmod +x launch.sh` first, or run `bash launch.sh up` instead.)*
 
-1. **Changes in Information and Environment**: Assess any developments since the initial risk assessments, including new information about the business environment, customer circumstances, and ongoing monitoring results.
-   - *Citation: The AML Handbook (April 2026), Chapter 2, Section 2.2.6 - Risk assessment reviews*.
+Other commands: `./launch.sh down` stops everything, `./launch.sh logs` shows what's happening, `./launch.sh rebuild` rebuilds after any code changes.
 
-2. **Monitoring Outcomes**: Analyze information from ongoing monitoring of business relationships to determine if they necessitate updates to the CRA.
-   - *Citation: The AML Handbook (April 2026), Chapter 2, Section 2.2.6 - Risk assessment reviews*.
+## Limitations
 
-3. **Third-party Considerations**: If applicable, incorporate any assessments related to introducers and third parties involved in customer due diligence, including their risk levels and how customer due diligence is obtained.
-   - *Citation: The AML Handbook (April 2026), Chapter 2, Section 2.2.10.1 - Introducer risk assessment reviews*; *Chapter 2, Section 2.2.10.4 - Relevant risk factors specific to the introducer risk assessment*.
+- Only covers AML/CFT-related material right now — other areas of Isle of Man regulation aren't loaded yet.
+- Retrieval isn't perfect. On an unusually phrased or very narrow question, the tool can retrieve the wrong section, and the answer will only be as good as what it retrieved.
+- Hasn't been independently reviewed by any compliance professional other than the person building it.
+- Self-hosting currently needs a few manual steps outside Docker for first-time setup, as above — not yet a single-command install.
+- This is a tool for finding and referencing the right source material — not legal or regulatory advice, and not a substitute for your own professional judgement.
 
-4. **Emerging Risks**: Stay updated on new and emerging risks, and periodically review relevant alerts, sanctions, and media reports relevant to your business sectors and jurisdictions.
-   - *Citation: The AML Handbook (April 2026), Chapter 2, Section 2.2.6 - Risk assessment reviews*; *Chapter 2, Section 2.2.8.3 - Relevant risk factors*.
+## Licence
 
-5. **Higher Risk Factors**: Pay particular attention to customers classified as Politically Exposed Persons (PEPs) and consider any additional enhanced due diligence required for higher-risk individuals.
-   - *Citation: The AML Handbook (April 2026), Chapter 3, Section 3.8.11.1 - Interaction of PEP requirements with ECDD requirements*; *Chapter 4, Section 4.7.2.1 - ML/FT/PF risk assessment requirements*.
+This software is available under the AGPL v3 Licence.
 
-6. **Documented Procedures**: Ensure that all considerations, findings, and changes in assessments are documented to support compliance and provide a clear rationale for decisions made during the CRA review process.
-   - *Citation: The AML Handbook (April 2026), Chapter 2, Section 2.2.6 - Risk assessment reviews*.
+## Contact
 
-By considering these factors, you ensure that your CRA remains relevant and effective against the risks posed by money laundering and terrorist financing. Regular reviews and updates are crucial for maintaining compliance with regulatory requirements
------------------------------
-
-The AML Handbook (April 2026)::Chapter 2 - General Requirements and Risk Based Approach::2.2.6 Risk assessment reviews::e17328d5
-Identifies the need for assessing changes in the business environment and customer circumstances
------------------------------
-
-The AML Handbook (April 2026)::Chapter 2 - General Requirements and Risk Based Approach::2.2.10.1 Introducer risk assessment reviews::433bc1bc
-Emphasizes the importance of third-party assessments in the CRA
------------------------------
-
-The AML Handbook (April 2026)::Chapter 2 - General Requirements and Risk Based Approach::2.2.8.3 Relevant risk factors::bf65c968
-Informs about the necessity of reviewing emerging risks and proactive monitoring
------------------------------
-
-The AML Handbook (April 2026)::Chapter 3 - Customer Due Diligence, Ongoing Monitoring And Enhanced Measures::3.8.11.1 Interaction of PEP requirements with ECDD requirements::65defce7
-Discusses the considerations necessary for higher-risk individuals like PEPs
------------------------------
-
-The AML Handbook (April 2026)::Chapter 2 - General Requirements and Risk Based Approach::2.2.6 Risk assessment reviews::34d0e8f2
-Stresses the importance of documentation in the CRA review process
-==============================
-```
-
-## 5. Installation
-
-Currently the project is not production ready, but when this changes, installation instructions will be added here.
-
-## 6. Licence
-
-This Software is available under the AGPL v3 Licence
-
-## 7. Contact
-
-If you have any questions, please feel free to contact me at <cam01houston@gmail.com>
+Questions, feedback, or found a bug? Email <cam01houston@gmail.com>.
