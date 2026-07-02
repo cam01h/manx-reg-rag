@@ -35,6 +35,7 @@ Right now the tool only knows AML/CFT-related material. Five documents are loade
 - The AML/CFT Supplemental Information Document
 - The Proceeds of Crime Act 2008
 - The Terrorism and Crime Act 2008
+- The financial intelligence Unit Act 2011
 
 More areas of Isle of Man financial services regulation are planned. For now, if your question falls outside AML/CFT, the tool doesn't have the material to answer it well — and it's built to tell you that rather than guess.
 
