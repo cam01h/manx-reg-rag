@@ -4,6 +4,7 @@ import json
 import httpx
 from typing import cast
 
+from extraction_ops.specs.fiu_act import FiuAct
 from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
 from .specs.aml_handbook import AmlHandbook
 from .specs.aml_code import AmlCode
@@ -65,7 +66,14 @@ def load_clean_md(specs: DocSpecs) -> list[str]:
 
 if __name__ == "__main__":
     setup_logging("ingest")
-    docs = [AmlCode, AmlHandbook, SupplementalInformation, Poca, TerrorismAndCrime]
+    docs = [
+        AmlCode,
+        AmlHandbook,
+        SupplementalInformation,
+        Poca,
+        TerrorismAndCrime,
+        FiuAct,
+    ]
     all_chunks = []
     all_definitions = {}
     for doc in docs:

@@ -3,6 +3,7 @@ import re
 import difflib
 import httpx
 
+from extraction_ops.specs.fiu_act import FiuAct
 from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
 from .specs.specs import DocSpecs
 from typing import cast
@@ -94,14 +95,14 @@ if __name__ == "__main__":
         # AmlHandbook,
         # SupplementalInformation,
         # Poca,
-        TerrorismAndCrime
+        # TerrorismAndCrime,
+        FiuAct
     ]
     for doc in docs:
         # get_pdf_from_url(doc)
         md = load_md(doc)
         clean_md_lines = load_clean_md(md, doc)
-        test_regex(md)
-        """
+        # test_regex(md)
         CLEAN_MD.write_text("\n".join(clean_md_lines))
         trimmed_md_lines = load_clean_trimmed_md(md, doc)
         TRIMMED_MD.write_text("\n".join(trimmed_md_lines))
@@ -112,4 +113,3 @@ if __name__ == "__main__":
         CHUNKS_MD.write_text("\n".join(chunk_lines))
         definition_lines = trimmed_md_lines[doc.definitions_start : doc.definitions_end]
         DEFINITIONS_MD.write_text("\n".join(definition_lines))
-        """
