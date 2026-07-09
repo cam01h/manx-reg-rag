@@ -4,6 +4,7 @@ import difflib
 import httpx
 
 from extraction_ops.specs.fiu_act import FiuAct
+from extraction_ops.specs.regulated_activities_order import RegulatedActivitiesOrder
 from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
 from .specs.specs import DocSpecs
 from typing import cast
@@ -96,7 +97,8 @@ if __name__ == "__main__":
         # SupplementalInformation,
         # Poca,
         # TerrorismAndCrime,
-        FiuAct
+        # FiuAct,
+        RegulatedActivitiesOrder
     ]
     for doc in docs:
         # get_pdf_from_url(doc)

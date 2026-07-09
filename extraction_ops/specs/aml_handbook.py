@@ -4,6 +4,7 @@ from .specs import DocSpecs
 
 
 def re_steps(text: str) -> str:
+    # TODO: flatten tables as contents is removed here
     text = re.sub(r"^## \*\*\d+\. .*$\n?", "", text, flags=re.MULTILINE)
     text = re.sub(r"^\|.*\|$\n?", "", text, flags=re.MULTILINE)
     text = re.sub(r"^[#]*\s*Code\s*[\d\(\),\.\s\-|]*$\n?", "", text, flags=re.MULTILINE)

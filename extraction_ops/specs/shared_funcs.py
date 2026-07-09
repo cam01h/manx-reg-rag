@@ -35,3 +35,9 @@ def flatten_tables(text: str) -> str:
         else:
             out.append(line)
     return "\n".join(out)
+
+
+def replace_from_dict(text: str, replacements: dict[str, str]) -> str:
+    for bad, good in replacements.items():
+        text = text.replace(bad, good)
+    return text

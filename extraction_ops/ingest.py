@@ -5,6 +5,7 @@ import httpx
 from typing import cast
 
 from extraction_ops.specs.fiu_act import FiuAct
+from extraction_ops.specs.regulated_activities_order import RegulatedActivitiesOrder
 from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
 from .specs.aml_handbook import AmlHandbook
 from .specs.aml_code import AmlCode
@@ -73,6 +74,7 @@ if __name__ == "__main__":
         Poca,
         TerrorismAndCrime,
         FiuAct,
+        RegulatedActivitiesOrder,
     ]
     all_chunks = []
     all_definitions = {}
