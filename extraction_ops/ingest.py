@@ -5,6 +5,7 @@ import httpx
 from typing import cast
 
 from extraction_ops.specs.dbroa15 import Dbroa
+from extraction_ops.specs.financial_restrictions_act import FinancialRestrictionsAct
 from extraction_ops.specs.fiu_act import FiuAct
 from extraction_ops.specs.regulated_activities_order import RegulatedActivitiesOrder
 from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
@@ -77,6 +78,7 @@ if __name__ == "__main__":
         FiuAct,
         RegulatedActivitiesOrder,
         Dbroa,
+        FinancialRestrictionsAct,
     ]
     all_chunks = []
     all_definitions = {}

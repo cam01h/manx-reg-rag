@@ -4,6 +4,7 @@ import difflib
 import httpx
 
 from extraction_ops.specs.dbroa15 import Dbroa
+from extraction_ops.specs.financial_restrictions_act import FinancialRestrictionsAct
 from extraction_ops.specs.fiu_act import FiuAct
 from extraction_ops.specs.regulated_activities_order import RegulatedActivitiesOrder
 from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
@@ -34,7 +35,7 @@ def write_diff(before: Path, after: Path, write_path: Path) -> None:
 
 
 def get_pdf_from_url(specs: DocSpecs) -> None:
-    print("downloading pdf...")
+    print(f"downloading pdf: [{specs.document}]")
     try:
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
@@ -100,10 +101,11 @@ if __name__ == "__main__":
         # TerrorismAndCrime,
         # FiuAct,
         # RegulatedActivitiesOrder
-        Dbroa
+        # Dbroa,
+        FinancialRestrictionsAct
     ]
     for doc in docs:
-        # get_pdf_from_url(doc)
+        get_pdf_from_url(doc)
         md = load_md(doc)
         clean_md_lines = load_clean_md(md, doc)
         # test_regex(md)
