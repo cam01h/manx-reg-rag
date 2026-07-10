@@ -4,6 +4,7 @@ import json
 import httpx
 from typing import cast
 
+from extraction_ops.specs.dbroa15 import Dbroa
 from extraction_ops.specs.fiu_act import FiuAct
 from extraction_ops.specs.regulated_activities_order import RegulatedActivitiesOrder
 from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
@@ -75,6 +76,7 @@ if __name__ == "__main__":
         TerrorismAndCrime,
         FiuAct,
         RegulatedActivitiesOrder,
+        Dbroa,
     ]
     all_chunks = []
     all_definitions = {}
