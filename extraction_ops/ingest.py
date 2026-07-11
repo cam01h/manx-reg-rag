@@ -8,6 +8,7 @@ from extraction_ops.specs.dbroa15 import Dbroa
 from extraction_ops.specs.financial_restrictions_act import FinancialRestrictionsAct
 from extraction_ops.specs.fiu_act import FiuAct
 from extraction_ops.specs.regulated_activities_order import RegulatedActivitiesOrder
+from extraction_ops.specs.sanctions_act import SanctionsAct
 from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
 from .specs.aml_handbook import AmlHandbook
 from .specs.aml_code import AmlCode
@@ -79,6 +80,7 @@ if __name__ == "__main__":
         RegulatedActivitiesOrder,
         Dbroa,
         FinancialRestrictionsAct,
+        SanctionsAct,
     ]
     all_chunks = []
     all_definitions = {}

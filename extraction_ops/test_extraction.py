@@ -7,6 +7,7 @@ from extraction_ops.specs.dbroa15 import Dbroa
 from extraction_ops.specs.financial_restrictions_act import FinancialRestrictionsAct
 from extraction_ops.specs.fiu_act import FiuAct
 from extraction_ops.specs.regulated_activities_order import RegulatedActivitiesOrder
+from extraction_ops.specs.sanctions_act import SanctionsAct
 from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
 from .specs.specs import DocSpecs
 from typing import cast
@@ -102,10 +103,11 @@ if __name__ == "__main__":
         # FiuAct,
         # RegulatedActivitiesOrder
         # Dbroa,
-        FinancialRestrictionsAct
+        # FinancialRestrictionsAct,
+        SanctionsAct
     ]
     for doc in docs:
-        get_pdf_from_url(doc)
+        # get_pdf_from_url(doc)
         md = load_md(doc)
         clean_md_lines = load_clean_md(md, doc)
         # test_regex(md)
