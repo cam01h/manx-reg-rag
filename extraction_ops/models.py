@@ -41,6 +41,13 @@ class DefinitionTools:
     )  # looks like a double definition line but is not
 
 
+# primary can just split chunk.body but scondary can carry intro to second chunk for lists that require the intro eg. "(3) the following are exempt:"
+@dataclass(frozen=True)
+class ChunkSplitters:
+    primary: Callable[[str], list[str]]
+    fallback: Callable[[str], list[str]]
+
+
 # tools and variables used for ingestion pipeline
 @dataclass(frozen=True)
 class ToolBelt:
@@ -59,6 +66,6 @@ class ToolBelt:
     definition_tools: DefinitionTools | None
     re_steps: Callable[[str], str]
     header_matchers: list[Callable[[str], bool]]
-    re_pack_splitter: Callable[[str], list[str]]
+    re_pack_splitter: ChunkSplitters
     strip_md: Callable[[str], str]
     header_strip_md: Callable[[str], str]
