@@ -6,7 +6,7 @@ from typing import Callable
 # used on individual chunks removed from the text
 @dataclass(frozen=True)
 class Chunk:
-    chunk_id: str  # chunk id created her and not in embeddings.py, TODO: body will need to be rehashed in split_chunk and merge
+    chunk_id: str  # chunk id created her and not in embeddings.py, TODO: body will need to be hashed in normalise_chunks
     document: str
     hierarchy: str
     usage_note_ids: list[str]
@@ -18,30 +18,34 @@ class Chunk:
 # used on individual defintions as extracted
 @dataclass(frozen=True)
 class Defintion:
-    term: str
+    document: str
     scope: str
+    term: str
     defintion: str
+
+
+# TODO: replace slicing by index with a for loop that walk the doc using an in_range and in_definition bool/toggles to dictate where the line is disguarded, appended to chunk_line or definition_lines
+# used for marking the trim at the start/end of the doc and start/end of the defintion sections
+@dataclass(frozen=True)
+class SectionMarkers:
+    start: Callable[[list[str]], list[str]]
+    end: Callable[[list[str]], list[str]]
 
 
 # tools used for defintion extraction
 @dataclass(frozen=True)
 class DefinitionTools:
     # split list of trimmed lines using regex pattern, this is less brittle and likely to survive update better
-    definitions_start: list[Callable[[list[str]], list[str]]]
-    definitions_end: list[Callable[[list[str]], list[str]]]
+    section_markers: list[SectionMarkers]
     scope: str
-    has_definition_section: bool
-    is_definition_line: Callable[[str], bool] | None
-    is_double_def_line: (
-        Callable[[list[str]], bool]
-        | None  # used for 'the terms "x" and "Y" should be taken to mean...'
-    )
-    is_false_dub_def: (
-        Callable[[list[str]], bool] | None
-    )  # looks like a double definition line but is not
+    is_definition_line: Callable[[str], bool]
+    # used for 'the terms "x" and "Y" should be taken to mean...'
+    is_double_def_line: Callable[[list[str]], bool]
+    # looks like a double definition line but is not
+    is_false_dub_def: Callable[[list[str]], bool]
 
 
-# primary can just split chunk.body but scondary can carry intro to second chunk for lists that require the intro eg. "(3) the following are exempt:"
+# primary can just split chunk.body but fallback can carry intro to second chunk for lists that require the intro eg. "(3) the following are exempt:"
 @dataclass(frozen=True)
 class ChunkSplitters:
     primary: Callable[[str], list[str]]
@@ -53,16 +57,13 @@ class ChunkSplitters:
 class ToolBelt:
     document: str
     hierarchy: str
-    usage_note_id: str
-    usage_note_prompt: str
-    usage_note_finder: Callable[
-        [list[str], dict[list[str], dict[str, str]]], str | None
-    ]  # check if header list is in keys of manual dict, if true then append the usage note_id. this allows for section level usage notes
+    # check if header list is in keys of manual dict, if true then append the usage note_id. this allows for section level usage notes
+    # input is None as it will used variables defined in the same file
+    usage_notes: dict[str, str] | None
     input_url: str
     pdf_path: Path
-    # split list of all lines using regex pattern, this is less brittle and likely to survive update better
-    start_line: Callable[[list[str]], list[str]]
-    end_line: Callable[[list[str]], list[str]]
+    # split list of all lines using regex pattern, this is less brittle than hardcoded index and likely to survive update better
+    trimmer: SectionMarkers
     definition_tools: DefinitionTools | None
     re_steps: Callable[[str], str]
     header_matchers: list[Callable[[str], bool]]
