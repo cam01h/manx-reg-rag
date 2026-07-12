@@ -4,17 +4,8 @@ import json
 import httpx
 from typing import cast
 
-from extraction_ops.specs.dbroa15 import Dbroa
-from extraction_ops.specs.financial_restrictions_act import FinancialRestrictionsAct
-from extraction_ops.specs.fiu_act import FiuAct
-from extraction_ops.specs.regulated_activities_order import RegulatedActivitiesOrder
-from extraction_ops.specs.sanctions_act import SanctionsAct
-from extraction_ops.specs.terrorism_and_crime import TerrorismAndCrime
-from .specs.aml_handbook import AmlHandbook
-from .specs.aml_code import AmlCode
-from .specs.supplemental_information_document import SupplementalInformation
-from .specs.poca_2008 import Poca
-from .specs.specs import DocSpecs
+from extraction_ops.load_to_md import load_clean_md
+from .models import CleanOutPut, ToolBelt
 from .chunking import extract_to_chunks, normalise_chunk_size
 from .definitions import extract_to_definitions, attach_definitions
 from config import (
@@ -27,45 +18,28 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_pdf_from_url(specs: DocSpecs) -> None:
-    logger.info("downloading [%s]", specs.document)
+def get_pdf_from_url(tools: ToolBelt) -> None:
+    logger.info("downloading [%s]", tools.document)
     try:
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
         }
         response = httpx.get(
-            url=specs.input_url, timeout=20, follow_redirects=True, headers=headers
+            url=tools.input_url, timeout=20, follow_redirects=True, headers=headers
         )
         response.raise_for_status()
     except httpx.HTTPError:
-        logger.exception("failed httpx request for [%s]", specs.document)
+        logger.exception("failed httpx request for [%s]", tools.document)
         raise
     if not response.content.startswith(b"%PDF"):
-        logger.critical("[%s] did not return a pdf", specs.document)
-        raise ValueError(f"{specs.document} did not return a pdf")
+        logger.critical("[%s] did not return a pdf", tools.document)
+        raise ValueError(f"{tools.document} did not return a pdf")
     try:
-        with open(specs.input_path, "wb") as f:
+        with open(tools.pdf_path, "wb") as f:
             f.write(response.content)
     except Exception:
-        logger.exception("failed to write pdf to [%s]", specs.input_path)
+        logger.exception("failed to write pdf to [%s]", tools.pdf_path)
         raise
-
-
-def load_clean_md(specs: DocSpecs) -> list[str]:
-    logger.info("Loading [%s] to md", specs.document)
-    try:
-        md = cast(
-            str, pymupdf4llm.to_markdown(specs.input_path, header=False, footer=False)
-        )
-    except Exception:
-        logger.exception("failed pymupdf4llm conversion")
-        raise
-    md = specs.re_steps(md)
-    md = md.replace("“", '"').replace("”", '"')
-    md_lines = md.splitlines()
-    trimmed_lines = md_lines[specs.start_line : specs.end_line]
-    logger.info("Extraction to md complete.")
-    return trimmed_lines
 
 
 if __name__ == "__main__":
@@ -87,13 +61,11 @@ if __name__ == "__main__":
     for doc in docs:
         get_pdf_from_url(doc)
         md = load_clean_md(doc)
-        chunks = extract_to_chunks(doc, md)
+        chunks = extract_to_chunks(doc, md.chunk_lines)
         chunks = normalise_chunk_size(chunks, doc)
         logger.info("[%d] normalised chunks", len(chunks))
-        if doc.has_definition_section:
-            definitions = extract_to_definitions(
-                doc, md[doc.definitions_start : doc.definitions_end]
-            )
+        if md.definition_lines is not None:
+            definitions = extract_to_definitions(doc, md.definition_lines)
             chunks = attach_definitions(chunks, definitions)
             all_definitions[doc.document] = definitions
         all_chunks.extend(chunks)

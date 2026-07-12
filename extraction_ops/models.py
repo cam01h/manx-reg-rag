@@ -28,8 +28,8 @@ class Defintion:
 # used for marking the trim at the start/end of the doc and start/end of the defintion sections
 @dataclass(frozen=True)
 class SectionMarkers:
-    start: Callable[[list[str]], list[str]]
-    end: Callable[[list[str]], list[str]]
+    start: Callable[[str], bool]
+    end: Callable[[str], bool]
 
 
 # tools used for defintion extraction
@@ -64,9 +64,17 @@ class ToolBelt:
     pdf_path: Path
     # split list of all lines using regex pattern, this is less brittle than hardcoded index and likely to survive update better
     trimmer: SectionMarkers
-    definition_tools: DefinitionTools | None
-    re_steps: Callable[[str], str]
     header_matchers: list[Callable[[str], bool]]
+    definition_tools: DefinitionTools | None
+    clean_text: Callable[
+        [str], str
+    ]  # include md = md.replace("“", '"').replace("”", '"')
     re_pack_splitter: ChunkSplitters
-    strip_md: Callable[[str], str]
-    header_strip_md: Callable[[str], str]
+    clean_body: Callable[[str], str]
+    clean_header: Callable[[str], str]
+
+
+@dataclass(frozen=True)
+class CleanOutPut:
+    chunk_lines: list[str]
+    definition_lines: list[str] | None = None
