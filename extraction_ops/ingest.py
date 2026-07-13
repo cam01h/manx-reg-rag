@@ -1,11 +1,9 @@
 from dataclasses import asdict
-import pymupdf4llm
 import json
 import httpx
-from typing import cast
 
 from extraction_ops.load_to_md import load_clean_md
-from .models import CleanOutPut, ToolBelt
+from .models import ToolBelt
 from .chunking import extract_to_chunks, normalise_chunk_size
 from .definitions import extract_to_definitions, attach_definitions
 from config import (
@@ -57,17 +55,16 @@ if __name__ == "__main__":
         SanctionsAct,
     ]
     all_chunks = []
-    all_definitions = {}
+    all_definitions = []
     for doc in docs:
         get_pdf_from_url(doc)
         md = load_clean_md(doc)
         chunks = extract_to_chunks(doc, md.chunk_lines)
         chunks = normalise_chunk_size(chunks, doc)
         logger.info("[%d] normalised chunks", len(chunks))
-        if md.definition_lines is not None:
-            definitions = extract_to_definitions(doc, md.definition_lines)
-            chunks = attach_definitions(chunks, definitions)
-            all_definitions[doc.document] = definitions
+        definitions = extract_to_definitions(doc, md.definition_lines)
+        chunks = attach_definitions(chunks, definitions)
+        all_definitions[doc.document] = definitions
         all_chunks.extend(chunks)
     try:
         with CHUNKS_JSONL_PATH.open("w") as f:

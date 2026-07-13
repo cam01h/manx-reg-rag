@@ -1,29 +1,27 @@
 import logging
 from dataclasses import replace
 from typing import Callable
-from .specs.specs import DocSpecs
-from .chunk import Chunk
+from extraction_ops.models import Chunk, ChunkSplitters, ToolBelt
 from config import MAX_CHUNK_CHAR, MIN_CHUNK_CHAR, TARGET_CHUNK_CHAR, DELETE_LEN
 
 logger = logging.getLogger(__name__)
 
 
-def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
-    logger.info("chunking [%s]", specs.document)
-    if specs.has_definition_section:
-        lines = lines[: specs.definitions_start] + lines[specs.definitions_end :]
-        logger.info("definition section removed from chunking text")
+def extract_to_chunks(tools: ToolBelt, lines: list[str]) -> list[Chunk]:
+    logger.info("chunking [%s]", tools.document)
 
     buffer = ""
     chunks = []
-    headers = [""] * len(specs.header_matchers)
+    headers = [""] * len(tools.header_matchers)
 
     def pack_chunk(headers: list[str], body: str) -> Chunk:
         current_chunk = Chunk(
-            document=specs.document,
-            hierarchy=specs.hierarchy,
-            headers=[specs.h_strip_md(h) for h in headers],
-            body=specs.strip_md(body.strip()),
+            chunk_id="stuff",  # TODO: add in normalise
+            document=tools.document,
+            hierarchy=tools.hierarchy,
+            headers=[tools.clean_header(h) for h in headers],
+            body=tools.clean_body(body),
+            usage_note_ids=[],  # TODO: add
         )
         return current_chunk
 
@@ -40,12 +38,12 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
         return None
 
     for line in lines:
-        level = match_level(line, specs.header_matchers)
+        level = match_level(line, tools.header_matchers)
         if level is None:
             buffer += "\n" + line.strip()
         else:
             flush()
-            headers[level] = specs.strip_md(line)
+            headers[level] = line  # cleaned when packed
             for i in range(level + 1, len(headers)):
                 headers[i] = ""
     flush()
@@ -53,11 +51,11 @@ def extract_to_chunks(specs: DocSpecs, lines: list[str]) -> list[Chunk]:
     return chunks
 
 
-def _split_one_chunk(chunk: Chunk, splitter: Callable) -> list[Chunk]:
+def _split_one_chunk(chunk: Chunk, splitters: ChunkSplitters) -> list[Chunk]:
     if len(chunk.body) < MAX_CHUNK_CHAR:
         return [chunk]
-    # TODO: Unsplittable chunks slip through oversized, maybe add a fallback splitter
-    segments = splitter(chunk.body)
+    # TODO: use fallback splitter at splitters.fallback()
+    segments = splitters.primary(chunk.body)
     if len(segments) == 1:
         if len(chunk.body) > MAX_CHUNK_CHAR:
             logger.warning(
@@ -88,8 +86,8 @@ def _split_one_chunk(chunk: Chunk, splitter: Callable) -> list[Chunk]:
     return split_chunks
 
 
-def re_pack_oversized_chunks(chunks: list[Chunk], splitter: Callable):
-    return [out for c in chunks for out in _split_one_chunk(c, splitter)]
+def re_pack_oversized_chunks(chunks: list[Chunk], splitters: ChunkSplitters):
+    return [out for c in chunks for out in _split_one_chunk(c, splitters)]
 
 
 def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
@@ -146,8 +144,8 @@ def filter_chunks(chunks: list[Chunk]) -> list[Chunk]:
     return filtered_chunks
 
 
-def normalise_chunk_size(chunks: list[Chunk], specs: DocSpecs) -> list[Chunk]:
-    chunks = re_pack_oversized_chunks(chunks, specs.re_pack_splitter)
+def normalise_chunk_size(chunks: list[Chunk], tools: ToolBelt) -> list[Chunk]:
+    chunks = re_pack_oversized_chunks(chunks, tools.re_pack_splitters)
     chunks = re_pack_undersized_chunks(chunks)
     chunks = filter_chunks(chunks)
     return chunks

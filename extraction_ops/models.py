@@ -17,11 +17,11 @@ class Chunk:
 
 # used on individual defintions as extracted
 @dataclass(frozen=True)
-class Defintion:
+class Definition:
     document: str
     scope: str
     term: str
-    defintion: str
+    definition: str
 
 
 # TODO: replace slicing by index with a for loop that walk the doc using an in_range and in_definition bool/toggles to dictate where the line is disguarded, appended to chunk_line or definition_lines
@@ -37,7 +37,7 @@ class SectionMarkers:
 class DefinitionTools:
     # split list of trimmed lines using regex pattern, this is less brittle and likely to survive update better
     section_markers: list[SectionMarkers]
-    scope: str
+    definition_scope: str
     is_definition_line: Callable[[str], bool]
     # used for 'the terms "x" and "Y" should be taken to mean...'
     is_double_def_line: Callable[[list[str]], bool]
@@ -69,7 +69,7 @@ class ToolBelt:
     clean_text: Callable[
         [str], str
     ]  # include md = md.replace("“", '"').replace("”", '"')
-    re_pack_splitter: ChunkSplitters
+    re_pack_splitters: ChunkSplitters
     clean_body: Callable[[str], str]
     clean_header: Callable[[str], str]
 
@@ -77,4 +77,4 @@ class ToolBelt:
 @dataclass(frozen=True)
 class CleanOutPut:
     chunk_lines: list[str]
-    definition_lines: list[str] | None = None
+    definition_lines: list[str]
