@@ -1,8 +1,7 @@
 from dataclasses import asdict
 import json
 import httpx
-
-from extraction_ops.load_to_md import load_clean_md
+from .load_to_md import load_clean_md
 from .models import ToolBelt
 from .chunking import extract_to_chunks, normalise_chunk_size
 from .definitions import extract_to_definitions, attach_definitions
@@ -42,18 +41,7 @@ def get_pdf_from_url(tools: ToolBelt) -> None:
 
 if __name__ == "__main__":
     setup_logging("ingest")
-    docs = [
-        AmlCode,
-        AmlHandbook,
-        SupplementalInformation,
-        Poca,
-        TerrorismAndCrime,
-        FiuAct,
-        RegulatedActivitiesOrder,
-        Dbroa,
-        FinancialRestrictionsAct,
-        SanctionsAct,
-    ]
+    docs = []
     all_chunks = []
     all_definitions = []
     for doc in docs:
@@ -64,7 +52,7 @@ if __name__ == "__main__":
         logger.info("[%d] normalised chunks", len(chunks))
         definitions = extract_to_definitions(doc, md.definition_lines)
         chunks = attach_definitions(chunks, definitions)
-        all_definitions[doc.document] = definitions
+        all_definitions.extend(definitions)
         all_chunks.extend(chunks)
     try:
         with CHUNKS_JSONL_PATH.open("w") as f:
@@ -76,11 +64,11 @@ if __name__ == "__main__":
         raise
     try:
         with DEFINITIONS_JSONL_PATH.open("w") as f:
-            json.dump(all_definitions, f, ensure_ascii=False, indent=2)
-        total_definitions = sum(len(defs) for defs in all_definitions.values())
+            for d in all_definitions:
+                f.write(json.dumps(asdict(d), ensure_ascii=False) + "\n")
         logger.info(
             "[%d] definitions written to [%s]",
-            total_definitions,
+            len(all_definitions),
             DEFINITIONS_JSONL_PATH,
         )
     except Exception:

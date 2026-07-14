@@ -10,7 +10,7 @@ import os
 project_root = Path(__file__).parent
 # Intermediate
 CHUNKS_JSONL_PATH = project_root / "data/processed/chunks.jsonl"
-DEFINITIONS_JSONL_PATH = project_root / "data/processed/definitions.json"
+DEFINITIONS_JSONL_PATH = project_root / "data/processed/definitions.jsonl"
 # db path
 DB_PATH = project_root / "data/qdrant"
 # Testing
