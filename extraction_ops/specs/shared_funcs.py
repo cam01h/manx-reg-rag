@@ -36,13 +36,11 @@ def base_body_cleaner(line: str) -> str:
 
 # splitters
 def split_on_bracketed_num(text: str) -> list[str]:
-    split_text = re.split(r"\n(?=- \(\d+\))", text)
-    return split_text
+    return re.split(r"\n(?=- \(\d+\))", text)
 
 
 def split_on_bracketed_letter(text: str) -> list[str]:
-    split_text = re.split(r"\n(?=- \([A-Z]*\))", text)
-    return split_text
+    return re.split(r"\n(?=- \([a-z]+\))", text)
 
 
 # definition line matchers

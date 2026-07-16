@@ -1,7 +1,7 @@
 import logging
 from dataclasses import replace
 from typing import Callable
-from extraction_ops.models import Chunk, ChunkSplitters, ToolBelt
+from extraction_ops.models import Chunk, ToolBelt
 from config import MAX_CHUNK_CHAR, MIN_CHUNK_CHAR, TARGET_CHUNK_CHAR, DELETE_LEN
 
 logger = logging.getLogger(__name__)
@@ -51,18 +51,27 @@ def extract_to_chunks(tools: ToolBelt, lines: list[str]) -> list[Chunk]:
     return chunks
 
 
-def _split_one_chunk(chunk: Chunk, splitters: ChunkSplitters) -> list[Chunk]:
+def _split_one_chunk(
+    chunk: Chunk, splitter: Callable[[str], list[str]], final_pass: bool
+) -> list[Chunk]:
     if len(chunk.body) < MAX_CHUNK_CHAR:
         return [chunk]
     # TODO: use fallback splitter at splitters.fallback()
-    segments = splitters.primary(chunk.body)
+    segments = splitter(chunk.body)
     if len(segments) == 1:
         if len(chunk.body) > MAX_CHUNK_CHAR:
-            logger.warning(
-                "unsplitable chunk oversized at [%d] chars: %s",
-                len(chunk.body),
-                chunk.headers,
-            )
+            if final_pass:
+                logger.warning(
+                    "unsplitable chunk in final pass oversized at [%d] chars: %s",
+                    len(chunk.body),
+                    chunk.headers,
+                )
+            else:
+                logger.debug(
+                    "unsplitable chunk oversized at [%d] chars: %s",
+                    len(chunk.body),
+                    chunk.headers,
+                )
         return [chunk]
 
     split_chunks = []
@@ -73,9 +82,18 @@ def _split_one_chunk(chunk: Chunk, splitters: ChunkSplitters) -> list[Chunk]:
 
     for s in segments:
         if len(s) > MAX_CHUNK_CHAR:
-            logger.warning(
-                "unsplitable chunk oversized at [%d] chars: %s", len(s), chunk.headers
-            )
+            if final_pass:
+                logger.warning(
+                    "unsplitable chunk in final pass oversized at [%d] chars: %s",
+                    len(chunk.body),
+                    chunk.headers,
+                )
+            else:
+                logger.debug(
+                    "unsplitable chunk oversized at [%d] chars: %s",
+                    len(chunk.body),
+                    chunk.headers,
+                )
         if buffer != "" and len(buffer + s) > MAX_CHUNK_CHAR:
             flush(buffer)
             buffer = s
@@ -86,8 +104,10 @@ def _split_one_chunk(chunk: Chunk, splitters: ChunkSplitters) -> list[Chunk]:
     return split_chunks
 
 
-def re_pack_oversized_chunks(chunks: list[Chunk], splitters: ChunkSplitters):
-    return [out for c in chunks for out in _split_one_chunk(c, splitters)]
+def re_pack_oversized_chunks(
+    chunks: list[Chunk], splitter: Callable[[str], list[str]], final_pass: bool
+):
+    return [out for c in chunks for out in _split_one_chunk(c, splitter, final_pass)]
 
 
 def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
@@ -145,7 +165,8 @@ def filter_chunks(chunks: list[Chunk]) -> list[Chunk]:
 
 
 def normalise_chunk_size(chunks: list[Chunk], tools: ToolBelt) -> list[Chunk]:
-    chunks = re_pack_oversized_chunks(chunks, tools.re_pack_splitters)
+    chunks = re_pack_oversized_chunks(chunks, tools.re_pack_splitters.primary, False)
+    chunks = re_pack_oversized_chunks(chunks, tools.re_pack_splitters.fallback, True)
     chunks = re_pack_undersized_chunks(chunks)
     chunks = filter_chunks(chunks)
     return chunks
