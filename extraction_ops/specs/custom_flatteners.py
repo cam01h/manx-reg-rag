@@ -1,0 +1,104 @@
+import re
+
+
+BULLET = "\uf0b7"
+
+
+def _clean_cell(c: str) -> str:
+    c = c.replace("<br>" + BULLET, "; ")  # bullet = list-item boundary
+    c = c.replace(BULLET, "; ")  # bullet at cell start
+    c = c.replace("<br>", " ")  # remaining <br> = line-wrap artifact
+    c = c.replace("**", "")
+    c = re.sub(r"\s+", " ", c).strip()
+    return re.sub(r"^;\s*", "", c)  # drop leading separator
+
+
+def _flatten_row(line: str) -> str:
+    cells = [_clean_cell(c) for c in line.strip().strip("|").split("|")]
+    method = cells[0] if cells else ""
+    consid = cells[1] if len(cells) > 1 else ""
+    if not method:
+        return ""  # |||
+    if method.lower() in ("example method", "method"):
+        return ""  # header
+    if set(method) <= set("-"):
+        return ""  # separator
+    return (f"{method} — {consid}" if consid else method).strip()
+
+
+def flatten_tables(text: str) -> str:
+    out = []
+    for line in text.splitlines():
+        if line.startswith("|"):
+            row = _flatten_row(line)
+            if row:
+                out.append(row)
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
+def replace_from_dict(text: str, replacements: dict[str, str]) -> str:
+    for bad, good in replacements.items():
+        text = text.replace(bad, good)
+    return text
+
+
+# used in DBROA
+ROMAN = r"(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)"
+LETTER = r"[a-z]"
+ENUM_ALONE = re.compile(rf"^(?:{LETTER}|{ROMAN})\.$", re.IGNORECASE)
+ENUM_WITH_TEXT = re.compile(rf"^(?:{LETTER}|{ROMAN})\.\s+\S", re.IGNORECASE)
+
+
+def _rebuild_body(cell: str) -> str:
+    segments = [s.strip() for s in cell.split("<br>") if s.strip()]
+    lines: list[str] = []
+    buffer = ""
+    depth = 0
+    in_list = False
+
+    def flush() -> None:
+        nonlocal buffer, depth
+        if not buffer:
+            return
+        if in_list:
+            if lines:
+                lines.append("")
+            lines.append(f"{'   ' * depth}- {buffer.strip()}")
+        else:
+            lines.append(buffer.strip())
+        if buffer.rstrip().endswith("—"):
+            depth += 1
+        buffer = ""
+
+    for seg in segments:
+        seg = seg.replace("**", "")
+        if ENUM_ALONE.match(seg) or ENUM_WITH_TEXT.match(seg):
+            flush()
+            buffer = seg
+            in_list = True
+        else:
+            buffer = f"{buffer} {seg}".strip() if buffer else seg
+    flush()
+    return "\n".join(lines)
+
+
+def flatten_schedule_table(text: str) -> str:
+    out_lines: list[str] = []
+    for line in text.splitlines():
+        if not line.startswith("|"):
+            out_lines.append(line)
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        item, body = cells[0], cells[1]
+        if set(item) <= set("-") or set(body) <= set("-"):
+            continue  # separator row
+        if item.strip("*") == "Item":
+            continue  # repeated header row (page break)
+        if out_lines and out_lines[-1].strip() != "":
+            out_lines.append("")
+        out_lines.append(f"{item} {_rebuild_body(body)}")
+    return "\n".join(out_lines)

@@ -1,6 +1,8 @@
 from dataclasses import asdict
 import json
 import httpx
+
+from extraction_ops.specs.aml_code import AmlCode
 from .load_to_md import load_clean_md
 from .models import ToolBelt
 from .chunking import extract_to_chunks, normalise_chunk_size
@@ -41,7 +43,7 @@ def get_pdf_from_url(tools: ToolBelt) -> None:
 
 if __name__ == "__main__":
     setup_logging("ingest")
-    docs = []
+    docs = [AmlCode]
     all_chunks = []
     all_definitions = []
     for doc in docs:
@@ -49,7 +51,9 @@ if __name__ == "__main__":
         md = load_clean_md(doc)
         chunks = extract_to_chunks(doc, md.chunk_lines)
         chunks = normalise_chunk_size(chunks, doc)
-        logger.info("[%d] normalised chunks", len(chunks))
+        logger.info(
+            "[%d] normalised chunks", len(chunks)
+        )  # TODO: should be in normalise chunks func
         definitions = extract_to_definitions(doc, md.definition_lines)
         chunks = attach_definitions(chunks, definitions)
         all_definitions.extend(definitions)

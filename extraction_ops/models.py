@@ -22,6 +22,7 @@ class Definition:
     scope: str
     term: str
     definition: str
+    # TODO: add nested definied terms
 
 
 # TODO: replace slicing by index with a for loop that walk the doc using an in_range and in_definition bool/toggles to dictate where the line is disguarded, appended to chunk_line or definition_lines

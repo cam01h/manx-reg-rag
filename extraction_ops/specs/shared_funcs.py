@@ -1,103 +1,58 @@
 import re
 
-BULLET = "\uf0b7"
+
+# line -> bool
+def in_line(line: str, strings: list[str]) -> bool:
+    for string in strings:
+        if string in line:
+            return True
+    return False
 
 
-def _clean_cell(c: str) -> str:
-    c = c.replace("<br>" + BULLET, "; ")  # bullet = list-item boundary
-    c = c.replace(BULLET, "; ")  # bullet at cell start
-    c = c.replace("<br>", " ")  # remaining <br> = line-wrap artifact
-    c = c.replace("**", "")
-    c = re.sub(r"\s+", " ", c).strip()
-    return re.sub(r"^;\s*", "", c)  # drop leading separator
+def starts_with(line: str, strings: list[str]) -> bool:
+    for string in strings:
+        if line.startswith(string):
+            return True
+    return False
 
 
-def _flatten_row(line: str) -> str:
-    cells = [_clean_cell(c) for c in line.strip().strip("|").split("|")]
-    method = cells[0] if cells else ""
-    consid = cells[1] if len(cells) > 1 else ""
-    if not method:
-        return ""  # |||
-    if method.lower() in ("example method", "method"):
-        return ""  # header
-    if set(method) <= set("-"):
-        return ""  # separator
-    return (f"{method} — {consid}" if consid else method).strip()
+# text cleaners
+def base_header_cleaner(header: str) -> str:
+    header = (
+        header.replace("- ##", "")
+        .replace("- **", "")
+        .replace("#", "")
+        .replace("*", "")
+        .replace("_", "")
+        .strip()
+    )
+    return header
 
 
-def flatten_tables(text: str) -> str:
-    out = []
-    for line in text.splitlines():
-        if line.startswith("|"):
-            row = _flatten_row(line)
-            if row:
-                out.append(row)
-        else:
-            out.append(line)
-    return "\n".join(out)
+def base_body_cleaner(line: str) -> str:
+    line.replace("## **", "").replace("##", "").replace("**", "").strip()
+    return line
 
 
-def replace_from_dict(text: str, replacements: dict[str, str]) -> str:
-    for bad, good in replacements.items():
-        text = text.replace(bad, good)
-    return text
+# splitters
+def split_on_bracketed_num(text: str) -> list[str]:
+    split_text = re.split(r"\n(?=- \(\d+\))", text)
+    return split_text
 
 
-# used in DBROA
-ROMAN = r"(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)"
-LETTER = r"[a-z]"
-ENUM_ALONE = re.compile(rf"^(?:{LETTER}|{ROMAN})\.$", re.IGNORECASE)
-ENUM_WITH_TEXT = re.compile(rf"^(?:{LETTER}|{ROMAN})\.\s+\S", re.IGNORECASE)
+def split_on_bracketed_letter(text: str) -> list[str]:
+    split_text = re.split(r"\n(?=- \([A-Z]*\))", text)
+    return split_text
 
 
-def _rebuild_body(cell: str) -> str:
-    segments = [s.strip() for s in cell.split("<br>") if s.strip()]
-    lines: list[str] = []
-    buffer = ""
-    depth = 0
-    in_list = False
-
-    def flush() -> None:
-        nonlocal buffer, depth
-        if not buffer:
-            return
-        if in_list:
-            if lines:
-                lines.append("")
-            lines.append(f"{'   ' * depth}- {buffer.strip()}")
-        else:
-            lines.append(buffer.strip())
-        if buffer.rstrip().endswith("—"):
-            depth += 1
-        buffer = ""
-
-    for seg in segments:
-        seg = seg.replace("**", "")
-        if ENUM_ALONE.match(seg) or ENUM_WITH_TEXT.match(seg):
-            flush()
-            buffer = seg
-            in_list = True
-        else:
-            buffer = f"{buffer} {seg}".strip() if buffer else seg
-    flush()
-    return "\n".join(lines)
+# definition line matchers
+def base_def_line(line: str) -> bool:
+    return in_line(line, ['- **"', '## **"']) or starts_with(line, ['**"'])
 
 
-def flatten_schedule_table(text: str) -> str:
-    out_lines: list[str] = []
-    for line in text.splitlines():
-        if not line.startswith("|"):
-            out_lines.append(line)
-            continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) < 2:
-            continue
-        item, body = cells[0], cells[1]
-        if set(item) <= set("-") or set(body) <= set("-"):
-            continue  # separator row
-        if item.strip("*") == "Item":
-            continue  # repeated header row (page break)
-        if out_lines and out_lines[-1].strip() != "":
-            out_lines.append("")
-        out_lines.append(f"{item} {_rebuild_body(body)}")
-    return "\n".join(out_lines)
+def base_double_def_line(segs: list[str]) -> bool:
+    return len(segs) == 5 and segs[2].strip() in ("or", "and")
+
+
+def base_false_double_def(segs: list[str]) -> bool:
+    return len(segs) == 5 and segs[2].strip() != "or"

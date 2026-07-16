@@ -71,6 +71,21 @@ def check_for_scope_end(tools: ToolBelt, line: str) -> bool:
     return False
 
 
+def normalise_serial_new_lines(lines: list[str]) -> list[str]:
+    previous_line = ""
+    kept_lines = []
+    for i, line in enumerate(lines):
+        if i == 0:
+            previous_line = line
+            kept_lines.append(line)
+        else:
+            if not previous_line.strip() and not line.strip():
+                continue
+            kept_lines.append(line)
+            previous_line = line
+    return kept_lines
+
+
 def build_output(chunk_lines: list[str], definition_lines: list[str]) -> CleanOutPut:
     output = CleanOutPut(chunk_lines=chunk_lines, definition_lines=definition_lines)
     return output
@@ -88,13 +103,18 @@ def load_clean_md(tools: ToolBelt) -> CleanOutPut:
     for line in md_lines:
         if check_for_scope_start(tools, in_scope, line):
             in_scope = True
+
+        def_idx_buffer = def_idx
         in_definition_section, def_idx = check_if_in_definitions_section(
             tools, in_definition_section, def_idx, line
         )
+        belongs_to_definitions = in_definition_section or def_idx != def_idx_buffer
+
         if check_for_scope_end(tools, line):
+            (definition_lines if belongs_to_definitions else chunk_lines).append(line)
             break
         if in_scope:
-            (definition_lines if in_definition_section else chunk_lines).append(line)
+            (definition_lines if belongs_to_definitions else chunk_lines).append(line)
     else:
         logger.warning("no end line detected")
 
@@ -113,8 +133,10 @@ def load_clean_md(tools: ToolBelt) -> CleanOutPut:
             len(tools.definition_tools.section_markers),
         )
 
+    chunk_lines = normalise_serial_new_lines(chunk_lines)
+    definition_lines = normalise_serial_new_lines(definition_lines)
     output = build_output(chunk_lines, definition_lines)
 
-    logger.info("Extraction to md complete.")
+    logger.info("[%s] Extracted to md.", tools.document)
 
     return output
