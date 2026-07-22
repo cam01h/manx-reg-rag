@@ -11,11 +11,21 @@ def pdf_to_clean_md(tools: ToolBelt) -> list[str]:
     logger.info("Loading [%s] to md", tools.document)
     try:
         md = cast(
-            str, pymupdf4llm.to_markdown(tools.pdf_path, header=False, footer=False)
+            str,
+            pymupdf4llm.to_markdown(
+                tools.pdf_path, header=False, footer=False, use_ocr=tools.use_ocr
+            ),
         )
     except Exception:
         logger.exception("failed pymupdf4llm conversion")
         raise
+    if tools.pdf_handlers is not None:
+        for i, hanldler in enumerate(tools.pdf_handlers):
+            try:
+                hanldler(tools.pdf_path)
+            except:
+                logger.critical("failed to complete pdf_handler idx[%d]", i)
+                raise
     md = tools.clean_text(md)
     md_lines = md.splitlines()
     return md_lines
@@ -66,7 +76,7 @@ def check_if_in_definitions_section(
 
 def check_for_scope_end(tools: ToolBelt, line: str) -> bool:
     if tools.trimmer.end(line):
-        logger.info("detected final line: [%s]", line)
+        logger.debug("detected final line: [%s]", line)
         return True
     return False
 
@@ -135,6 +145,8 @@ def load_clean_md(tools: ToolBelt) -> CleanOutPut:
 
     chunk_lines = normalise_serial_new_lines(chunk_lines)
     definition_lines = normalise_serial_new_lines(definition_lines)
+    logger.info("[%d] definition lines found", len(definition_lines))
+    logger.info("[%d] chunk lines found", len(chunk_lines))
     output = build_output(chunk_lines, definition_lines)
 
     logger.info("[%s] Extracted to md.", tools.document)

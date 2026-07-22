@@ -1,8 +1,9 @@
 import logging
+import hashlib
 from dataclasses import replace
 from typing import Callable
 from extraction_ops.models import Chunk, ToolBelt
-from config import MAX_CHUNK_CHAR, MIN_CHUNK_CHAR, TARGET_CHUNK_CHAR, DELETE_LEN
+from config import MAX_CHUNK_CHAR, MIN_CHUNK_CHAR, TARGET_CHUNK_CHAR
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,6 @@ def extract_to_chunks(tools: ToolBelt, lines: list[str]) -> list[Chunk]:
             hierarchy=tools.hierarchy,
             headers=[tools.clean_header(h) for h in headers],
             body=tools.clean_body(body),
-            usage_note_ids=[],  # TODO: add
         )
         return current_chunk
 
@@ -56,7 +56,7 @@ def _split_one_chunk(
 ) -> list[Chunk]:
     if len(chunk.body) < MAX_CHUNK_CHAR:
         return [chunk]
-    # TODO: use fallback splitter at splitters.fallback()
+    # TODO: use fallback splitter to preserve the intro to a list
     segments = splitter(chunk.body)
     if len(segments) == 1:
         if len(chunk.body) > MAX_CHUNK_CHAR:
@@ -150,11 +150,11 @@ def re_pack_undersized_chunks(chunks: list[Chunk]) -> list[Chunk]:
     return checked_chunks
 
 
-def filter_chunks(chunks: list[Chunk]) -> list[Chunk]:
+def filter_chunks(chunks: list[Chunk], min_len: int) -> list[Chunk]:
     filtered_chunks = []
     deleted_chunks = []
     for c in chunks:
-        if len(c.body) >= DELETE_LEN:
+        if len(c.body) >= min_len:
             filtered_chunks.append(c)
         else:
             deleted_chunks.append(c)
@@ -164,9 +164,24 @@ def filter_chunks(chunks: list[Chunk]) -> list[Chunk]:
     return filtered_chunks
 
 
+def get_body_hash(body: str) -> str:
+    return hashlib.sha1(body.encode()).hexdigest()[:16]
+
+
+def assign_chunk_ids(chunks: list[Chunk]) -> list[Chunk]:
+    return [
+        replace(
+            c,
+            chunk_id=f"{c.document}, {', '.join(c.headers)} - {get_body_hash(c.body)}",
+        )
+        for c in chunks
+    ]
+
+
 def normalise_chunk_size(chunks: list[Chunk], tools: ToolBelt) -> list[Chunk]:
     chunks = re_pack_oversized_chunks(chunks, tools.re_pack_splitters.primary, False)
     chunks = re_pack_oversized_chunks(chunks, tools.re_pack_splitters.fallback, True)
     chunks = re_pack_undersized_chunks(chunks)
-    chunks = filter_chunks(chunks)
+    chunks = filter_chunks(chunks, tools.min_body_len)
+    chunks = assign_chunk_ids(chunks)
     return chunks

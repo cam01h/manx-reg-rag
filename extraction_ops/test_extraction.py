@@ -4,9 +4,11 @@ import difflib
 import httpx
 from typing import cast
 from pathlib import Path
-from extraction_ops.models import ToolBelt
-from extraction_ops.specs.aml_code import AmlCode
+from .models import ToolBelt
 from .load_to_md import check_for_scope_start, load_clean_md, check_for_scope_end
+
+# from .toolbelts.aml_code import AmlCode
+from .toolbelts.aml_handbook.aml_handbook import AmlHandbook
 from config import CLEAN_MD, CHUNKS_MD, DEFINITIONS_MD, TRIMMED_MD
 
 
@@ -49,7 +51,19 @@ def get_pdf_from_url(tools: ToolBelt) -> None:
 
 
 def load_md(tools: ToolBelt) -> str:
-    md = cast(str, pymupdf4llm.to_markdown(tools.pdf_path, header=False, footer=False))
+    md = cast(
+        str,
+        pymupdf4llm.to_markdown(
+            tools.pdf_path, header=False, footer=False, use_ocr=tools.use_ocr
+        ),
+    )
+    if tools.pdf_handlers is not None:
+        for hanldler in tools.pdf_handlers:
+            try:
+                hanldler(tools.pdf_path)
+            except:
+                print("failed to complete pdf_handler")
+                raise
     return md
 
 
@@ -82,8 +96,8 @@ def trim_md(md, tools: ToolBelt) -> list[str]:
 if __name__ == "__main__":
     # comment out all but one for testing
     docs = [
-        AmlCode,
-        # AmlHandbook,
+        # AmlCode,
+        AmlHandbook,
         # SupplementalInformation,
         # Poca,
         # TerrorismAndCrime,
@@ -94,7 +108,7 @@ if __name__ == "__main__":
         # SanctionsAct
     ]
     for doc in docs:
-        # get_pdf_from_url(doc)
+        get_pdf_from_url(doc)
         md = load_md(doc)
         clean_md = doc.clean_text(md)
         # test_regex(md)

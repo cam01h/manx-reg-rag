@@ -24,7 +24,6 @@ def extract_to_definitions(toolbelt: ToolBelt, lines: list[str]) -> list[Definit
             for term in pending_terms:
                 defined_term = Definition(
                     document=toolbelt.document,
-                    scope=tools.definition_scope,
                     term=term,
                     definition=pending_text,
                 )
@@ -43,6 +42,7 @@ def extract_to_definitions(toolbelt: ToolBelt, lines: list[str]) -> list[Definit
                 pending_text = def_line[2]
             elif len(def_line) == 5:
                 if tools.is_double_def_line(def_line):
+                    # "term1" or "terms" should mean....
                     pending_terms.append(def_line[1])
                     pending_terms.append(def_line[3])
                     pending_text = def_line[4]

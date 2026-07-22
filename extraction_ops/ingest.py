@@ -1,8 +1,8 @@
 from dataclasses import asdict
 import json
 import httpx
-
-from extraction_ops.specs.aml_code import AmlCode
+from extraction_ops.toolbelts.aml_code import AmlCode
+from extraction_ops.toolbelts.aml_handbook.aml_handbook import AmlHandbook
 from .load_to_md import load_clean_md
 from .models import ToolBelt
 from .chunking import extract_to_chunks, normalise_chunk_size
@@ -43,7 +43,10 @@ def get_pdf_from_url(tools: ToolBelt) -> None:
 
 if __name__ == "__main__":
     setup_logging("ingest")
-    docs = [AmlCode]
+    docs = [
+        # AmlCode,
+        AmlHandbook
+    ]
     all_chunks = []
     all_definitions = []
     for doc in docs:

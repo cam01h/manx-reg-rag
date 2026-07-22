@@ -1,6 +1,19 @@
 import re
 
 
+# helpers
+def replace_from_dict(text: str, replacements: dict[str, str]) -> str:
+    for bad, good in replacements.items():
+        text = text.replace(bad, good)
+    return text
+
+
+def strip_patterns(text: str, patterns: list[str]) -> str:
+    for pattern in patterns:
+        text = re.sub(pattern, "", text)
+    return text
+
+
 # line -> bool
 def in_line(line: str, strings: list[str]) -> bool:
     for string in strings:
@@ -30,8 +43,20 @@ def base_header_cleaner(header: str) -> str:
 
 
 def base_body_cleaner(line: str) -> str:
-    line.replace("## **", "").replace("##", "").replace("**", "").strip()
+    line = line.replace("## **", "").replace("##", "").replace("**", "").strip()
     return line
+
+
+def base_text_cleaner(text: str):
+    replacements = {
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u2013": "-",
+        "\u2014": "-",
+    }
+    return replace_from_dict(text, replacements)
 
 
 # splitters
@@ -41,6 +66,10 @@ def split_on_bracketed_num(text: str) -> list[str]:
 
 def split_on_bracketed_letter(text: str) -> list[str]:
     return re.split(r"\n(?=- \([a-z]+\))", text)
+
+
+def split_on_new_sentence(text: str) -> list[str]:
+    return re.split(r"(?<=[.!?])\s+(?=[A-Z])", text)
 
 
 # definition line matchers
