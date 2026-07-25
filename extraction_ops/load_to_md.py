@@ -9,6 +9,13 @@ logger = logging.getLogger(__name__)
 
 def pdf_to_clean_md(tools: ToolBelt) -> list[str]:
     logger.info("Loading [%s] to md", tools.document)
+    if tools.pdf_handlers is not None:
+        for i, hanldler in enumerate(tools.pdf_handlers):
+            try:
+                hanldler(tools.pdf_path)
+            except:
+                logger.critical("failed to complete pdf_handler idx[%d]", i)
+                raise
     try:
         md = cast(
             str,
@@ -19,13 +26,6 @@ def pdf_to_clean_md(tools: ToolBelt) -> list[str]:
     except Exception:
         logger.exception("failed pymupdf4llm conversion")
         raise
-    if tools.pdf_handlers is not None:
-        for i, hanldler in enumerate(tools.pdf_handlers):
-            try:
-                hanldler(tools.pdf_path)
-            except:
-                logger.critical("failed to complete pdf_handler idx[%d]", i)
-                raise
     md = tools.clean_text(md)
     md_lines = md.splitlines()
     return md_lines

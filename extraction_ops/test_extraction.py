@@ -9,7 +9,10 @@ from .load_to_md import check_for_scope_start, load_clean_md, check_for_scope_en
 
 # from .toolbelts.aml_code import AmlCode
 from .toolbelts.aml_handbook.aml_handbook import AmlHandbook
-from config import CLEAN_MD, CHUNKS_MD, DEFINITIONS_MD, TRIMMED_MD
+from config import CLEAN_MD, CHUNKS_MD, DEFINITIONS_MD, TRIMMED_MD, setup_logging
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def write_diff(before: Path, after: Path, write_path: Path) -> None:
@@ -51,12 +54,6 @@ def get_pdf_from_url(tools: ToolBelt) -> None:
 
 
 def load_md(tools: ToolBelt) -> str:
-    md = cast(
-        str,
-        pymupdf4llm.to_markdown(
-            tools.pdf_path, header=False, footer=False, use_ocr=tools.use_ocr
-        ),
-    )
     if tools.pdf_handlers is not None:
         for hanldler in tools.pdf_handlers:
             try:
@@ -64,6 +61,12 @@ def load_md(tools: ToolBelt) -> str:
             except:
                 print("failed to complete pdf_handler")
                 raise
+    md = cast(
+        str,
+        pymupdf4llm.to_markdown(
+            tools.pdf_path, header=False, footer=False, use_ocr=tools.use_ocr
+        ),
+    )
     return md
 
 
@@ -94,6 +97,7 @@ def trim_md(md, tools: ToolBelt) -> list[str]:
 
 
 if __name__ == "__main__":
+    setup_logging("test_extraction")
     # comment out all but one for testing
     docs = [
         # AmlCode,

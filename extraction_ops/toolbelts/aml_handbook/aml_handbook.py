@@ -1,6 +1,11 @@
 import re
 from config import project_root
-from extraction_ops.models import ChunkSplitters, SectionMarkers, ToolBelt
+from extraction_ops.models import (
+    ChunkSplitters,
+    DefinitionTools,
+    SectionMarkers,
+    ToolBelt,
+)
 from extraction_ops.toolbelts.aml_handbook.pdf_handler import (
     handbook_redact_margin_citations,
     handbook_redact_legislation_quoted,
@@ -8,6 +13,9 @@ from extraction_ops.toolbelts.aml_handbook.pdf_handler import (
 )
 from extraction_ops.toolbelts.shared_funcs import (
     base_body_cleaner,
+    base_def_line,
+    base_double_def_line,
+    base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
     split_on_new_sentence,
@@ -25,7 +33,7 @@ def re_steps(text: str) -> str:
         text,
         flags=re.MULTILINE,
     )
-    # TODO: tables and visuals should be extracted to .png with fitz, path included in metadata
+    # TODO: tables and visuals should be extracted to .png with fitz, path included in  chunk metadata
     text = re.sub(
         r"\*\*==> picture.*?intentionally omitted <==\*\*", "", text, flags=re.DOTALL
     )
@@ -37,13 +45,25 @@ def re_steps(text: str) -> str:
     )
     text = re.sub(
         r"(?:^\|.*\|[ \t]*\n?)+",
-        "[table removed from original document]\n",
+        "[table redacted from original document]\n",
         text,
         flags=re.MULTILINE,
     )
     text = strip_patterns(text, ["\n<br>", "<br>"])
     return text
 
+
+HandbookRiskDefMarker = SectionMarkers(
+    start=lambda text: text.startswith('"Risk" means'),
+    end=lambda text: text.startswith('"Mitigation" means implementing controls'),
+)
+
+HandbookDefs = DefinitionTools(
+    section_markers=[HandbookRiskDefMarker],
+    is_definition_line=base_def_line,
+    is_double_def_line=base_double_def_line,
+    is_false_dub_def=base_false_double_def,
+)
 
 HandbookTrimmer = SectionMarkers(
     start=lambda text: text.startswith("## **1. Introductory*"),
@@ -73,7 +93,7 @@ AmlHandbook = ToolBelt(
     header_matchers=[
         lambda line: bool(re.match(r"^## \*\*\d+\.\s", line)),
         lambda line: bool(re.match(r"^## \*\*\d+\.\d+\s", line)),
-        lambda line: bool(re.match(r"^## \*\*\d+(?:\.\d+){2,4}\s", line)),
+        lambda line: bool(re.match(r"^(?:## )?(?:\*\*|_)\d+(?:\.\d+){2,4}\s", line)),
         lambda line: starts_with(line, ["## _", "_"]),
     ],
     clean_header=base_header_cleaner,
