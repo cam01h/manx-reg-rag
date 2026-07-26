@@ -1,5 +1,6 @@
 import re
 from config import project_root
+import logging
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -13,15 +14,38 @@ from extraction_ops.toolbelts.aml_handbook.pdf_handler import (
 )
 from extraction_ops.toolbelts.shared_funcs import (
     base_body_cleaner,
-    base_def_line,
     base_double_def_line,
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    in_line,
+    replace_from_dict,
     split_on_new_sentence,
     starts_with,
     strip_patterns,
 )
+
+logger = logging.getLogger(__name__)
+
+REPLACEMENTS = {
+    # reshaping definition lines in 3.2
+    '## _Customer due diligence ("CDD")_': '- "Customer due diligence" or "CDD"',
+    '## _Identification and Verification ("ID&V")_': '- "Identification and Verification" or "ID&V"',
+    "## _Reasonable measures_": '- "Reasonable measures"',
+    '## _Enhanced customer due diligence ("ECDD")_': '- "Enhanced customer due diligence" or "ECDD"',
+    "## _Ongoing monitoring_": '- "Ongoing monitoring"',
+    "## _Enhanced Ongoing Monitoring_": '- "Enhanced Ongoing Monitoring"',
+    # ungluing headers from bodies
+    "provided** The FATF": "provided**\n\nThe FATF",
+    "signatories/directors** Considerations": "signatories/directors**\n\nConsiderations",
+    "party's account** Where funds": "party's account**\n\nWhere funds",
+    "source of funds** However a": "source of funds**\n\nHowever a",
+    '("PEPs") risk** Much international': '("PEPs") risk**\n\nMuch international',
+    "introducer concession** Conditions for": "introducer concession**\n\nConditions for",
+    "introducer procedures** Ensuring appropriate": "introducer procedures**\n\nEnsuring appropriate",
+    "miscellaneous concessions** As with all": "miscellaneous concessions**\n\nAs with all",
+    "other related parties** Relevant persons": "other related parties**\n\nRelevant persons",
+}
 
 
 def re_steps(text: str) -> str:
@@ -50,17 +74,32 @@ def re_steps(text: str) -> str:
         flags=re.MULTILINE,
     )
     text = strip_patterns(text, ["\n<br>", "<br>"])
+    text = replace_from_dict(text, REPLACEMENTS)
     return text
 
 
-HandbookRiskDefMarker = SectionMarkers(
-    start=lambda text: text.startswith('"Risk" means'),
-    end=lambda text: text.startswith('"Mitigation" means implementing controls'),
+HandbookRiskDefMarker221 = SectionMarkers(
+    start=lambda text: in_line(text, ['"Risk" means:']),
+    end=lambda text: in_line(text, ['"Mitigation" means implementing controls']),
+)
+
+HandbookRiskDefMarker32 = SectionMarkers(
+    start=lambda text: in_line(text, ['- "Customer due diligence"']),
+    end=lambda text: in_line(text, ["Enhanced ongoing monitoring falls"]),
+)
+
+HandbookRiskDefMarker431 = SectionMarkers(
+    start=lambda text: in_line(text, ['- "receiving regulated person" -']),
+    end=lambda text: in_line(text, ['- "underlying client" - the allowed']),
 )
 
 HandbookDefs = DefinitionTools(
-    section_markers=[HandbookRiskDefMarker],
-    is_definition_line=base_def_line,
+    section_markers=[
+        HandbookRiskDefMarker221,
+        HandbookRiskDefMarker32,
+        HandbookRiskDefMarker431,
+    ],
+    is_definition_line=lambda line: line.startswith('"'),
     is_double_def_line=base_double_def_line,
     is_false_dub_def=base_false_double_def,
 )
@@ -86,13 +125,13 @@ AmlHandbook = ToolBelt(
         handbook_redact_margin_citations,
         handbook_redact_legislation_quoted,
     ],
-    definition_tools=None,
+    definition_tools=HandbookDefs,
     clean_text=re_steps,
     trimmer=HandbookTrimmer,
     re_pack_splitters=HandbookSplitters,
     header_matchers=[
         lambda line: bool(re.match(r"^## \*\*\d+\.\s", line)),
-        lambda line: bool(re.match(r"^## \*\*\d+\.\d+\s", line)),
+        lambda line: bool(re.match(r"^(?:## |- )\*\*\d+\.\d+\s", line)),
         lambda line: bool(re.match(r"^(?:## )?(?:\*\*|_)\d+(?:\.\d+){2,4}\s", line)),
         lambda line: starts_with(line, ["## _", "_"]),
     ],

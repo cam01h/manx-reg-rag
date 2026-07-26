@@ -9,13 +9,6 @@ logger = logging.getLogger(__name__)
 
 def pdf_to_clean_md(tools: ToolBelt) -> list[str]:
     logger.info("Loading [%s] to md", tools.document)
-    if tools.pdf_handlers is not None:
-        for i, hanldler in enumerate(tools.pdf_handlers):
-            try:
-                hanldler(tools.pdf_path)
-            except:
-                logger.critical("failed to complete pdf_handler idx[%d]", i)
-                raise
     try:
         md = cast(
             str,
@@ -29,6 +22,16 @@ def pdf_to_clean_md(tools: ToolBelt) -> list[str]:
     md = tools.clean_text(md)
     md_lines = md.splitlines()
     return md_lines
+
+
+def apply_pdf_handlers(tools: ToolBelt) -> None:
+    if tools.pdf_handlers is not None:
+        for i, hanldler in enumerate(tools.pdf_handlers):
+            try:
+                hanldler(tools.pdf_path)
+            except:
+                logger.critical("failed to complete pdf_handler idx[%d]", i)
+                raise
 
 
 def check_for_scope_start(tools: ToolBelt, in_scope: bool, line: str) -> bool:
@@ -102,6 +105,7 @@ def build_output(chunk_lines: list[str], definition_lines: list[str]) -> CleanOu
 
 
 def load_clean_md(tools: ToolBelt) -> CleanOutPut:
+    apply_pdf_handlers(tools)
     md_lines = pdf_to_clean_md(tools)
     chunk_lines = []
     definition_lines = []

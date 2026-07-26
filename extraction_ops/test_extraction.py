@@ -5,7 +5,13 @@ import httpx
 from typing import cast
 from pathlib import Path
 from .models import ToolBelt
-from .load_to_md import check_for_scope_start, load_clean_md, check_for_scope_end
+from .load_to_md import (
+    apply_pdf_handlers,
+    check_for_scope_start,
+    load_clean_md,
+    check_for_scope_end,
+    pdf_to_clean_md,
+)
 
 # from .toolbelts.aml_code import AmlCode
 from .toolbelts.aml_handbook.aml_handbook import AmlHandbook
@@ -81,8 +87,7 @@ def test_regex(md: str):
         print(line)
 
 
-def trim_md(md, tools: ToolBelt) -> list[str]:
-    md_lines = md.splitlines()
+def trim_md(md_lines: list[str], tools: ToolBelt) -> list[str]:
     kept_lines = []
     in_scope = False
     for line in md_lines:
@@ -113,11 +118,12 @@ if __name__ == "__main__":
     ]
     for doc in docs:
         get_pdf_from_url(doc)
-        md = load_md(doc)
-        clean_md = doc.clean_text(md)
+        apply_pdf_handlers(doc)
+        md_lines = pdf_to_clean_md(doc)
+        clean_md = "\n".join(md_lines)
         # test_regex(md)
         CLEAN_MD.write_text(clean_md)
-        trimmed_md_lines = trim_md(clean_md, doc)
+        trimmed_md_lines = trim_md(md_lines, doc)
         TRIMMED_MD.write_text("\n".join(trimmed_md_lines))
         output = load_clean_md(doc)
         CHUNKS_MD.write_text("\n".join(output.chunk_lines))
