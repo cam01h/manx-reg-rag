@@ -1,16 +1,15 @@
-import pymupdf4llm
 import re
 import difflib
-import httpx
-from typing import cast
 from pathlib import Path
 from .models import ToolBelt
 from .load_to_md import (
     apply_pdf_handlers,
     check_for_scope_start,
+    clean_md_to_lines,
+    get_pdf_from_url,
     load_clean_md,
     check_for_scope_end,
-    pdf_to_clean_md,
+    pdf_to_md,
 )
 
 # from .toolbelts.aml_code import AmlCode
@@ -33,47 +32,6 @@ def write_diff(before: Path, after: Path, write_path: Path) -> None:
     )
 
     write_path.write_text("\n---\n".join(diff))
-
-
-def get_pdf_from_url(tools: ToolBelt) -> None:
-    print(f"downloading pdf: [{tools.document}]")
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
-        }
-        response = httpx.get(
-            url=tools.input_url, timeout=20, follow_redirects=True, headers=headers
-        )
-        response.raise_for_status()
-    except httpx.HTTPError:
-        print("download fail")
-        raise
-    if not response.content.startswith(b"%PDF"):
-        print("empty file downloaded")
-        raise ValueError(f"{tools.document} did not return a pdf")
-    try:
-        with open(tools.pdf_path, "wb") as f:
-            f.write(response.content)
-        print("pdf downloaded")
-    except Exception:
-        raise
-
-
-def load_md(tools: ToolBelt) -> str:
-    if tools.pdf_handlers is not None:
-        for hanldler in tools.pdf_handlers:
-            try:
-                hanldler(tools.pdf_path)
-            except:
-                print("failed to complete pdf_handler")
-                raise
-    md = cast(
-        str,
-        pymupdf4llm.to_markdown(
-            tools.pdf_path, header=False, footer=False, use_ocr=tools.use_ocr
-        ),
-    )
-    return md
 
 
 def test_regex(md: str):
@@ -101,6 +59,32 @@ def trim_md(md_lines: list[str], tools: ToolBelt) -> list[str]:
     return kept_lines
 
 
+def ready_pdf(tools: ToolBelt) -> None:
+    get_pdf_from_url(tools)
+    apply_pdf_handlers(tools)
+
+
+def write_clean_and_trimmed(tools: ToolBelt) -> None:
+    ready_pdf(tools)
+    md = pdf_to_md(tools)
+    md_lines = clean_md_to_lines(tools, md)
+    clean_md = "\n".join(md_lines)
+    # test_regex(md)
+    CLEAN_MD.write_text(clean_md)
+    logger.info("[%s]: clean.md written", tools.document)
+    trimmed_md_lines = trim_md(md_lines, doc)
+    TRIMMED_MD.write_text("\n".join(trimmed_md_lines))
+    logger.info("[%s]: trimmed.md written", tools.document)
+
+
+def write_chunks_and_defs(tools: ToolBelt) -> None:
+    output = load_clean_md(tools)
+    CHUNKS_MD.write_text("\n".join(output.chunk_lines))
+    logger.info("[%s]: chunks.md written", tools.document)
+    DEFINITIONS_MD.write_text("\n".join(output.definition_lines))
+    logger.info("[%s]: definitions.md written", tools.document)
+
+
 if __name__ == "__main__":
     setup_logging("test_extraction")
     # comment out all but one for testing
@@ -117,14 +101,5 @@ if __name__ == "__main__":
         # SanctionsAct
     ]
     for doc in docs:
-        get_pdf_from_url(doc)
-        apply_pdf_handlers(doc)
-        md_lines = pdf_to_clean_md(doc)
-        clean_md = "\n".join(md_lines)
-        # test_regex(md)
-        CLEAN_MD.write_text(clean_md)
-        trimmed_md_lines = trim_md(md_lines, doc)
-        TRIMMED_MD.write_text("\n".join(trimmed_md_lines))
-        output = load_clean_md(doc)
-        CHUNKS_MD.write_text("\n".join(output.chunk_lines))
-        DEFINITIONS_MD.write_text("\n".join(output.definition_lines))
+        # write_clean_and_trimmed(doc)
+        write_chunks_and_defs(doc)

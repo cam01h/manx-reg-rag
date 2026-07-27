@@ -29,12 +29,12 @@ logger = logging.getLogger(__name__)
 
 REPLACEMENTS = {
     # reshaping definition lines in 3.2
-    '## _Customer due diligence ("CDD")_': '- "Customer due diligence" or "CDD"',
-    '## _Identification and Verification ("ID&V")_': '- "Identification and Verification" or "ID&V"',
-    "## _Reasonable measures_": '- "Reasonable measures"',
-    '## _Enhanced customer due diligence ("ECDD")_': '- "Enhanced customer due diligence" or "ECDD"',
-    "## _Ongoing monitoring_": '- "Ongoing monitoring"',
-    "## _Enhanced Ongoing Monitoring_": '- "Enhanced Ongoing Monitoring"',
+    '_Customer due diligence ("CDD")_': '\n- "Customer due diligence" or "CDD" ',
+    '_Identification and Verification ("ID&V")_': '- "Identification and Verification" or "ID&V"',
+    "_Reasonable measures_": '- "Reasonable measures"',
+    '_Enhanced customer due diligence ("ECDD")_': '- "Enhanced customer due diligence" or "ECDD"',
+    "_Ongoing monitoring_": '- "Ongoing monitoring"',
+    "_Enhanced Ongoing Monitoring_": '- "Enhanced Ongoing Monitoring"',
     # ungluing headers from bodies
     "provided** The FATF": "provided**\n\nThe FATF",
     "signatories/directors** Considerations": "signatories/directors**\n\nConsiderations",
@@ -45,6 +45,9 @@ REPLACEMENTS = {
     "introducer procedures** Ensuring appropriate": "introducer procedures**\n\nEnsuring appropriate",
     "miscellaneous concessions** As with all": "miscellaneous concessions**\n\nAs with all",
     "other related parties** Relevant persons": "other related parties**\n\nRelevant persons",
+    "and address** In order to": "and address**\n\nIn order to",
+    "and Arrangements_ Additional requirements": "and Arrangements_\n\nAdditional requirements",
+    "CDD requirements_ Certain CDD": "CDD requirements_\n\nCertain CDD",
 }
 
 
@@ -99,7 +102,7 @@ HandbookDefs = DefinitionTools(
         HandbookRiskDefMarker32,
         HandbookRiskDefMarker431,
     ],
-    is_definition_line=lambda line: line.startswith('"'),
+    is_definition_line=starts_with(['"', '## - "', '- "']),
     is_double_def_line=base_double_def_line,
     is_false_dub_def=base_false_double_def,
 )
@@ -133,7 +136,7 @@ AmlHandbook = ToolBelt(
         lambda line: bool(re.match(r"^## \*\*\d+\.\s", line)),
         lambda line: bool(re.match(r"^(?:## |- )\*\*\d+\.\d+\s", line)),
         lambda line: bool(re.match(r"^(?:## )?(?:\*\*|_)\d+(?:\.\d+){2,4}\s", line)),
-        lambda line: starts_with(line, ["## _", "_"]),
+        starts_with(["## _", "_"]),
     ],
     clean_header=base_header_cleaner,
     clean_body=base_body_cleaner,

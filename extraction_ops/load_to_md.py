@@ -1,5 +1,6 @@
 import pymupdf4llm
 from typing import cast
+import httpx
 from .models import CleanOutPut, ToolBelt
 import logging
 
@@ -7,7 +8,31 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def pdf_to_clean_md(tools: ToolBelt) -> list[str]:
+def get_pdf_from_url(tools: ToolBelt) -> None:
+    logger.info("downloading [%s]", tools.document)
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+        }
+        response = httpx.get(
+            url=tools.input_url, timeout=20, follow_redirects=True, headers=headers
+        )
+        response.raise_for_status()
+    except httpx.HTTPError:
+        logger.exception("failed httpx request for [%s]", tools.document)
+        raise
+    if not response.content.startswith(b"%PDF"):
+        logger.critical("[%s] did not return a pdf", tools.document)
+        raise ValueError(f"{tools.document} did not return a pdf")
+    try:
+        with open(tools.pdf_path, "wb") as f:
+            f.write(response.content)
+    except Exception:
+        logger.exception("failed to write pdf to [%s]", tools.pdf_path)
+        raise
+
+
+def pdf_to_md(tools: ToolBelt) -> str:
     logger.info("Loading [%s] to md", tools.document)
     try:
         md = cast(
@@ -19,9 +44,12 @@ def pdf_to_clean_md(tools: ToolBelt) -> list[str]:
     except Exception:
         logger.exception("failed pymupdf4llm conversion")
         raise
+    return md
+
+
+def clean_md_to_lines(tools: ToolBelt, md: str) -> list[str]:
     md = tools.clean_text(md)
-    md_lines = md.splitlines()
-    return md_lines
+    return md.splitlines()
 
 
 def apply_pdf_handlers(tools: ToolBelt) -> None:
@@ -105,8 +133,10 @@ def build_output(chunk_lines: list[str], definition_lines: list[str]) -> CleanOu
 
 
 def load_clean_md(tools: ToolBelt) -> CleanOutPut:
+    get_pdf_from_url(tools)
     apply_pdf_handlers(tools)
-    md_lines = pdf_to_clean_md(tools)
+    md = pdf_to_md(tools)
+    md_lines = clean_md_to_lines(tools, md)
     chunk_lines = []
     definition_lines = []
 

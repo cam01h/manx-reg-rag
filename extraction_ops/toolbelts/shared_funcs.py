@@ -1,4 +1,5 @@
 import re
+from typing import Callable
 
 
 # helpers
@@ -22,11 +23,11 @@ def in_line(line: str, strings: list[str]) -> bool:
     return False
 
 
-def starts_with(line: str, strings: list[str]) -> bool:
-    for string in strings:
-        if line.startswith(string):
-            return True
-    return False
+def starts_with(strings: list[str]) -> Callable[[str], bool]:
+    def inner(line: str) -> bool:
+        return any(line.startswith(s) for s in strings)
+
+    return inner
 
 
 # text cleaners
@@ -39,11 +40,18 @@ def base_header_cleaner(header: str) -> str:
         .replace("_", "")
         .strip()
     )
-    return header
+    # lstrip added for handbook, extract to custom if it affects other docs
+    return header.lstrip("- ")
 
 
 def base_body_cleaner(line: str) -> str:
-    line = line.replace("## **", "").replace("##", "").replace("**", "").strip()
+    line = (
+        line.replace("## **", "")
+        .replace("##", "")
+        .replace("**", "")
+        .replace("_", "")
+        .strip()
+    )
     return line
 
 
@@ -74,7 +82,7 @@ def split_on_new_sentence(text: str) -> list[str]:
 
 # definition line matchers
 def base_def_line(line: str) -> bool:
-    return in_line(line, ['- **"', '## **"']) or starts_with(line, ['**"'])
+    return in_line(line, ['- **"', '## **"']) or line.startswith('**"')
 
 
 def base_double_def_line(segs: list[str]) -> bool:

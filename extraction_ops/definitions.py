@@ -21,11 +21,12 @@ def extract_to_definitions(toolbelt: ToolBelt, lines: list[str]) -> list[Definit
     def flush():
         nonlocal pending_text
         if pending_text and pending_terms:
+            cleaned_text = pending_text.strip()
             for term in pending_terms:
                 defined_term = Definition(
                     document=toolbelt.document,
                     term=term,
-                    definition=pending_text,
+                    definition=cleaned_text,
                 )
                 definitions.append(defined_term)
         pending_terms.clear()

@@ -35,6 +35,7 @@ def _is_margin_citation(text: str, x1: float, size: float) -> bool:
 
 
 def handbook_redact_margin_citations(path: Path) -> None:
+    logger.info("Redacting margin citations")
     doc = fitz.open(path)
     for page in doc:
         page_dict = cast(dict[str, Any], page.get_text("dict"))
@@ -55,7 +56,7 @@ def handbook_redact_margin_citations(path: Path) -> None:
             page.add_redact_annot(rect)
         if rects:
             page.apply_redactions()
-            logger.info("[%d] margin quotes redacted", len(rects))
+            logger.debug("[%d] margin quotes redacted", len(rects))
 
     tmp_path = path.with_suffix(".tmp.pdf")
     doc.save(tmp_path, garbage=4, deflate=True)
@@ -97,6 +98,7 @@ def _is_quote_match(drawing: dict[str, Any]) -> bool:
 
 
 def handbook_redact_legislation_quoted(path: Path) -> None:
+    logger.info("Redacting Code quotes in the handbook")
     doc = fitz.open(path)
     for page in doc:
         quotes_for_redaction = []
@@ -108,7 +110,7 @@ def handbook_redact_legislation_quoted(path: Path) -> None:
             page.add_redact_annot(quote)
         if quotes_for_redaction:
             page.apply_redactions()
-            logger.info("[%d] quotations redacted", len(quotes_for_redaction))
+            logger.debug("[%d] quotations redacted", len(quotes_for_redaction))
 
     tmp_path = path.with_suffix(".tmp.pdf")
     doc.save(tmp_path, garbage=4, deflate=True)
@@ -122,6 +124,7 @@ DIVIDER_MAX_LENGTH = 200  # in chars
 
 
 def handbook_remove_cover_and_dividers(path: Path) -> None:
+    logger.info("Redacting handbook cover pages and dividers")
     doc = fitz.open(path)
     to_delete = [0] + [
         p

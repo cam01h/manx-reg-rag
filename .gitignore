@@ -9,14 +9,10 @@ wheels/
 # Virtual environments
 .venv
 
-data/raw/       # large files
+data/raw/
 data/processed/
-data/qdrant/    # planned for vector db
+data/qdrant/
 /tests
 /.env
-/data/qdrant/collection/manx-reg-rag-db/storage.sqlite
-/data/raw/custom/poca.pdf
 /logs
-/logs
-/logs
-/logs/embedding-2026-06-16.log
+/data/raw/custom
