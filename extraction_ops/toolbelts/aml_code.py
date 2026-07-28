@@ -1,5 +1,5 @@
 import re
-from config import project_root
+from config import PROJECT_ROOT
 from extraction_ops.models import (
     DefinitionTools,
     ToolBelt,
@@ -57,7 +57,7 @@ AmlCode = ToolBelt(
     document="The AML Code 2019",
     hierarchy="secondary legislation",
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0202/2019-0202_2.pdf",
-    pdf_path=project_root / "data/raw/custom/the_aml_code_2019.pdf",
+    pdf_path=PROJECT_ROOT / "data/raw/custom/the_aml_code_2019.pdf",
     use_ocr=True,
     pdf_handlers=None,
     trimmer=AmlCodeTrimmer,
