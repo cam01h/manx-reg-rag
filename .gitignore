@@ -12,7 +12,6 @@ wheels/
 data/raw/
 data/processed/
 data/qdrant/
-/tests
 /.env
 /logs
 /data/raw/custom

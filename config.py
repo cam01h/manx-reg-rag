@@ -7,18 +7,18 @@ import os
 # ==========
 # file paths
 # ==========
-project_root = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent
 # Intermediate
-CHUNKS_JSONL_PATH = project_root / "data/processed/chunks.jsonl"
-DEFINITIONS_JSONL_PATH = project_root / "data/processed/definitions.jsonl"
+CHUNKS_JSONL_PATH = PROJECT_ROOT / "data/processed/chunks.jsonl"
+DEFINITIONS_JSONL_PATH = PROJECT_ROOT / "data/processed/definitions.jsonl"
 # db path
-DB_PATH = project_root / "data/qdrant"
+DB_PATH = PROJECT_ROOT / "data/qdrant"
 # Testing
-CLEAN_MD = project_root / "tests/clean.md"
-TRIMMED_MD = project_root / "tests/trimmed.md"
-CHUNKS_MD = project_root / "tests/chunks.md"
-DEFINITIONS_MD = project_root / "tests/definitions.md"
-REGEX_TEST = project_root / "tests/regex_test.md"
+CLEAN_MD = PROJECT_ROOT / "tests/clean.md"
+TRIMMED_MD = PROJECT_ROOT / "tests/trimmed.md"
+CHUNKS_MD = PROJECT_ROOT / "tests/chunks.md"
+DEFINITIONS_MD = PROJECT_ROOT / "tests/definitions.md"
+REGEX_TEST = PROJECT_ROOT / "tests/regex_test.md"
 
 # =========
 # Chunks
@@ -81,7 +81,7 @@ def get_embedding_dim(embedding_model):
 def setup_logging(entry_point: str) -> None:
     date = dt.datetime.today()
     logfile = (
-        project_root
+        PROJECT_ROOT
         / f"logs/{entry_point}-{date.year}-{date.month:02d}-{date.day:02d}.log"
     )
     logfile.parent.mkdir(exist_ok=True)

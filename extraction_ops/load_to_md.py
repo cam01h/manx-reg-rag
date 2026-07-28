@@ -1,3 +1,4 @@
+from pathlib import Path
 import pymupdf4llm
 from typing import cast
 import httpx
@@ -8,27 +9,27 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_pdf_from_url(tools: ToolBelt) -> None:
-    logger.info("downloading [%s]", tools.document)
+def get_pdf_from_url(doc: str, url: str, path: Path) -> None:
+    logger.info("downloading [%s]", doc)
     try:
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
         }
         response = httpx.get(
-            url=tools.input_url, timeout=20, follow_redirects=True, headers=headers
+            url=url, timeout=20, follow_redirects=True, headers=headers
         )
         response.raise_for_status()
     except httpx.HTTPError:
-        logger.exception("failed httpx request for [%s]", tools.document)
+        logger.exception("failed httpx request for [%s]", doc)
         raise
     if not response.content.startswith(b"%PDF"):
-        logger.critical("[%s] did not return a pdf", tools.document)
-        raise ValueError(f"{tools.document} did not return a pdf")
+        logger.critical("[%s] did not return a pdf", doc)
+        raise ValueError(f"{doc} did not return a pdf")
     try:
-        with open(tools.pdf_path, "wb") as f:
+        with open(path, "wb") as f:
             f.write(response.content)
     except Exception:
-        logger.exception("failed to write pdf to [%s]", tools.pdf_path)
+        logger.exception("failed to write pdf to [%s]", path)
         raise
 
 
@@ -133,7 +134,7 @@ def build_output(chunk_lines: list[str], definition_lines: list[str]) -> CleanOu
 
 
 def load_clean_md(tools: ToolBelt) -> CleanOutPut:
-    get_pdf_from_url(tools)
+    get_pdf_from_url(tools.document, tools.input_url, tools.pdf_path)
     apply_pdf_handlers(tools)
     md = pdf_to_md(tools)
     md_lines = clean_md_to_lines(tools, md)
