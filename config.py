@@ -14,7 +14,7 @@ DEFINITIONS_JSONL_PATH = PROJECT_ROOT / "data/processed/definitions.jsonl"
 # db path
 DB_PATH = PROJECT_ROOT / "data/qdrant"
 # Testing
-CLEAN_MD = PROJECT_ROOT / "tests/clean.md"
+EXTRACTION_OPS_TEST_DATA = PROJECT_ROOT / "tests/extraction_ops/diagnostics/data"
 TRIMMED_MD = PROJECT_ROOT / "tests/trimmed.md"
 CHUNKS_MD = PROJECT_ROOT / "tests/chunks.md"
 DEFINITIONS_MD = PROJECT_ROOT / "tests/definitions.md"

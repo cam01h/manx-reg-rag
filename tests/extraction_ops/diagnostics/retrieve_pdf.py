@@ -1,23 +1,95 @@
 import argparse
-from config import PROJECT_ROOT, setup_logging
+from pathlib import Path
+from config import EXTRACTION_OPS_TEST_DATA, setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
 from extraction_ops.load_to_md import get_pdf_from_url
 import logging
+import fitz
+import hashlib
+import sys
 
-logger = logging.getLogger("__name__")
+from extraction_ops.models import ToolBelt
+
+logger = logging.getLogger(__name__)
+
+
+def _get_pdf_contents(path: Path) -> str:
+    text_lines = []
+    with fitz.open(path) as doc:
+        for page in doc:
+            text_lines.append(page.get_text())
+    return "".join(text_lines)
+
+
+def _hash_string(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def get_text_hash(path: Path) -> str:
+    text = _get_pdf_contents(path)
+    return _hash_string(text)
+
+
+def _write_test(tools: ToolBelt, doc: str) -> None:
+    path = EXTRACTION_OPS_TEST_DATA / f"raw_pdf/{doc}_test.pdf"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    get_pdf_from_url(tools.document, tools.input_url, path)
+
+
+def _write_golden(tools: ToolBelt, doc: str) -> None:
+    path = EXTRACTION_OPS_TEST_DATA / f"raw_pdf/{doc}_golden.pdf"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    get_pdf_from_url(tools.document, tools.input_url, path)
+    text_hash = get_text_hash(path)
+    hash_path = EXTRACTION_OPS_TEST_DATA / f"raw_pdf/{doc}_golden_hash.txt"
+    hash_path.parent.mkdir(parents=True, exist_ok=True)
+    hash_path.write_text(text_hash)
+
+
+def _test_golden(tools: ToolBelt, doc: str) -> None:
+    golden_path = EXTRACTION_OPS_TEST_DATA / f"raw_pdf/{doc}_golden_hash.txt"
+    try:
+        golden_text_hash = golden_path.read_text().strip()
+    except FileNotFoundError:
+        logger.exception("no golden hash file created")
+        raise
+    test_path = EXTRACTION_OPS_TEST_DATA / f"raw_pdf/{doc}_test.pdf"
+    test_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_test(tools, doc)
+    test_text_hash = get_text_hash(test_path)
+    if test_text_hash == golden_text_hash:
+        logger.info("test passed: matching hashes detected")
+    else:
+        logger.warning("test failed: hashes do not match")
+        logger.warning("golden hash: [%s]", golden_text_hash)
+        logger.warning("test hash: [%s]", test_text_hash)
+        sys.exit(1)
 
 
 def diagnostic_pdf_retrieval() -> None:
     parser = argparse.ArgumentParser(description="Retrieve PDF for a doc")
     parser.add_argument(
-        "doc", choices=TOOLBELT_REGISTRY.keys(), help="which document to retreive"
+        "doc", choices=TOOLBELT_REGISTRY.keys(), help="which document to retrieve"
+    )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--save-golden",
+        action="store_true",
+        help="Save the downloaded PDF and its text hash as the new golden template",
+    )
+    group.add_argument(
+        "--test-golden",
+        action="store_true",
+        help="Test the hash of the contents of a fresh test pdf against a known golden file",
     )
     args = parser.parse_args()
     tools = TOOLBELT_REGISTRY[args.doc]
-    path = (
-        PROJECT_ROOT / f"tests/extraction_ops/diagnostics/data/{tools.document}raw.pdf"
-    )
-    get_pdf_from_url(tools.document, tools.input_url, path)
+    if args.save_golden:
+        _write_golden(tools, args.doc)
+    elif args.test_golden:
+        _test_golden(tools, args.doc)
+    else:
+        _write_test(tools, args.doc)
 
 
 if __name__ == "__main__":
