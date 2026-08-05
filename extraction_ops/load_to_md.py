@@ -33,13 +33,13 @@ def get_pdf_from_url(doc: str, url: str, path: Path) -> None:
         raise
 
 
-def pdf_to_md(tools: ToolBelt) -> str:
-    logger.info("Loading [%s] to md", tools.document)
+def pdf_to_md(input_path: Path, doc: str, use_ocr: bool) -> str:
+    logger.info("Loading [%s] to md", doc)
     try:
         md = cast(
             str,
             pymupdf4llm.to_markdown(
-                tools.pdf_path, header=False, footer=False, use_ocr=tools.use_ocr
+                input_path, header=False, footer=False, use_ocr=use_ocr
             ),
         )
     except Exception:
@@ -136,7 +136,7 @@ def build_output(chunk_lines: list[str], definition_lines: list[str]) -> CleanOu
 def load_clean_md(tools: ToolBelt) -> CleanOutPut:
     get_pdf_from_url(tools.document, tools.input_url, tools.pdf_path)
     apply_pdf_handlers(tools)
-    md = pdf_to_md(tools)
+    md = pdf_to_md(tools.pdf_path, tools.document, tools.use_ocr)
     md_lines = clean_md_to_lines(tools, md)
     chunk_lines = []
     definition_lines = []
