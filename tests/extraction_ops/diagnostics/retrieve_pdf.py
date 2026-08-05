@@ -1,33 +1,13 @@
 import argparse
-from pathlib import Path
 from config import EXTRACTION_OPS_TEST_DATA, setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
 from extraction_ops.load_to_md import get_pdf_from_url
+from extraction_ops.models import ToolBelt
+from tests.extraction_ops.diagnostics.utils import get_text_hash
 import logging
-import fitz
-import hashlib
 import sys
 
-from extraction_ops.models import ToolBelt
-
 logger = logging.getLogger(__name__)
-
-
-def _get_pdf_contents(path: Path) -> str:
-    text_lines = []
-    with fitz.open(path) as doc:
-        for page in doc:
-            text_lines.append(page.get_text())
-    return "".join(text_lines)
-
-
-def _hash_string(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def get_text_hash(path: Path) -> str:
-    text = _get_pdf_contents(path)
-    return _hash_string(text)
 
 
 def _write_test(tools: ToolBelt, doc: str) -> None:
