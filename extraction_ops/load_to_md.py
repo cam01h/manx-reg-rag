@@ -1,6 +1,6 @@
 from pathlib import Path
 import pymupdf4llm
-from typing import cast
+from typing import Callable, cast
 import httpx
 from .models import CleanOutPut, ToolBelt
 import logging
@@ -48,8 +48,8 @@ def pdf_to_md(input_path: Path, doc: str, use_ocr: bool) -> str:
     return md
 
 
-def clean_md_to_lines(tools: ToolBelt, md: str) -> list[str]:
-    md = tools.clean_text(md)
+def clean_md_to_lines(cleaner: Callable[[str], str], md: str) -> list[str]:
+    md = cleaner(md)
     return md.splitlines()
 
 
@@ -133,11 +133,7 @@ def build_output(chunk_lines: list[str], definition_lines: list[str]) -> CleanOu
     return output
 
 
-def load_clean_md(tools: ToolBelt) -> CleanOutPut:
-    get_pdf_from_url(tools.document, tools.input_url, tools.pdf_path)
-    apply_pdf_handlers(tools)
-    md = pdf_to_md(tools.pdf_path, tools.document, tools.use_ocr)
-    md_lines = clean_md_to_lines(tools, md)
+def process_lines(md_lines: list[str], tools: ToolBelt) -> CleanOutPut:
     chunk_lines = []
     definition_lines = []
 
@@ -187,3 +183,11 @@ def load_clean_md(tools: ToolBelt) -> CleanOutPut:
     logger.info("[%s] Extracted to md.", tools.document)
 
     return output
+
+
+def load_clean_md(tools: ToolBelt) -> CleanOutPut:
+    get_pdf_from_url(tools.document, tools.input_url, tools.pdf_path)
+    apply_pdf_handlers(tools)
+    md = pdf_to_md(tools.pdf_path, tools.document, tools.use_ocr)
+    md_lines = clean_md_to_lines(tools.clean_text, md)
+    return process_lines(md_lines, tools)

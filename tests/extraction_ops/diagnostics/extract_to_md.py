@@ -1,11 +1,11 @@
 import argparse
 from pathlib import Path
-import sys
 from typing import Callable
 import logging
 from config import EXTRACTION_OPS_TEST_DATA, setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
 from extraction_ops.load_to_md import pdf_to_md
+from tests.extraction_ops.diagnostics.utils import compare_lines
 
 logger = logging.getLogger(__name__)
 
@@ -37,24 +37,7 @@ def _test_golden(doc: str, test_md: str) -> None:
     golden_md = golden_path.read_text()
     test_md_lines = test_md.splitlines()
     golden_md_lines = golden_md.splitlines()
-    if len(test_md_lines) != len(golden_md_lines):
-        logger.warning(
-            "number of lines do not match. golden: [%d] | test: [%d]",
-            len(golden_md_lines),
-            len(test_md_lines),
-        )
-        sys.exit(1)
-    lines_passed = 0
-    for i, (test_line, golden_line) in enumerate(zip(test_md_lines, golden_md_lines)):
-        if test_line == golden_line:
-            lines_passed += 1
-        else:
-            logger.warning("mismatch found at line [%d]", i + 1)
-            logger.warning("expected: [%s]", golden_line)
-            logger.warning("found: [%s]", test_line)
-            # exit here because if the order changes, every subsequent test will fail which will be noisey
-            sys.exit(1)
-    logger.info("test passed: [%d] lines compared", lines_passed)
+    compare_lines(test_md_lines, golden_md_lines)
 
 
 def main() -> None:
