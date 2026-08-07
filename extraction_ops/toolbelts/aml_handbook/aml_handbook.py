@@ -82,18 +82,18 @@ def re_steps(text: str) -> str:
 
 
 HandbookRiskDefMarker221 = SectionMarkers(
-    start=lambda text: in_line(text, ['"Risk" means:']),
-    end=lambda text: in_line(text, ['"Mitigation" means implementing controls']),
+    start=in_line(['"Risk" means:']),
+    end=in_line(['"Mitigation" means implementing controls']),
 )
 
 HandbookRiskDefMarker32 = SectionMarkers(
-    start=lambda text: in_line(text, ['- "Customer due diligence"']),
-    end=lambda text: in_line(text, ["Enhanced ongoing monitoring falls"]),
+    start=in_line(['- "Customer due diligence"']),
+    end=in_line(["Enhanced ongoing monitoring falls"]),
 )
 
 HandbookRiskDefMarker431 = SectionMarkers(
-    start=lambda text: in_line(text, ['- "receiving regulated person" -']),
-    end=lambda text: in_line(text, ['- "underlying client" - the allowed']),
+    start=in_line(['- "receiving regulated person" -']),
+    end=in_line(['- "underlying client" - the allowed']),
 )
 
 HandbookDefs = DefinitionTools(
@@ -109,7 +109,7 @@ HandbookDefs = DefinitionTools(
 
 HandbookTrimmer = SectionMarkers(
     start=lambda text: text.startswith("## **1. Introductory*"),
-    end=lambda text: text.startswith("- Guidance on fictitious, anonymous"),
+    end=lambda text: text.startswith("Guidance on fictitious, anonymous and"),
 )
 
 HandbookSplitters = ChunkSplitters(

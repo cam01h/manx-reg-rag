@@ -16,11 +16,11 @@ def strip_patterns(text: str, patterns: list[str]) -> str:
 
 
 # line -> bool
-def in_line(line: str, strings: list[str]) -> bool:
-    for string in strings:
-        if string in line:
-            return True
-    return False
+def in_line(strings: list[str]) -> Callable[[str], bool]:
+    def inner(line: str) -> bool:
+        return any(s in line for s in strings)
+
+    return inner
 
 
 def starts_with(strings: list[str]) -> Callable[[str], bool]:
@@ -83,7 +83,8 @@ def split_on_new_sentence(text: str) -> list[str]:
 
 # definition line matchers
 def base_def_line(line: str) -> bool:
-    return in_line(line, ['- **"', '## **"']) or line.startswith('**"')
+    prefixes = ['- **"', '## **"', '**"']
+    return any(line.startswith(p) for p in prefixes)
 
 
 def base_double_def_line(segs: list[str]) -> bool:

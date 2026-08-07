@@ -9,11 +9,13 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_body_cleaner,
     base_header_cleaner,
     base_text_cleaner,
+    in_line,
     split_on_bracketed_letter,
     split_on_bracketed_num,
     base_def_line,
     base_double_def_line,
     base_false_double_def,
+    starts_with,
 )
 
 
@@ -23,8 +25,8 @@ def clean_text(text: str) -> str:
 
 
 TestDefMarkers = SectionMarkers(
-    start=lambda line: line.startswith("placeholder"),
-    end=lambda line: line.startswith("placeholder"),
+    start=in_line(["start", "starting", "started", "starts"]),
+    end=starts_with(["end", "ending", "ended", "ends"]),
 )
 
 
@@ -36,8 +38,8 @@ TestDefs = DefinitionTools(
 )
 
 TestTrimmer = SectionMarkers(
-    start=lambda text: text.startswith("place holder"),
-    end=lambda text: text.startswith("place holder"),
+    start=in_line(["start", "starting", "started", "starts"]),
+    end=starts_with(["end", "ending", "ended", "ends"]),
 )
 
 TestSplitters = ChunkSplitters(

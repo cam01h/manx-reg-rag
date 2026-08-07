@@ -15,6 +15,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_def_line,
     base_double_def_line,
     base_false_double_def,
+    starts_with,
 )
 
 
@@ -31,8 +32,8 @@ def clean_text(text: str) -> str:
 
 
 AmlCodeDefMarkers = SectionMarkers(
-    start=lambda line: line.startswith('- **"acceptable applicant'),
-    end=lambda line: line.startswith("   - (c) the relevant person becomes aware"),
+    start=starts_with(['- **"acceptable applicant']),
+    end=starts_with(["   - (c) the relevant person becomes aware"]),
 )
 
 
@@ -44,8 +45,8 @@ AmlCodeDefs = DefinitionTools(
 )
 
 AmlCodeTrimmer = SectionMarkers(
-    start=lambda text: text.startswith("## **PART 1 - INTRODUCTORY**"),
-    end=lambda text: text.startswith("a partner in the partnership"),
+    start=starts_with(["## **PART 1 - INTRODUCTORY**"]),
+    end=starts_with(["a partner in the partnership"]),
 )
 
 AmlCodeSplitters = ChunkSplitters(
@@ -62,7 +63,7 @@ AmlCode = ToolBelt(
     pdf_handlers=None,
     trimmer=AmlCodeTrimmer,
     header_matchers=[
-        lambda line: line.startswith("## **PART"),
+        starts_with(["## **PART"]),
         lambda line: line.startswith("## **") and line[5].isdigit(),
     ],
     definition_tools=AmlCodeDefs,

@@ -63,12 +63,14 @@ def apply_pdf_handlers(tools: ToolBelt) -> None:
                 raise
 
 
-def check_for_scope_start(tools: ToolBelt, in_scope: bool, line: str) -> bool:
-    if tools.trimmer.start(line):
+def check_for_scope_start(
+    doc: str, start_marker: Callable[[str], bool], in_scope: bool, line: str
+) -> bool:
+    if start_marker(line):
         if in_scope:
             logger.warning(
                 "trimmer.start found two matching lines in [%s]. line:[%s]",
-                tools.document,
+                doc,
                 line,
             )
             raise ValueError("two line match trimmer.start")
@@ -106,8 +108,8 @@ def check_if_in_definitions_section(
         return True, def_idx
 
 
-def check_for_scope_end(tools: ToolBelt, line: str) -> bool:
-    if tools.trimmer.end(line):
+def check_for_scope_end(end_marker: Callable[[str], bool], line: str) -> bool:
+    if end_marker(line):
         logger.debug("detected final line: [%s]", line)
         return True
     return False
@@ -142,7 +144,7 @@ def process_lines(md_lines: list[str], tools: ToolBelt) -> CleanOutPut:
     def_idx = 0
 
     for line in md_lines:
-        if check_for_scope_start(tools, in_scope, line):
+        if check_for_scope_start(tools.document, tools.trimmer.start, in_scope, line):
             in_scope = True
 
         def_idx_buffer = def_idx
@@ -151,7 +153,7 @@ def process_lines(md_lines: list[str], tools: ToolBelt) -> CleanOutPut:
         )
         belongs_to_definitions = in_definition_section or def_idx != def_idx_buffer
 
-        if check_for_scope_end(tools, line):
+        if check_for_scope_end(tools.trimmer.end, line):
             (definition_lines if belongs_to_definitions else chunk_lines).append(line)
             break
         if in_scope:
