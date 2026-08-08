@@ -2,6 +2,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+# TODO: lists within a frozen dataclass creates false imutability and hashing will cause a TypeError. Consider replacing with tuples
+
+
+# used for sections before they are packed into chunks
+@dataclass(frozen=True)
+class Section:
+    headers: tuple[str, ...]  # raw header lines, cleaned at pack time
+    body_lines: list[str]
+
 
 # used on individual chunks removed from the text
 @dataclass(frozen=True)

@@ -2,51 +2,69 @@ import logging
 import hashlib
 from dataclasses import replace
 from typing import Callable
-from extraction_ops.models import Chunk, ToolBelt
+from extraction_ops.models import Chunk, Section, ToolBelt
 from config import MAX_CHUNK_CHAR, MIN_CHUNK_CHAR, TARGET_CHUNK_CHAR
 
 logger = logging.getLogger(__name__)
 
 
-def extract_to_chunks(tools: ToolBelt, lines: list[str]) -> list[Chunk]:
-    logger.info("chunking [%s]", tools.document)
+def match_level(line: str, matchers: list[Callable[[str], bool]]) -> int | None:
+    for level, is_header in enumerate(matchers):
+        if is_header(line):
+            return level
+    return None
 
-    buffer = ""
-    chunks = []
-    headers = [""] * len(tools.header_matchers)
 
-    def pack_chunk(headers: list[str], body: str) -> Chunk:
-        current_chunk = Chunk(
-            chunk_id="stuff",  # TODO: add in normalise
-            document=tools.document,
-            hierarchy=tools.hierarchy,
-            headers=[tools.clean_header(h) for h in headers],
-            body=tools.clean_body(body),
-        )
-        return current_chunk
+def update_header_stack(
+    headers: tuple[str, ...], level: int, line: str
+) -> tuple[str, ...]:
+    updated = list(headers)
+    updated[level] = line
+    for i in range(level + 1, len(updated)):
+        updated[i] = ""
+    return tuple(updated)
 
-    def flush():
-        nonlocal buffer
-        if buffer.strip():
-            chunks.append(pack_chunk(headers, buffer))
-            buffer = ""
 
-    def match_level(line: str, matchers: list[Callable[[str], bool]]) -> int | None:
-        for level, is_header in enumerate(matchers):
-            if is_header(line):
-                return level
-        return None
+def segment_by_headers(
+    lines: list[str], matchers: list[Callable[[str], bool]]
+) -> list[Section]:
+    sections: list[Section] = []
+    headers: tuple[str, ...] = ("",) * len(matchers)
+    body_lines: list[str] = []
+
+    def flush() -> None:
+        nonlocal body_lines
+        if any(line.strip() for line in body_lines):
+            sections.append(Section(headers=headers, body_lines=body_lines))
+        body_lines = []
 
     for line in lines:
-        level = match_level(line, tools.header_matchers)
+        level = match_level(line, matchers)
         if level is None:
-            buffer += "\n" + line.strip()
+            # blank lines are kept deliberately: they carry the paragraph
+            body_lines.append(line.strip())
         else:
             flush()
-            headers[level] = line  # cleaned when packed
-            for i in range(level + 1, len(headers)):
-                headers[i] = ""
+            headers = update_header_stack(headers, level, line)
     flush()
+
+    return sections
+
+
+def pack_chunk(tools: ToolBelt, section: Section) -> Chunk:
+    return Chunk(
+        chunk_id="",  # assigned in normalise_chunk_size
+        document=tools.document,
+        hierarchy=tools.hierarchy,
+        headers=[tools.clean_header(h) for h in section.headers],
+        body=tools.clean_body("\n".join(section.body_lines)),
+    )
+
+
+def extract_to_chunks(tools: ToolBelt, lines: list[str]) -> list[Chunk]:
+    logger.info("chunking [%s]", tools.document)
+    sections = segment_by_headers(lines, tools.header_matchers)
+    chunks = [pack_chunk(tools, section) for section in sections]
     logger.info("initial chunk count: [%d]", len(chunks))
     return chunks
 
