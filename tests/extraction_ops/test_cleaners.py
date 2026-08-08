@@ -28,7 +28,7 @@ clean_5 = [
     "em dash -",
 ]
 
-TEST_DATA = [
+CLEANING_TEST_DATA = [
     (dirty_1, clean_1),
     (dirty_2, clean_2),
     (dirty_3, clean_3),
@@ -37,7 +37,7 @@ TEST_DATA = [
 ]
 
 
-@pytest.mark.parametrize("dirty, expected", TEST_DATA)
+@pytest.mark.parametrize("dirty, expected", CLEANING_TEST_DATA)
 def test_clean_md_to_lines(test_toolbelt, dirty: str, expected: list[str]):
     result = clean_md_to_lines(test_toolbelt.clean_text, dirty)
     assert result == expected

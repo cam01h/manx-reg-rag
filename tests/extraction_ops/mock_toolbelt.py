@@ -15,7 +15,6 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_def_line,
     base_double_def_line,
     base_false_double_def,
-    starts_with,
 )
 
 
@@ -25,8 +24,12 @@ def clean_text(text: str) -> str:
 
 
 TestDefMarkers = SectionMarkers(
-    start=in_line(["start", "starting", "started", "starts"]),
-    end=starts_with(["end", "ending", "ended", "ends"]),
+    start=in_line(
+        ["definition0", "definition1", "definition2", "definition3", "definition4"]
+    ),
+    end=in_line(
+        ["definition5", "definition6", "definition7", "definition8", "definition9"]
+    ),
 )
 
 
@@ -38,8 +41,8 @@ TestDefs = DefinitionTools(
 )
 
 TestTrimmer = SectionMarkers(
-    start=in_line(["start", "starting", "started", "starts"]),
-    end=starts_with(["end", "ending", "ended", "ends"]),
+    start=in_line(["chunks0", "chunks1", "chunks2", "chunks3", "chunks4"]),
+    end=in_line(["chunks5", "chunks6", "chunks7", "chunks8", "chunks9"]),
 )
 
 TestSplitters = ChunkSplitters(
