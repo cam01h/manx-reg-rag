@@ -15,6 +15,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_def_line,
     base_double_def_line,
     base_false_double_def,
+    starts_with,
 )
 
 
@@ -58,10 +59,7 @@ TestToolBelt = ToolBelt(
     use_ocr=True,
     pdf_handlers=None,
     trimmer=TestTrimmer,
-    header_matchers=[
-        lambda line: line.startswith("placeholder"),
-        lambda line: line.startswith("placeholder"),
-    ],
+    header_matchers=[starts_with(["##"]), starts_with(["**"])],
     definition_tools=TestDefs,
     clean_text=clean_text,
     re_pack_splitters=TestSplitters,
