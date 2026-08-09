@@ -12,6 +12,13 @@ class Section:
     body_lines: list[str]
 
 
+# used in normalistaion process
+@dataclass(frozen=True)
+class CleanSection:
+    headers: tuple[str, ...]
+    body: str
+
+
 # used on individual chunks removed from the text
 @dataclass(frozen=True)
 class Chunk:
