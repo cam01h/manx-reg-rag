@@ -25,7 +25,8 @@ def get_text_hash(path: Path) -> str:
 
 
 def compare_lines(
-    test_md_lines: list[str] | tuple[str, ...], golden_md_lines: list[str]
+    test_md_lines: list[str] | tuple[str, ...],
+    golden_md_lines: list[str] | tuple[str, ...],
 ) -> None:
     if len(test_md_lines) != len(golden_md_lines):
         logger.error(

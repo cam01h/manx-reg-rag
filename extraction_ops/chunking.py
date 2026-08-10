@@ -46,6 +46,7 @@ def segment_by_headers(
             flush()
             headers = update_header_stack(headers, level, line)
     flush()
+    logger.info("initial section count: [%d]", len(sections))
 
     return sections
 
@@ -178,14 +179,13 @@ def normalise_sections(tools: ToolBelt, sections: list[Section]) -> list[CleanSe
 
     normalised = merge_undersized_sections(normalised)
     normalised = filter_sections(normalised, tools.min_body_len)
+    logger.info("final chunk count: [%d]", len(normalised))
     return normalised
 
 
 def extract_to_chunks(tools: ToolBelt, lines: list[str]) -> list[Chunk]:
     logger.info("chunking [%s]", tools.document)
     sections = segment_by_headers(lines, tools.header_matchers)
-    logger.info("initial section count: [%d]", len(sections))
     sections = normalise_sections(tools, sections)
     chunks = [pack_chunk(tools, section) for section in sections]
-    logger.info("final chunk count: [%d]", len(chunks))
     return chunks
