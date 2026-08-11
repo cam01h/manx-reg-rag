@@ -80,9 +80,7 @@ class ToolBelt:
     trimmer: SectionMarkers
     header_matchers: list[Callable[[str], bool]]
     definition_tools: DefinitionTools | None
-    clean_text: Callable[
-        [str], str
-    ]  # include md = md.replace("“", '"').replace("”", '"')
+    clean_text: Callable[[str], str]
     re_pack_splitters: ChunkSplitters
     clean_body: Callable[[str], str]
     clean_header: Callable[[str], str]

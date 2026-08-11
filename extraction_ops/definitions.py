@@ -1,72 +1,121 @@
 import logging
 import re
+from typing import Callable
 import inflect
-from extraction_ops.models import Definition, ToolBelt, Chunk
+from extraction_ops.load_to_md import normalise_serial_new_lines
+from extraction_ops.models import Definition, DefinitionTools, ToolBelt, Chunk
 from dataclasses import replace
 
 logger = logging.getLogger(__name__)
 p = inflect.engine()
 
 
+def segment_by_definitions(
+    lines: list[str], is_definition_line: Callable[[str], bool]
+) -> list[list[str]]:
+    """Group lines into one list per definition.
+
+    Each group's first line is the definition line and the rest are its body.
+    A leading group whose first line is not a definition line is orphan text
+    that preceded the first definition.
+    """
+    sections: list[list[str]] = []
+    buffer: list[str] = []
+
+    for line in lines:
+        if is_definition_line(line):
+            if buffer:
+                sections.append(buffer)
+            buffer = [line]
+        else:
+            buffer.append(line)
+    if buffer:
+        sections.append(buffer)
+
+    return sections
+
+
+def split_definition_line(line: str, clean_header: Callable[[str], str]) -> list[str]:
+    return [clean_header(segment) for segment in line.split('"')]
+
+
+def parse_definition_line(
+    segments: list[str], def_tools: DefinitionTools
+) -> tuple[list[str], str] | None:
+    """Return (terms, opening body text) for a definition line, or None if unparseable."""
+    if len(segments) == 3:
+        return [segments[1]], segments[2]
+
+    if len(segments) == 5:
+        if def_tools.is_double_def_line(segments):
+            # "term one" or "term two" means ...
+            return [segments[1], segments[3]], segments[4]
+        if def_tools.is_false_dub_def(segments):
+            # "term" means ... "quoted phrase" ... -- second quote is not a term
+            return [segments[1]], f'{segments[2]} "{segments[3]}" {segments[4]}'
+        return None
+
+    if len(segments) > 3:
+        return [segments[1]], " ".join(segments[2:])
+
+    return None
+
+
+def pack_definitions(section: list[str], toolbelt: ToolBelt) -> list[Definition]:
+    """Turn one section into a Definition per term. Section[0] is always the definition line."""
+    def_tools = toolbelt.definition_tools
+    if def_tools is None:
+        return []
+
+    def_line = section[0]
+    if not def_tools.is_definition_line(def_line):
+        logger.warning("orphan text before first definition dropped: [%s]", def_line)
+        return []
+
+    segments = split_definition_line(def_line, toolbelt.clean_header)
+    parsed = parse_definition_line(segments, def_tools)
+    if parsed is None:
+        logger.warning(
+            "definition line claimed but not parseable, [%d] segments: [%s]",
+            len(segments),
+            def_line.strip(),
+        )
+        return []
+
+    terms, opening_text = parsed
+    if len(segments) not in (3, 5):
+        logger.warning(
+            "unexpected definition line shape, [%d] segments, took [%s] as term: [%s]",
+            len(segments),
+            terms[0],
+            def_line.strip(),
+        )
+
+    body_lines = [opening_text] + [toolbelt.clean_body(line) for line in section[1:]]
+    body = "\n".join(body_lines).strip()
+    if not body:
+        logger.warning("term with no definition body dropped: %s", terms)
+        return []
+
+    return [
+        Definition(document=toolbelt.document, term=term, definition=body)
+        for term in terms
+    ]
+
+
 def extract_to_definitions(toolbelt: ToolBelt, lines: list[str]) -> list[Definition]:
     if toolbelt.definition_tools is None:
         return []
-
     logger.info("loading definitions from [%s]", toolbelt.document)
-    tools = toolbelt.definition_tools
-    definitions = []
-    pending_terms = []
-    pending_text = ""
-
-    def flush():
-        nonlocal pending_text
-        if pending_text and pending_terms:
-            cleaned_text = pending_text.strip()
-            for term in pending_terms:
-                defined_term = Definition(
-                    document=toolbelt.document,
-                    term=term,
-                    definition=cleaned_text,
-                )
-                definitions.append(defined_term)
-        pending_terms.clear()
-        pending_text = ""
-
-    for line in lines:
-        if not line.strip():
-            continue
-        elif tools.is_definition_line(line):
-            flush()
-            def_line = [toolbelt.clean_header(segment) for segment in line.split('"')]
-            if len(def_line) == 3:
-                pending_terms.append(def_line[1])
-                pending_text = def_line[2]
-            elif len(def_line) == 5:
-                if tools.is_double_def_line(def_line):
-                    # "term1" or "terms" should mean....
-                    pending_terms.append(def_line[1])
-                    pending_terms.append(def_line[3])
-                    pending_text = def_line[4]
-                elif tools.is_false_dub_def(def_line):
-                    pending_terms.append(def_line[1])
-                    pending_text = f'{def_line[2]} "{def_line[3]}" {def_line[4]}'
-                else:
-                    logger.warning(
-                        "looks like two quoted terms but unable to parse: [%s]",
-                        line.strip(),
-                    )
-            else:
-                pending_terms.append(def_line[1])
-                pending_text = " ".join(def_line[2:])
-                logger.warning(
-                    "unexpected def_line shape, [%d] segments found, took [%s] as term and buffer set to [%s]",
-                    len(def_line),
-                    def_line[1],
-                    pending_text,
-                )
-        else:
-            pending_text += "\n" + toolbelt.clean_body(line)
-    flush()
+    normalised = normalise_serial_new_lines(lines)
+    sections = segment_by_definitions(
+        normalised, toolbelt.definition_tools.is_definition_line
+    )
+    definitions = [
+        definition
+        for section in sections
+        for definition in pack_definitions(section, toolbelt)
+    ]
     logger.info("[%d] definitions formatted.", len(definitions))
     return definitions
 
