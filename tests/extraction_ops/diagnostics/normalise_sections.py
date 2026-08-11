@@ -11,14 +11,16 @@ from tests.extraction_ops.diagnostics.utils import compare_lines
 logger = logging.getLogger(__name__)
 
 
-def _get_golden_sections(doc: str, tools: ToolBelt) -> list[CleanSection]:
+def _get_normalised_from_golden_sections(
+    doc: str, tools: ToolBelt
+) -> list[CleanSection]:
     golden_sections_path = (
         EXTRACTION_OPS_TEST_DATA / f"sections/{doc}_sections_golden.json"
     )
     if not golden_sections_path.exists():
         logger.error("no golden sections json found at [%s]", golden_sections_path)
         raise FileNotFoundError(
-            f"no golden sections md found at [{golden_sections_path}]"
+            f"no golden sections json found at [{golden_sections_path}]"
         )
     loaded_data = json.loads(golden_sections_path.read_text())
     loaded_sections = [
@@ -38,7 +40,7 @@ def _get_golden_sections(doc: str, tools: ToolBelt) -> list[CleanSection]:
 
 
 def _write_test_normalised_sections(doc: str, tools: ToolBelt) -> None:
-    normalised = _get_golden_sections(doc, tools)
+    normalised = _get_normalised_from_golden_sections(doc, tools)
     output_path = (
         EXTRACTION_OPS_TEST_DATA / f"normalised_sections/{doc}_cleansections_test.txt"
     )
@@ -47,7 +49,7 @@ def _write_test_normalised_sections(doc: str, tools: ToolBelt) -> None:
 
 
 def _write_golden_normalised_sections(doc: str, tools: ToolBelt) -> None:
-    normalised = _get_golden_sections(doc, tools)
+    normalised = _get_normalised_from_golden_sections(doc, tools)
     output_path = (
         EXTRACTION_OPS_TEST_DATA / f"normalised_sections/{doc}_cleansections_golden.txt"
     )
@@ -63,7 +65,7 @@ def _write_golden_normalised_sections(doc: str, tools: ToolBelt) -> None:
 
 
 def _test_normalised_sections(doc: str, tools: ToolBelt) -> None:
-    normalised = _get_golden_sections(doc, tools)
+    normalised = _get_normalised_from_golden_sections(doc, tools)
     golden_path = (
         EXTRACTION_OPS_TEST_DATA
         / f"normalised_sections/{doc}_cleansections_golden.json"
@@ -77,6 +79,14 @@ def _test_normalised_sections(doc: str, tools: ToolBelt) -> None:
         for d in loaded_data
     ]
     logger.info("comparing headers of [%s]", doc)
+    if len(normalised) != len(loaded_sections):
+        logger.info(
+            "different number of CleanSections found between test and golden data in [%s]",
+            doc,
+        )
+        raise ValueError(
+            f"different number of CleanSections found between test and golden data in {doc}"
+        )
     for test, golden in zip(normalised, loaded_sections):
         compare_lines(test.headers, golden.headers)
     logger.info("comparing body lines of [%s]", doc)
