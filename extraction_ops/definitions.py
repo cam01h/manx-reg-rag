@@ -5,6 +5,7 @@ import inflect
 from extraction_ops.load_to_md import normalise_serial_new_lines
 from extraction_ops.models import Definition, DefinitionTools, ToolBelt, Chunk
 from dataclasses import replace
+from extraction_ops.term_varient_overrides import TERM_VARIANT_OVERRIDES
 
 logger = logging.getLogger(__name__)
 p = inflect.engine()
@@ -120,27 +121,50 @@ def extract_to_definitions(toolbelt: ToolBelt, lines: list[str]) -> list[Definit
     return definitions
 
 
-def term_in_body(term: str, body: str) -> bool:
-    term_variants = list({term, p.plural(term)})  # type: ignore[arg-type]
-    patterns = [rf"\b{re.escape(v)}\b" for v in term_variants]
-    for pattern in patterns:
-        if re.search(pattern, body, re.IGNORECASE):
-            return True
-    return False
+def build_term_variants(terms: list[str]) -> dict[str, list[str]]:
+    variants: dict[str, list[str]] = {}
+    for term in terms:
+        found = [term]
+        override = TERM_VARIANT_OVERRIDES.get(term.lower())
+        if override is not None:
+            found.extend(override)
+        else:
+            plural = p.plural(term)  # type: ignore[arg-type]
+            singular = p.singular_noun(term)  # type: ignore[arg-type]
+            for candidate in (plural, singular):
+                # singular_noun returns False, not a string, when term is singular
+                if isinstance(candidate, str) and candidate not in found:
+                    found.append(candidate)
+        variants[term] = found
+    return variants
+
+
+def build_term_patterns(
+    variants: dict[str, list[str]],
+) -> dict[str, list[re.Pattern[str]]]:
+    return {
+        term: [
+            re.compile(rf"\b{re.escape(variant)}\b", re.IGNORECASE)
+            for variant in term_variants
+        ]
+        for term, term_variants in variants.items()
+    }
 
 
 def attach_definitions(
     chunks: list[Chunk], definitions: list[Definition]
 ) -> list[Chunk]:
-    logger.info("Attaching definitions to chunks")
+    logger.info("attaching definitions to chunks")
+    variants = build_term_variants([d.term for d in definitions])
+    patterns = build_term_patterns(variants)
 
     chunks_with_terms = []
     for chunk in chunks:
-        terms_used = []
-        for definition in definitions:
-            # TODO: calling term_in_body is inefficient and should be pre computed
-            if term_in_body(definition.term, chunk.body):
-                terms_used.append(definition.term)
+        terms_used = [
+            definition.term
+            for definition in definitions
+            if any(pat.search(chunk.body) for pat in patterns[definition.term])
+        ]
         chunks_with_terms.append(replace(chunk, terms_used=terms_used))
-    logger.info("Definitions attached")
+    logger.info("definitions attached")
     return chunks_with_terms
