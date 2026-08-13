@@ -9,10 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
-data/raw/
-data/processed/
 data/qdrant/
 /.env
 /logs
-/data/raw/custom
 /tests/extraction_ops/diagnostics/data
+/data/processed
+/data/raw/custom

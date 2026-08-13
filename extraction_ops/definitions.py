@@ -137,6 +137,8 @@ def build_term_variants(terms: list[str]) -> dict[str, list[str]]:
                     found.append(candidate)
         variants[term] = found
     return variants
+    # inflect generates some none english terms but they will never
+    # incorrectly match so accepted for now
 
 
 def build_term_patterns(
