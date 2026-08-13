@@ -7,6 +7,7 @@ from extraction_ops.load_to_md import get_pdf_from_url
 from tests.extraction_ops.diagnostics.retrieve_pdf import get_text_hash
 
 
+@pytest.mark.live
 @pytest.mark.parametrize("doc_key, tools", TOOLBELT_REGISTRY.items())
 def test_document_url_and_hash(doc_key: str, tools):
 
