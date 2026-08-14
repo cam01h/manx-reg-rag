@@ -4,6 +4,7 @@ import re
 BULLET = "\uf0b7"
 
 
+# used in supplemental information
 def _clean_cell(c: str) -> str:
     c = c.replace("<br>" + BULLET, "; ")  # bullet = list-item boundary
     c = c.replace(BULLET, "; ")  # bullet at cell start
@@ -26,7 +27,7 @@ def _flatten_row(line: str) -> str:
     return (f"{method} — {consid}" if consid else method).strip()
 
 
-def flatten_tables(text: str) -> str:
+def flatten_supplemental_information_tables(text: str) -> str:
     out = []
     for line in text.splitlines():
         if line.startswith("|"):

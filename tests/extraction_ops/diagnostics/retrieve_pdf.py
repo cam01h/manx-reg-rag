@@ -1,8 +1,8 @@
 import argparse
 from config import EXTRACTION_OPS_TEST_DATA, setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
-from extraction_ops.load_to_md import get_pdf_from_url
 from extraction_ops.models import ToolBelt
+from extraction_ops.pdf_ops import get_pdf_from_url
 from tests.extraction_ops.diagnostics.utils import get_text_hash
 import logging
 import sys

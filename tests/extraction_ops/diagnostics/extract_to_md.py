@@ -4,7 +4,7 @@ from typing import Callable
 import logging
 from config import EXTRACTION_OPS_TEST_DATA, setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
-from extraction_ops.load_to_md import pdf_to_md
+from extraction_ops.md_ops import pdf_to_md
 from tests.extraction_ops.diagnostics.utils import compare_lines
 
 logger = logging.getLogger(__name__)

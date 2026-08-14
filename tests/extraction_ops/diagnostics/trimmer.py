@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Callable
 from config import EXTRACTION_OPS_TEST_DATA, setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
-from extraction_ops.load_to_md import check_for_scope_end, check_for_scope_start
+from extraction_ops.md_ops import check_for_scope_end, check_for_scope_start
 from tests.extraction_ops.diagnostics.utils import compare_lines
 
 logger = logging.getLogger(__name__)

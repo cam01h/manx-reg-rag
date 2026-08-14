@@ -68,6 +68,10 @@ def base_text_cleaner(text: str):
     return replace_from_dict(text, replacements)
 
 
+def strip_footnote_markers(text: str) -> str:
+    return re.sub(r"\[\d+\]", "", text)
+
+
 # splitters
 def split_on_bracketed_num(text: str) -> list[str]:
     return re.split(r"\n(?=- \(\d+\))", text)
@@ -75,6 +79,10 @@ def split_on_bracketed_num(text: str) -> list[str]:
 
 def split_on_bracketed_letter(text: str) -> list[str]:
     return re.split(r"\n(?=- \([a-z]+\))", text)
+
+
+def split_on_paragraph(text: str) -> list[str]:
+    return re.split(r"\n\s*\n", text)
 
 
 def split_on_new_sentence(text: str) -> list[str]:
