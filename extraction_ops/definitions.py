@@ -2,7 +2,7 @@ import logging
 import re
 from typing import Callable
 import inflect
-from extraction_ops.load_to_md import normalise_serial_new_lines
+from extraction_ops.md_ops import normalise_serial_new_lines
 from extraction_ops.models import Definition, DefinitionTools, ToolBelt, Chunk
 from dataclasses import replace
 from extraction_ops.term_varient_overrides import TERM_VARIANT_OVERRIDES

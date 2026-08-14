@@ -1,45 +1,22 @@
-from pathlib import Path
-import pymupdf4llm
-from typing import Callable, cast
-import httpx
-from .models import CleanOutPut, ToolBelt
 import logging
+from pathlib import Path
+from typing import Callable, cast
+
+import pymupdf4llm
+
+from extraction_ops.models import CleanOutPut, ToolBelt
 
 
 logger = logging.getLogger(__name__)
 
 
-def get_pdf_from_url(doc: str, url: str, path: Path) -> None:
-    logger.info("downloading [%s]", doc)
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
-        }
-        response = httpx.get(
-            url=url, timeout=20, follow_redirects=True, headers=headers
-        )
-        response.raise_for_status()
-    except httpx.HTTPError:
-        logger.exception("failed httpx request for [%s]", doc)
-        raise
-    if not response.content.startswith(b"%PDF"):
-        logger.critical("[%s] did not return a pdf", doc)
-        raise ValueError(f"{doc} did not return a pdf")
-    try:
-        with open(path, "wb") as f:
-            f.write(response.content)
-    except Exception:
-        logger.exception("failed to write pdf to [%s]", path)
-        raise
-
-
-def pdf_to_md(input_path: Path, doc: str, use_ocr: bool) -> str:
+def pdf_to_md(pdf_path: Path, doc: str, use_ocr: bool) -> str:
     logger.info("Loading [%s] to md", doc)
     try:
         md = cast(
             str,
             pymupdf4llm.to_markdown(
-                input_path, header=False, footer=False, use_ocr=use_ocr
+                pdf_path, header=False, footer=False, use_ocr=use_ocr
             ),
         )
     except Exception:
@@ -51,16 +28,6 @@ def pdf_to_md(input_path: Path, doc: str, use_ocr: bool) -> str:
 def clean_md_to_lines(cleaner: Callable[[str], str], md: str) -> list[str]:
     md = cleaner(md)
     return md.splitlines()
-
-
-def apply_pdf_handlers(tools: ToolBelt) -> None:
-    if tools.pdf_handlers is not None:
-        for i, hanldler in enumerate(tools.pdf_handlers):
-            try:
-                hanldler(tools.pdf_path)
-            except:
-                logger.critical("failed to complete pdf_handler idx[%d]", i)
-                raise
 
 
 def check_for_scope_start(
@@ -187,9 +154,7 @@ def process_lines(md_lines: list[str], tools: ToolBelt) -> CleanOutPut:
     return output
 
 
-def load_clean_md(tools: ToolBelt) -> CleanOutPut:
-    get_pdf_from_url(tools.document, tools.input_url, tools.pdf_path)
-    apply_pdf_handlers(tools)
+def pdf_to_output(tools: ToolBelt) -> CleanOutPut:
     md = pdf_to_md(tools.pdf_path, tools.document, tools.use_ocr)
-    md_lines = clean_md_to_lines(tools.clean_text, md)
-    return process_lines(md_lines, tools)
+    clean_md_lines = clean_md_to_lines(tools.clean_text, md)
+    return process_lines(clean_md_lines, tools)

@@ -112,7 +112,9 @@ def merge_undersized_sections(sections: list[CleanSection]) -> list[CleanSection
             previous = section
             continue
         if should_merge(section, previous):
-            # TODO: undersized sections following a large section never merge
+            # TODO: only way to get the same headers is via a split which means merges
+            # cannot happen currently. This code is kept on the basis that it isnt
+            # causing issues and may help solve issues later if headers are repeated
             previous = replace(previous, body=f"{previous.body}\n\n{section.body}")
         else:
             merged.append(previous)
