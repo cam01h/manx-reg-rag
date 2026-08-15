@@ -68,8 +68,9 @@ def base_text_cleaner(text: str):
     return replace_from_dict(text, replacements)
 
 
+# [1] style and **[1]** style
 def strip_footnote_markers(text: str) -> str:
-    return re.sub(r"\[\d+\]", "", text)
+    return re.sub(r"\s*(?:\*\*\[\d+\]\*\*|\[\d+\])", "", text)
 
 
 # splitters
