@@ -19,6 +19,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_header_cleaner,
     base_text_cleaner,
     in_line,
+    redact_md_tables,
     replace_from_dict,
     split_on_new_sentence,
     starts_with,
@@ -70,12 +71,7 @@ def re_steps(text: str) -> str:
         text,
         flags=re.DOTALL,
     )
-    text = re.sub(
-        r"(?:^\|.*\|[ \t]*\n?)+",
-        "[table redacted from original document]\n",
-        text,
-        flags=re.MULTILINE,
-    )
+    text = redact_md_tables(text)
     text = strip_patterns(text, ["\n<br>", "<br>"])
     text = replace_from_dict(text, REPLACEMENTS)
     return text

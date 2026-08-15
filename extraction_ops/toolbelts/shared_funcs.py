@@ -68,9 +68,26 @@ def base_text_cleaner(text: str):
     return replace_from_dict(text, replacements)
 
 
+def redact_md_tables(text: str) -> str:
+    return re.sub(
+        r"(?:^\|.*\|[ \t]*\n?)+",
+        "[table redacted from original document]\n",
+        text,
+        flags=re.MULTILINE,
+    )
+
+
+def rejoin_page_breaks_with_marker(text: str) -> str:
+    return re.sub(r"([a-z,]) *\n\s*\n(?= *[a-z])", r"\1[joined]", text)
+
+
+def rejoin_page_breaks(text: str) -> str:
+    return re.sub(r"([a-z,]) *\n\s*\n *(?=[a-z])", r"\1 ", text)
+
+
 # [1] style and **[1]** style
 def strip_footnote_markers(text: str) -> str:
-    return re.sub(r"\s*(?:\*\*\[\d+\]\*\*|\[\d+\])", "", text)
+    return re.sub(r"\s*(?:\*\* *\[\d+\] *\*\*|\[\d+\])", "", text)
 
 
 # splitters
