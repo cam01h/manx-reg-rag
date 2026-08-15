@@ -90,6 +90,11 @@ def strip_footnote_markers(text: str) -> str:
     return re.sub(r"\s*(?:\*\* *\[\d+\] *\*\*|\[\d+\])", "", text)
 
 
+# strips > style footnote
+def strip_footnote_bullets(text: str) -> str:
+    return re.sub(r"^> *(?:\*\*)?\d+(?:\*\*)? .*$\n?", "", text, flags=re.MULTILINE)
+
+
 # splitters
 def split_on_bracketed_num(text: str) -> list[str]:
     return re.split(r"\n(?=- \(\d+\))", text)

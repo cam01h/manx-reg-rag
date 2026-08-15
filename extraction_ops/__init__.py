@@ -6,6 +6,7 @@ from extraction_ops.toolbelts.poca_2008 import Poca
 from extraction_ops.toolbelts.supplemental_information_document import (
     SupplementalInformation,
 )
+from extraction_ops.toolbelts.terrorism_civ_pen import TerrorCivPen
 
 ALL_TOOLBELTS: list[ToolBelt] = [
     AmlCode,
@@ -13,6 +14,7 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     SupplementalInformation,
     Poca,
     FiuAct,
+    TerrorCivPen,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -21,4 +23,5 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "supplemental": SupplementalInformation,
     "poca": Poca,
     "fiu": FiuAct,
+    "tcivpen": TerrorCivPen,
 }

@@ -17,6 +17,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     split_on_bracketed_letter,
     split_on_bracketed_num,
     starts_with,
+    strip_footnote_bullets,
     strip_footnote_markers,
 )
 
@@ -43,7 +44,7 @@ def re_steps(text: str) -> str:
     text = re.sub(r" *\[(?!Repealed\])[^\]]{20,}\]", "", text)
     # pymupdf artifacts that split "\n- (d) \n\n - paragraph"
     text = re.sub(r"- \((\d{1,2})\)\s*\n\s*\n\s*- (?=\w)", r"- (\1) ", text)
-    text = re.sub(r"^> *(?:\*\*)?\d+(?:\*\*)? .*$\n?", "", text, flags=re.MULTILINE)
+    text = strip_footnote_bullets(text)
     text = strip_footnote_markers(text)
     text = replace_from_dict(text, POCA_REPLACEMENT_DICT)
     return text
