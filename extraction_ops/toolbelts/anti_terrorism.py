@@ -14,9 +14,9 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_text_cleaner,
     in_line,
     redact_md_tables,
-    redact_section,
     rejoin_page_breaks,
     replace_from_dict,
+    replace_section,
     starts_with,
     strip_footnote_bullets,
     strip_footnote_markers,
@@ -110,7 +110,7 @@ def anti_terror_text_cleaner(text: str) -> str:
         text,
         flags=re.MULTILINE,
     )
-    text = redact_section(text, "# **SCHEDULE 9**", "## **SCHEDULE 12")
+    text = replace_section(text, "# **SCHEDULE 9**", "## **SCHEDULE 12")
     text = replace_from_dict(text, ANTI_TERROR_REPLACEMENT_DICT)
     return text
 

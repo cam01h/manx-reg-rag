@@ -1,5 +1,8 @@
+import logging
 import re
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 
 # helpers
@@ -77,12 +80,26 @@ def redact_md_tables(text: str) -> str:
     )
 
 
-def redact_section(text: str, start_marker: str, end_marker: str) -> str:
+def replace_section(
+    text: str, start_marker: str, end_marker: str, replacement: str = ""
+) -> str:
     start = text.find(start_marker)
-    end = text.find(end_marker)
-    if start == -1 or end == -1 or end <= start:
-        return text
-    return text[:start] + text[end:]
+    if start == -1:
+        logger.error(
+            "in_replace_section the start marker was not found: [%s]", start_marker
+        )
+        raise ValueError(
+            f"in_replace_section the start marker was not found: [{start_marker}]"
+        )
+    end = text.find(end_marker, start)
+    if end == -1:
+        logger.error(
+            "in_replace_section the end marker was not found: [%s]", end_marker
+        )
+        raise ValueError(
+            f"in_replace_section the end marker was not found: [{end_marker}]"
+        )
+    return text[:start] + replacement + text[end:]
 
 
 def rejoin_page_breaks_with_marker(text: str) -> str:
