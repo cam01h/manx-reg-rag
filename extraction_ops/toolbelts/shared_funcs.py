@@ -77,12 +77,30 @@ def redact_md_tables(text: str) -> str:
     )
 
 
+def redact_section(text: str, start_marker: str, end_marker: str) -> str:
+    start = text.find(start_marker)
+    end = text.find(end_marker)
+    if start == -1 or end == -1 or end <= start:
+        return text
+    return text[:start] + text[end:]
+
+
 def rejoin_page_breaks_with_marker(text: str) -> str:
-    return re.sub(r"([a-z,]) *\n\s*\n(?= *[a-z])", r"\1[joined]", text)
+    return re.sub(
+        r"^(?!\s*[-*]|\s*\(?[a-z0-9]{1,4}\))(.*[a-z,]) *\n\s*\n *(?=[a-z])",
+        r"\1[joined]",
+        text,
+        flags=re.MULTILINE,
+    )
 
 
 def rejoin_page_breaks(text: str) -> str:
-    return re.sub(r"([a-z,]) *\n\s*\n *(?=[a-z])", r"\1 ", text)
+    return re.sub(
+        r"^(?!\s*[-*]|\s*\(?[a-z0-9]{1,4}\))(.*[a-z,]) *\n\s*\n *(?=[a-z])",
+        r"\1 ",
+        text,
+        flags=re.MULTILINE,
+    )
 
 
 # [1] style and **[1]** style
@@ -93,6 +111,20 @@ def strip_footnote_markers(text: str) -> str:
 # strips > style footnote
 def strip_footnote_bullets(text: str) -> str:
     return re.sub(r"^> *(?:\*\*)?\d+(?:\*\*)? .*$\n?", "", text, flags=re.MULTILINE)
+
+
+# removes [text] but retains repealed markers
+def strip_square_bracket_legislation_ids(text: str) -> str:
+    # bracketed provenance citations, eg [P2000/11/15 and 22]
+    text = re.sub(r" *\[(?:P\d{4}|\d{4})/[^\]]*\]", "", text)
+
+    # unbracketed provenance citations, eg P2000/11/21ZB & 2008/13/146
+    text = re.sub(
+        r" *(?:P?\d{4}/\d+/\w+)(?:\s*(?:&|and)\s*P?\d{4}/\d+/\w+)*",
+        "",
+        text,
+    )
+    return text
 
 
 # splitters

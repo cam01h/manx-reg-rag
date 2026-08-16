@@ -1,4 +1,3 @@
-import re
 from config import PROJECT_ROOT
 from extraction_ops.models import (
     ChunkSplitters,
@@ -8,7 +7,6 @@ from extraction_ops.models import (
 )
 from extraction_ops.toolbelts.shared_funcs import (
     base_body_cleaner,
-    base_def_line,
     base_double_def_line,
     base_false_double_def,
     base_header_cleaner,

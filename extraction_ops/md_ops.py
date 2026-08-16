@@ -110,6 +110,10 @@ def process_lines(md_lines: list[str], tools: ToolBelt) -> CleanOutPut:
     in_definition_section = False
     def_idx = 0
 
+    # TODO: the def_idx can be used to carry a citation from the SectionMarker to
+    # create a DefinitionSection with citation: str, lines: list[str], then when
+    # the Definition is constructed, the citation can be included in the metadata
+
     for line in md_lines:
         if check_for_scope_start(tools.document, tools.trimmer.start, in_scope, line):
             in_scope = True

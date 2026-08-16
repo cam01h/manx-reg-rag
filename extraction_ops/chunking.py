@@ -152,7 +152,7 @@ def get_body_hash(body: str) -> str:
 def pack_chunk(tools: ToolBelt, section: CleanSection) -> Chunk:
     headers = list(section.headers)
     return Chunk(
-        chunk_id=f"{tools.document}, {', '.join(headers)} - {get_body_hash(section.body)}",
+        chunk_id=f"{tools.document}, {', '.join(h for h in headers if h)} - {get_body_hash(section.body)}",
         document=tools.document,
         hierarchy=tools.hierarchy,
         headers=headers,

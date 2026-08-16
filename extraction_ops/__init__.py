@@ -1,6 +1,7 @@
 from extraction_ops.models import ToolBelt
 from extraction_ops.toolbelts.aml_handbook.aml_handbook import AmlHandbook
 from extraction_ops.toolbelts.aml_code import AmlCode
+from extraction_ops.toolbelts.anti_terrorism import AntiTerror
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.poca_2008 import Poca
 from extraction_ops.toolbelts.supplemental_information_document import (
@@ -15,6 +16,7 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     Poca,
     FiuAct,
     TerrorCivPen,
+    AntiTerror,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -24,4 +26,5 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "poca": Poca,
     "fiu": FiuAct,
     "tcivpen": TerrorCivPen,
+    "antiterror": AntiTerror,
 }
