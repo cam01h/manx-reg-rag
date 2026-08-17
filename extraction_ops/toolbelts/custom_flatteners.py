@@ -85,7 +85,7 @@ def _rebuild_body(cell: str) -> str:
     return "\n".join(lines)
 
 
-def flatten_schedule_table(text: str) -> str:
+def flatten_dbroa_schedule_table(text: str) -> str:
     out_lines: list[str] = []
     for line in text.splitlines():
         if not line.startswith("|"):

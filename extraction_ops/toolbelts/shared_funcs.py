@@ -103,21 +103,37 @@ def replace_section(
 
 
 def rejoin_page_breaks_with_marker(text: str) -> str:
-    return re.sub(
+    # prose lines: join on lowercase or comma
+    text = re.sub(
         r"^(?!\s*[-*]|\s*\(?[a-z0-9]{1,4}\))(.*[a-z,]) *\n\s*\n *(?=[a-z])",
         r"\1[joined]",
         text,
         flags=re.MULTILINE,
     )
+    # list items: join only when the line ends mid-word, never on a comma
+    text = re.sub(
+        r"^(\s*[-*].*[a-z]) *\n\s*\n *(?=[a-z])",
+        r"\1[joined]",
+        text,
+        flags=re.MULTILINE,
+    )
+    return text
 
 
 def rejoin_page_breaks(text: str) -> str:
-    return re.sub(
+    text = re.sub(
         r"^(?!\s*[-*]|\s*\(?[a-z0-9]{1,4}\))(.*[a-z,]) *\n\s*\n *(?=[a-z])",
         r"\1 ",
         text,
         flags=re.MULTILINE,
     )
+    text = re.sub(
+        r"^(\s*[-*].*[a-z]) *\n\s*\n *(?=[a-z])",
+        r"\1 ",
+        text,
+        flags=re.MULTILINE,
+    )
+    return text
 
 
 # [1] style and **[1]** style

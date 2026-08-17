@@ -2,6 +2,7 @@ from extraction_ops.models import ToolBelt
 from extraction_ops.toolbelts.aml_handbook.aml_handbook import AmlHandbook
 from extraction_ops.toolbelts.aml_code import AmlCode
 from extraction_ops.toolbelts.anti_terrorism import AntiTerror
+from extraction_ops.toolbelts.dbroa15 import Dbroa
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.poca_2008 import Poca
 from extraction_ops.toolbelts.regulated_activities_order import Rao
@@ -21,6 +22,7 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     AntiTerror,
     Rao,
     FinancialRestrictions,
+    Dbroa,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -33,4 +35,5 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "antiterror": AntiTerror,
     "rao": Rao,
     "terrorfr": FinancialRestrictions,
+    "dbroa": Dbroa,
 }
