@@ -149,6 +149,11 @@ def split_on_bracketed_num(text: str) -> list[str]:
     return re.split(r"\n(?=- \(\d+\))", text)
 
 
+# eg (2A) or (3ZB)
+def split_on_brackered_ammended_num(text: str) -> list[str]:
+    return re.split(r"\n(?=\s*- \(\d+[A-Z]*\))", text)
+
+
 def split_on_bracketed_letter(text: str) -> list[str]:
     return re.split(r"\n(?=- \([a-z]+\))", text)
 

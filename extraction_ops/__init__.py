@@ -8,6 +8,7 @@ from extraction_ops.toolbelts.regulated_activities_order import Rao
 from extraction_ops.toolbelts.supplemental_information_document import (
     SupplementalInformation,
 )
+from extraction_ops.toolbelts.terror_financial_restrictions import FinancialRestrictions
 from extraction_ops.toolbelts.terrorism_civ_pen import TerrorCivPen
 
 ALL_TOOLBELTS: list[ToolBelt] = [
@@ -19,6 +20,7 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     TerrorCivPen,
     AntiTerror,
     Rao,
+    FinancialRestrictions,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -30,4 +32,5 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "tcivpen": TerrorCivPen,
     "antiterror": AntiTerror,
     "rao": Rao,
+    "terrorfr": FinancialRestrictions,
 }

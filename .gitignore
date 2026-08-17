@@ -13,5 +13,4 @@ data/qdrant/
 /.env
 /logs
 /tests/extraction_ops/diagnostics/data
-/data/processed
 /data/raw/custom
