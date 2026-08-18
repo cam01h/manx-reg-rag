@@ -10,14 +10,9 @@ from config import (
     get_embedding_dim,
     setup_logging,
 )
-import hashlib
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-def get_body_hash(text: str) -> str:
-    return hashlib.sha1(text.encode()).hexdigest()[:8]
 
 
 def build_collection(input_path: Path, collection: str) -> None:
@@ -50,14 +45,12 @@ def build_collection(input_path: Path, collection: str) -> None:
 
     points = []
     for c in chunks:
-        chunk_id = (
-            f"{c['document']}::{'::'.join(c['headers'])}::{get_body_hash(c['body'])}"
-        )
+        chunk_id = c.chunk_id
         try:
             point = models.PointStruct(
                 id=str(uuid.uuid5(uuid.NAMESPACE_URL, chunk_id)),
                 vector=models.Document(
-                    text=f"{'\n'.join(c['headers'])}\n{c['body']}",
+                    text=f"{'\n'.join(h for h in c['headers'])}\n{c['body']}",
                     model=EMBEDDING_MODEL,
                 ),
                 payload={**c, "chunk_id": chunk_id},
