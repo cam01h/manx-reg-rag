@@ -4,7 +4,7 @@ from typing import Any, cast
 import fitz
 import logging
 
-logger = logging.getLogger("__name__")
+logger = logging.getLogger(__name__)
 
 """<=== REMOVAL OF MARGIN CITATIONS ===>"""
 

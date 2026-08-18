@@ -53,6 +53,20 @@ def write_chunks_and_definitions(toolbelts: list[ToolBelt]) -> None:
     _write_definitions(definitions, DEFINITIONS_JSONL_PATH)
 
 
+def check_pdf_paths(toolbelts: list[ToolBelt]) -> None:
+    for tools in ALL_TOOLBELTS:
+        if not tools.pdf_path.exists():
+            logger.error(
+                "no pdf for [%s] found at pdf path: [%s]",
+                tools.document,
+                tools.pdf_path,
+            )
+            raise FileNotFoundError(
+                f"no pdf for {tools.document} found at pdf path: {tools.pdf_path}"
+            )
+    logger.info("all [%d] pdf files located", len(toolbelts))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Ingest documents from url to formatted chunks and definitions"
@@ -78,9 +92,11 @@ def main() -> None:
         for tools in ALL_TOOLBELTS:
             get_pdf_from_url(tools.document, tools.input_url, tools.pdf_path)
     elif args.handle_pdfs:
+        check_pdf_paths(ALL_TOOLBELTS)
         for tools in ALL_TOOLBELTS:
             apply_pdf_handlers(tools)
     elif args.ingest:
+        check_pdf_paths(ALL_TOOLBELTS)
         write_chunks_and_definitions(ALL_TOOLBELTS)
     else:
         for tools in ALL_TOOLBELTS:

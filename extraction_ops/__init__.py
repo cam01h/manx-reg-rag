@@ -6,6 +6,7 @@ from extraction_ops.toolbelts.dbroa15 import Dbroa
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.poca_2008 import Poca
 from extraction_ops.toolbelts.regulated_activities_order import Rao
+from extraction_ops.toolbelts.sanctions_act import Sanctions
 from extraction_ops.toolbelts.supplemental_information_document import (
     SupplementalInformation,
 )
@@ -23,6 +24,7 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     Rao,
     FinancialRestrictions,
     Dbroa,
+    Sanctions,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -36,4 +38,5 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "rao": Rao,
     "terrorfr": FinancialRestrictions,
     "dbroa": Dbroa,
+    "sanctions": Sanctions,
 }
