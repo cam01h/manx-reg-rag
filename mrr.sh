@@ -19,7 +19,7 @@ embed)
   echo "Ensuring stack is up..."
   docker compose up -d
   echo "Running ingestion..."
-  uv run python -m db_ops.embeddings
+  uv run python -m db_ops.embed
   ;;
 *)
   echo "usage: $0 [up|down|logs|rebuild|embed]"
