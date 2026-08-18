@@ -78,7 +78,7 @@ DbroaSplitters = ChunkSplitters(
 )
 
 Dbroa = ToolBelt(
-    document="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2015/2015-0009/2015-0009_13.pdf",
+    document="Designated Businesses (Registration and Oversight) Act 2015",
     hierarchy="primary legislation",
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2015/2015-0009/2015-0009_13.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/dbroa.pdf",
