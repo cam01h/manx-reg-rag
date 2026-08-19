@@ -1,9 +1,17 @@
 # setup_logging must run before importing app.llm so the agents init log is caught by the handler
 from fastembed import TextEmbedding
+from pydantic_ai import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
 from qdrant_client import QdrantClient
 from app.deps import AppDeps
-from app.models import UserPrompt
+from app.models import ConversationStep, UserPrompt
 from config import EMBEDDING_MODEL, QDRANT_URL, setup_logging
+from cachetools import TTLCache
 
 setup_logging("app")
 import logging  # noqa: E402
@@ -28,35 +36,48 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-conversation = []
+conversations = TTLCache[str, list[ConversationStep]](maxsize=1000, ttl=3600)
+
+
+def to_message_history(steps: list[ConversationStep]) -> list[ModelMessage]:
+    messages: list[ModelMessage] = []
+    for step in steps:
+        messages.append(ModelRequest(parts=[UserPromptPart(content=step.user_prompt)]))
+        messages.append(ModelResponse(parts=[TextPart(content=step.agent_response)]))
+    return messages
 
 
 @app.post("/query")
 async def query(user_prompt: UserPrompt, request: Request):
-    global conversation
     logger.info("query received: %s", user_prompt.prompt)
     deps = AppDeps(
         qdrant_client=request.app.state.qdrant_client,
         embedding_model=request.app.state.embedding_model,
     )
+    steps = conversations.get(user_prompt.session_id, [])
     try:
         result = await agent.run(
-            user_prompt.prompt, message_history=conversation, deps=deps
+            user_prompt.prompt,
+            message_history=to_message_history(steps),
+            deps=deps,
         )
     except Exception:
         logger.exception("agent.run failed during /query")
         raise
-    conversation = result.all_messages()
+    conversations[user_prompt.session_id] = steps + [
+        ConversationStep(
+            user_prompt=user_prompt.prompt,
+            agent_response=result.output.answer,
+        )
+    ]
     logger.info("query complete")
     logger.debug("model output: %s", result.output.model_dump_json())
     return result.output.model_dump()
 
 
 @app.post("/reset")
-async def reset():
-    global conversation
-    n = len(conversation)
-    conversation = []
+async def reset(user_prompt: UserPrompt):
+    n = len(conversations.pop(user_prompt.session_id, []))
     logger.info("conversation reset deleting %d interactions", n)
     return {"status": "ok"}
 

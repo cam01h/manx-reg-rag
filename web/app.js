@@ -6,6 +6,12 @@ const resetButton = document.getElementById("reset-button");
 
 let history = [];
 
+let sessionId = localStorage.getItem("session_id");
+if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("session_id", sessionId);
+}
+
 function renderConversation() {
     response.innerHTML = "";
     for (const turn of history) {
@@ -28,7 +34,7 @@ form.addEventListener("submit", async (event) => {
     const reply = await fetch("/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt, session_id: sessionId })
     });
     const data = await reply.json();
 
@@ -48,7 +54,11 @@ form.addEventListener("submit", async (event) => {
 });
 
 resetButton.addEventListener("click", async () => {
-    await fetch("/reset", { method: "POST" });
+    await fetch("/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "", session_id: sessionId })
+    });
     history = [];
     response.innerHTML = "";
     citations.innerHTML = "";
