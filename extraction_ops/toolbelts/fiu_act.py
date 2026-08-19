@@ -79,7 +79,7 @@ FiuSplitters = ChunkSplitters(
 )
 
 FiuAct = ToolBelt(
-    document="The Financial Intellegence Unit Act 2016",
+    document="The Financial intelligence Unit Act 2016",
     hierarchy="primary legislation",
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2016/2016-0005/2016-0005_6.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/fiu_act.pdf",

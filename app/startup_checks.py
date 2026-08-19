@@ -29,7 +29,7 @@ async def check_definitions_file() -> None:
         logger.exception("unable to read file at %s", DEFINITIONS_JSONL_PATH)
         raise
     try:
-        definitions = json.loads(raw)
+        definitions = [json.loads(line) for line in raw.splitlines() if line.strip()]
     except json.JSONDecodeError:
         logger.exception("%s not parsable json", DEFINITIONS_JSONL_PATH)
         raise

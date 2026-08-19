@@ -166,7 +166,7 @@ def split_on_bracketed_num(text: str) -> list[str]:
 
 
 # eg (2A) or (3ZB)
-def split_on_brackered_ammended_num(text: str) -> list[str]:
+def split_on_bracketed_amended_num(text: str) -> list[str]:
     return re.split(r"\n(?=\s*- \(\d+[A-Z]*\))", text)
 
 

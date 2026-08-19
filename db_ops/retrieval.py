@@ -1,10 +1,10 @@
 import json
 from pathlib import Path
-from qdrant_client import QdrantClient, models
+from fastembed import TextEmbedding
+from qdrant_client import QdrantClient
 from config import (
     COLLECTION,
     DEFAULT_CHUNKS_RETRIEVED,
-    EMBEDDING_MODEL,
     DEFINITIONS_JSONL_PATH,
 )
 from db_ops.models import DefinitionRecord, Payload
@@ -15,19 +15,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# results isnt typed as pyright is having a conflict with two types of th same name
+# fastembed used directly to avoid concurecy issues in qudrant client
+def embed_query_text(text: str, model: TextEmbedding) -> list[float]:
+    logger.info("qdrant queried using search phrase: [%s]", text)
+    return list(model.embed([text]))[0].tolist()
+
+
+# results isnt typed as pyright is having a conflict
 def query_collection(
-    query: str,
+    vector: list[float],
     client: QdrantClient,
     collection: str = COLLECTION,
     top_n: int = DEFAULT_CHUNKS_RETRIEVED,
 ):
-    logger.info("qdrant queried using search phrase: [%s]", query)
-    logger.info("qdrant queried with [%s]", query)
     try:
         results = client.query_points(
             collection_name=collection,
-            query=models.Document(text=query, model=EMBEDDING_MODEL),
+            query=vector,
             limit=top_n,
         )
     except Exception:
@@ -96,7 +100,8 @@ def get_chunks_with_definitions(
 ) -> tuple[list[Payload], set[DefinitionRecord]]:
     """Search the Isle of Man AML legislation and guidance for content relevant to the query.
     Returns the most relevant sections from the regulations and any defined terms used in them."""
-    results = query_collection(query, ctx.deps.qdrant_client)
+    vector = embed_query_text(query, ctx.deps.embedding_model)
+    results = query_collection(vector, ctx.deps.qdrant_client)
     chunks = return_payload(results)
     definitions_data = load_definitions()
     definitions = match_definitions(chunks, definitions_data)
