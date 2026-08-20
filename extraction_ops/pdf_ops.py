@@ -24,6 +24,7 @@ def get_pdf_from_url(doc: str, url: str, path: Path) -> None:
         logger.critical("[%s] did not return a pdf", doc)
         raise ValueError(f"{doc} did not return a pdf")
     try:
+        path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
             f.write(response.content)
     except Exception:

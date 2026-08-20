@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def _write_chunks(chunks: list[Chunk], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with path.open("w") as f:
             for c in chunks:
@@ -30,6 +31,7 @@ def _write_chunks(chunks: list[Chunk], path: Path) -> None:
 
 
 def _write_definitions(definitions: list[Definition], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with path.open("w") as f:
             for d in definitions:

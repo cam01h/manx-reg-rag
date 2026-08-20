@@ -73,7 +73,7 @@ TerrorCivPenSplitters = ChunkSplitters(
 )
 
 TerrorCivPen = ToolBelt(
-    document="The Terrorism and Crime act 2008",
+    document="Anti-Money Laundering And Countering The Financing Of Terrorism (Civil Penalties) Regulations 2019",
     hierarchy="secondary legislation",
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0201/2019-0201_1.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/terror_civ_pen.pdf",

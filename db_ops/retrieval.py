@@ -39,7 +39,10 @@ def query_collection(
         raise
     if not results:
         logger.critical("no results found from query")
-        raise ValueError("no results found from query")
+        # consideration given to raising a ValueError but
+        # in such circumstances, the agent should state that
+        # there are no relevant chunks
+        return []
     return results
 
 

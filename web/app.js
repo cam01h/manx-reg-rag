@@ -8,7 +8,10 @@ let history = [];
 
 let sessionId = localStorage.getItem("session_id");
 if (!sessionId) {
-    sessionId = crypto.randomUUID();
+    sessionId =
+        typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : "session-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
     localStorage.setItem("session_id", sessionId);
 }
 

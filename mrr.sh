@@ -4,7 +4,7 @@ set -euo pipefail
 case "${1:-up}" in
 up)
   docker compose up -d
-  echo "Stack running at http://localhost:8000"
+  echo "Stack running"
   ;;
 down)
   docker compose down

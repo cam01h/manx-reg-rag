@@ -2,7 +2,7 @@ import logging
 import json
 from pydantic_ai.models import infer_model
 from qdrant_client import QdrantClient
-from config import DEFINITIONS_JSONL_PATH, MODEL, QDRANT_URL
+from config import DEFINITIONS_JSONL_PATH, MODEL, QDRANT_URL, COLLECTION
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +11,7 @@ async def check_qdrant() -> None:
     try:
         client = QdrantClient(url=QDRANT_URL)
         collections = client.get_collections()
+        collection_info = client.get_collection(COLLECTION)
     except Exception:
         logger.exception("qdrant unreachable")
         raise
@@ -19,6 +20,14 @@ async def check_qdrant() -> None:
         raise RuntimeError(f"no collections found at {QDRANT_URL}")
     logger.info(
         "qdrant reachable and %d collections found", len(collections.collections)
+    )
+    if not collection_info.points_count:
+        logger.critical("collection [%s] has no points", COLLECTION)
+        raise RuntimeError(f"collection [{COLLECTION}] has no points")
+    logger.info(
+        "collection [%s] has [%d] points",
+        COLLECTION,
+        collection_info.points_count,
     )
 
 
