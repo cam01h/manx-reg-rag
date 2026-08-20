@@ -1,5 +1,5 @@
 import pytest
-from extraction_ops.load_to_md import clean_md_to_lines
+from extraction_ops.md_ops import clean_md_to_lines
 
 
 # test 1

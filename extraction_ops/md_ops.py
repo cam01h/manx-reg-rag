@@ -119,14 +119,17 @@ def process_lines(md_lines: list[str], tools: ToolBelt) -> CleanOutPut:
             in_scope = True
 
         def_idx_buffer = def_idx
+
         in_definition_section, def_idx = check_if_in_definitions_section(
             tools, in_definition_section, def_idx, line
         )
+
         belongs_to_definitions = in_definition_section or def_idx != def_idx_buffer
 
         if check_for_scope_end(tools.trimmer.end, line):
             (definition_lines if belongs_to_definitions else chunk_lines).append(line)
             break
+
         if in_scope:
             (definition_lines if belongs_to_definitions else chunk_lines).append(line)
     else:

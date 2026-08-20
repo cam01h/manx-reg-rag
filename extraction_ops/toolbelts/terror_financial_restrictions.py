@@ -14,7 +14,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     in_line,
     replace_from_dict,
     replace_section,
-    split_on_brackered_ammended_num,
+    split_on_bracketed_amended_num,
     split_on_paragraph,
     starts_with,
     strip_footnote_bullets,
@@ -92,7 +92,7 @@ FinancialRestrictionsDefTools = DefinitionTools(
 )
 
 FinancialRestrictionsSplitters = ChunkSplitters(
-    primary=split_on_brackered_ammended_num, fallback=split_on_paragraph
+    primary=split_on_bracketed_amended_num, fallback=split_on_paragraph
 )
 
 FinancialRestrictions = ToolBelt(

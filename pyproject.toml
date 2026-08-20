@@ -6,20 +6,18 @@ readme = "README.md"
 authors = [{ name = "cam01h", email = "cam01houston@gmail.com" }]
 requires-python = ">=3.13"
 dependencies = [
+  "cachetools>=7.1.4",
   "fastapi>=0.136.3",
   "fastembed>=0.8.0",
+  "httpx>=0.28.1",
   "inflect>=7.5.0",
   "pydantic>=2.13.4",
   "pydantic-ai>=1.106.0",
   "pymupdf4llm>=1.27.2.3",
-  "pytest>=9.1.1",
   "python-dotenv>=1.2.2",
   "qdrant-client>=1.18.0",
   "uvicorn>=0.49.0",
 ]
-
-[project.scripts]
-manx-reg-rag = "manx_reg_rag:main"
 
 [tool.uv]
 package = false
@@ -28,4 +26,12 @@ package = false
 addopts = "-m 'not live'"
 markers = [
   "live: marks tests that hit live external URLs (deselect with '-m \"not live\"')",
+]
+
+[dependency-groups]
+dev = [
+  "pyright>=1.1.411",
+  "pytest>=9.1.1",
+  "pytest-timeout>=2.4.0",
+  "ruff>=0.16.4",
 ]
