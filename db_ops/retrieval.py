@@ -104,7 +104,7 @@ def match_definitions(
 def get_chunks_with_definitions(
     ctx: RunContext[AppDeps],
     query: str,
-) -> tuple[list[Payload], set[DefinitionRecord]]:
+) -> tuple[list[Payload], list[DefinitionRecord]]:
     """Search the Isle of Man AML legislation and guidance for content relevant to the query.
     Returns the most relevant sections from the regulations and any defined terms used in them."""
     vector = embed_query_text(query, ctx.deps.embedding_model)
@@ -112,4 +112,4 @@ def get_chunks_with_definitions(
     chunks = return_payload(results)
     definitions_data = load_definitions()
     definitions = match_definitions(chunks, definitions_data)
-    return chunks, definitions
+    return chunks, sorted(definitions, key=lambda d: (d.document, d.term))
