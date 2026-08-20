@@ -32,30 +32,47 @@ function renderConversation() {
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const prompt = input.value;
+    if (!prompt.trim()) return;
     input.value = "";
 
-    const reply = await fetch("/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, session_id: sessionId })
-    });
-    const data = await reply.json();
+    try {
+        const reply = await fetch("/query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt, session_id: sessionId })
+        });
 
-    history.push({ prompt, answer: data.answer });
-    renderConversation();
+        // fetch does NOT throw on 4xx/5xx — this is your raise_for_status()
+        if (!reply.ok) {
+            throw new Error(`server responded with status ${reply.status}`);
+        }
 
-    citations.innerHTML = "";
-    for (const citation of data.citations) {
-        const card = document.createElement("div");
-        card.className = "citation-card";
-        card.innerHTML = `
-            <div class="citation-id">${citation.chunk_id}</div>
-            <div class="citation-relevance">${citation.relevance}</div>
-        `;
-        citations.appendChild(card);
+        const data = await reply.json();
+
+        history.push({ prompt, answer: data.answer });
+        renderConversation();
+
+        citations.innerHTML = "";
+        for (const citation of data.citations) {
+            const card = document.createElement("div");
+            card.className = "citation-card";
+            card.innerHTML = `
+                <div class="citation-id">${citation.chunk_id}</div>
+                <div class="citation-relevance">${citation.relevance}</div>
+            `;
+            citations.appendChild(card);
+        }
+    } catch (err) {
+        console.error("query failed:", err);
+        const block = document.createElement("div");
+        block.className = "turn";
+        block.textContent =
+            "Sorry, the request failed. Check the server is running and try again.";
+        response.appendChild(block);
+        response.scrollTop = response.scrollHeight;
+        input.value = prompt; // give the question back so they can retry
     }
 });
-
 resetButton.addEventListener("click", async () => {
     await fetch("/reset", {
         method: "POST",
