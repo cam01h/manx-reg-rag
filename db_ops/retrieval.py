@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from functools import lru_cache
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from config import (
@@ -57,15 +58,18 @@ def return_payload(results) -> list[Payload]:
     return chunks
 
 
-def load_definitions(path: Path = DEFINITIONS_JSONL_PATH) -> list[DefinitionRecord]:
+@lru_cache(maxsize=1)
+def load_definitions(
+    path: Path = DEFINITIONS_JSONL_PATH,
+) -> tuple[DefinitionRecord, ...]:
     if not path.exists():
         logger.critical("no definitions jsonl file found at [%s]", path)
         raise FileNotFoundError(f"no definitions jsonl file found at [{path}]")
     try:
-        definitions = [
+        definitions = tuple(
             DefinitionRecord(**json.loads(line))
             for line in path.read_text().splitlines()
-        ]
+        )
     except (json.JSONDecodeError, TypeError):
         logger.exception("failed to read to [%s]", path)
         raise
@@ -73,7 +77,7 @@ def load_definitions(path: Path = DEFINITIONS_JSONL_PATH) -> list[DefinitionReco
 
 
 def match_definitions(
-    chunks: list[Payload], definitions: list[DefinitionRecord]
+    chunks: list[Payload], definitions: tuple[DefinitionRecord, ...]
 ) -> set[DefinitionRecord]:
     # pyright bug: reportUnhashable false positive on BaseModel subclasses with
     # explicit __hash__, verified correct at runtime — github.com/microsoft/pyright/issues/9249
