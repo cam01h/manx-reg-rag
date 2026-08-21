@@ -42,7 +42,6 @@ form.addEventListener("submit", async (event) => {
             body: JSON.stringify({ prompt, session_id: sessionId })
         });
 
-        // fetch does NOT throw on 4xx/5xx — this is your raise_for_status()
         if (!reply.ok) {
             throw new Error(`server responded with status ${reply.status}`);
         }
@@ -70,9 +69,10 @@ form.addEventListener("submit", async (event) => {
             "Sorry, the request failed. Check the server is running and try again.";
         response.appendChild(block);
         response.scrollTop = response.scrollHeight;
-        input.value = prompt; // give the question back so they can retry
+        input.value = prompt;
     }
 });
+
 resetButton.addEventListener("click", async () => {
     await fetch("/reset", {
         method: "POST",

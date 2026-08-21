@@ -200,7 +200,7 @@ AntiTerrorSplitters = ChunkSplitters(
 )
 
 AntiTerror = ToolBelt(
-    document="ANTI-TERRORISM AND CRIME ACT 2003",
+    document="The Anti-Terrorism and Crime Act 2003",
     hierarchy="primary legislation",
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2003/2003-0006/2003-0006_15.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/anti_terror.pdf",

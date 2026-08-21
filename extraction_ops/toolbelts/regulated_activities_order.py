@@ -338,7 +338,7 @@ RaoSplitters = ChunkSplitters(
 )
 
 Rao = ToolBelt(
-    document="Regulated Activities Order 2011",
+    document="The Regulated Activities Order 2011",
     hierarchy="secondary legislation",
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2011/2011-0884/2011-0884_8.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/regulated_activities_order.pdf",

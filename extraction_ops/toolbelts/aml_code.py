@@ -55,7 +55,7 @@ AmlCodeSplitters = ChunkSplitters(
 )
 
 AmlCode = ToolBelt(
-    document="The AML Code 2019",
+    document="The AML/CFT Code 2019",
     hierarchy="secondary legislation",
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0202/2019-0202_2.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/the_aml_code_2019.pdf",
