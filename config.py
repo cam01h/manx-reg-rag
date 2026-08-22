@@ -4,6 +4,7 @@ import datetime as dt
 from pathlib import Path
 import os
 
+
 # ==========
 # file paths
 # ==========
@@ -34,11 +35,19 @@ DELETE_LEN = 40
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 
 # =========
-# Models
+# DB ops
 # =========
-EMBEDDING_MODEL = "BAAI/bge-large-en-v1.5"  # "BAAI/bge-small-en-v1.5"
+RETRIEVAL_MODE = "dense"  # "dense" | "sparse" | "hybrid"
+DENSE_VECTOR_NAME = "dense"
+SPARSE_VECTOR_NAME = "bm25"
+DENSE_MODEL_NAME = "BAAI/bge-large-en-v1.5"  # "BAAI/bge-small-en-v1.5"
+SPARSE_MODEL_NAME = "Qdrant/bm25"
 COLLECTION = "manx-reg-rag-db"
 DEFAULT_CHUNKS_RETRIEVED = 10
+
+# ========
+# Agent
+# ========
 MODEL = "openai-responses:gpt-5.4-mini"
 
 SYSTEM_PROMPT = (

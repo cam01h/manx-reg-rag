@@ -1,19 +1,34 @@
+import argparse
 import json
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 import logging
 from pathlib import Path
 
-from fastembed import TextEmbedding
+from fastembed import SparseTextEmbedding, TextEmbedding
 from qdrant_client import QdrantClient
 
-from config import COLLECTION, EMBEDDING_MODEL, PROJECT_ROOT, QDRANT_URL, setup_logging
-from db_ops.retrieval import embed_query_text, query_collection, return_payload
+from config import (
+    COLLECTION,
+    DENSE_MODEL_NAME,
+    PROJECT_ROOT,
+    QDRANT_URL,
+    RETRIEVAL_MODE,
+    SPARSE_MODEL_NAME,
+    setup_logging,
+)
+from db_ops.retrieval import (
+    embed_query_dense,
+    embed_query_sparse,
+    query_collection,
+    return_payload,
+)
 from tests.db_ops.query_metrics.query_data import QUERY_TEST_DATA, RetrievalTest
 
 TEST_TOP_N_RESULTS = 1000
-CURRENT_CONFIGURATION = "dense_large_model_vector_embedding"
+CURRENT_CONFIGURATION = "large_model_hybrid_vector_embedding"
 RESULTS_DIR = PROJECT_ROOT / "tests/db_ops/query_metrics/data"
+TEST_MODES = ("dense", "sparse", "hybrid")
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +42,13 @@ class MatchedTestChunk:
     rank: int
 
 
-def build_config(top_n: int) -> dict:
+def build_config(top_n: int, mode: str) -> dict:
     return {
-        "label": CURRENT_CONFIGURATION,
-        "embedding_model": EMBEDDING_MODEL,
+        "label": f"{CURRENT_CONFIGURATION}_{mode}",
+        "dense_model": DENSE_MODEL_NAME,
+        "sparse_model": SPARSE_MODEL_NAME,
         "collection": COLLECTION,
+        "retrieval_mode": mode,
         "top_n": top_n,
     }
 
@@ -39,13 +56,18 @@ def build_config(top_n: int) -> dict:
 def run_test_query(
     test: RetrievalTest,
     client: QdrantClient,
-    embedding_model: TextEmbedding,
+    dense_model: TextEmbedding,
+    sparse_model: SparseTextEmbedding,
     top_n: int = TEST_TOP_N_RESULTS,
+    mode: str = RETRIEVAL_MODE,
 ) -> list[MatchedTestChunk]:
     matches: list[MatchedTestChunk] = []
 
-    vector = embed_query_text(test.search_term, embedding_model)
-    results = query_collection(vector, client, top_n=top_n)
+    dense_vector = embed_query_dense(test.search_term, dense_model)
+    sparse_vector = embed_query_sparse(test.search_term, sparse_model)
+    results = query_collection(
+        dense_vector, sparse_vector, client, top_n=top_n, mode=mode
+    )
     chunks = return_payload(results)
 
     for doc, anchor_string in test.expected_strings:
@@ -66,7 +88,7 @@ def run_test_query(
             )
         )
     found = sum(m.rank > 0 for m in matches)
-    logger.info(f"{test.search_term[:50]}: {found}/{len(matches)} found")
+    logger.debug(f"{test.search_term[:50]}: {found}/{len(matches)} found")
     return matches
 
 
@@ -86,24 +108,39 @@ def write_results(matches: list[MatchedTestChunk], config: dict) -> Path:
     return path
 
 
-def main():
-    client = QdrantClient(url=QDRANT_URL)
-    model = TextEmbedding(EMBEDDING_MODEL)
-    config = build_config(TEST_TOP_N_RESULTS)
+def parse_args():
+    parser = argparse.ArgumentParser(description="run retrieval metrics")
+    parser.add_argument(
+        "--mode",
+        choices=TEST_MODES,
+        default=RETRIEVAL_MODE,
+        help="retrieval mode to test",
+    )
+    return parser.parse_args()
 
-    logger.info("starting query metrics test")
+
+def main(mode: str = RETRIEVAL_MODE):
+    client = QdrantClient(url=QDRANT_URL)
+    dense_model = TextEmbedding(DENSE_MODEL_NAME)
+    sparse_model = SparseTextEmbedding(SPARSE_MODEL_NAME)
+
+    logger.info("starting query metrics test [%s]", mode)
+    config = build_config(TEST_TOP_N_RESULTS, mode)
     matches = [
         m
         for test in QUERY_TEST_DATA
-        for m in run_test_query(test, client, model, TEST_TOP_N_RESULTS)
+        for m in run_test_query(
+            test, client, dense_model, sparse_model, TEST_TOP_N_RESULTS, mode
+        )
     ]
-
     path = write_results(matches, config)
     logger.info(
-        f"{len(matches)} targets, {sum(m.rank > 0 for m in matches)} found -> {path}"
+        f"[{mode}] {len(matches)} targets, "
+        f"{sum(m.rank > 0 for m in matches)} found -> {path}"
     )
 
 
 if __name__ == "__main__":
     setup_logging("query metrics")
-    main()
+    args = parse_args()
+    main(args.mode)

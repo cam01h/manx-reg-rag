@@ -1,5 +1,5 @@
 # setup_logging must run before importing app.llm so the agents init log is caught by the handler
-from fastembed import TextEmbedding
+from fastembed import SparseTextEmbedding, TextEmbedding
 from pydantic_ai import (
     ModelMessage,
     ModelRequest,
@@ -10,7 +10,7 @@ from pydantic_ai import (
 from qdrant_client import QdrantClient
 from app.deps import AppDeps
 from app.models import ConversationStep, UserPrompt
-from config import EMBEDDING_MODEL, QDRANT_URL, setup_logging
+from config import DENSE_MODEL_NAME, QDRANT_URL, SPARSE_MODEL_NAME, setup_logging
 from cachetools import TTLCache
 
 setup_logging("app")
@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("starting %s", app.title)
     app.state.qdrant_client = QdrantClient(url=QDRANT_URL)
-    app.state.embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
+    app.state.dense_model = TextEmbedding(model_name=DENSE_MODEL_NAME)
+    app.state.sparse_model = SparseTextEmbedding(SPARSE_MODEL_NAME)
     await run_startup_checks()
     yield
     app.state.qdrant_client.close()
@@ -52,7 +53,8 @@ async def query(user_prompt: UserPrompt, request: Request):
     logger.info("query received: %s", user_prompt.prompt)
     deps = AppDeps(
         qdrant_client=request.app.state.qdrant_client,
-        embedding_model=request.app.state.embedding_model,
+        dense_model=request.app.state.dense_model,
+        sparse_model=request.app.state.sparse_model,
     )
     steps = conversations.get(user_prompt.session_id, [])
     try:
