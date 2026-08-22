@@ -12,7 +12,7 @@ from db_ops.retrieval import embed_query_text, query_collection, return_payload
 from tests.db_ops.query_metrics.query_data import QUERY_TEST_DATA, RetrievalTest
 
 TEST_TOP_N_RESULTS = 1000
-CURRENT_CONFIGURATION = "dense_vector_embedding"
+CURRENT_CONFIGURATION = "dense_large_model_vector_embedding"
 RESULTS_DIR = PROJECT_ROOT / "tests/db_ops/query_metrics/data"
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ def write_results(matches: list[MatchedTestChunk], config: dict) -> Path:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     path = (
         RESULTS_DIR
-        / f"{datetime.now(timezone.utc):%Y%m%dT%H%M%S}_{config['label']}.json"
+        / f"{datetime.now(timezone.utc):%Y-%m-%d_%H-%M}_{config['label']}.json"
     )
     path.write_text(json.dumps(payload, indent=2))
     return path

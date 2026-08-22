@@ -36,9 +36,9 @@ QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 # =========
 # Models
 # =========
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_MODEL = "BAAI/bge-large-en-v1.5"  # "BAAI/bge-small-en-v1.5"
 COLLECTION = "manx-reg-rag-db"
-DEFAULT_CHUNKS_RETRIEVED = 100
+DEFAULT_CHUNKS_RETRIEVED = 10
 MODEL = "openai-responses:gpt-5.4-mini"
 
 SYSTEM_PROMPT = (

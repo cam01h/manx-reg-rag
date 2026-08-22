@@ -67,7 +67,7 @@ def upsert_collection(
     client: QdrantClient, collection: str, points: list[models.PointStruct]
 ) -> None:
     try:
-        client.upsert(collection_name=collection, points=points)
+        client.upload_points(collection_name=collection, points=points, batch_size=64)
         logger.info(
             "upsert complete, [%d] points embedded",
             client.count(collection_name=collection).count,

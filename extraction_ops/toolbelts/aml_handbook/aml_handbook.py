@@ -131,7 +131,8 @@ AmlHandbook = ToolBelt(
     header_matchers=[
         lambda line: bool(re.match(r"^## \*\*\d+\.\s", line)),
         lambda line: bool(re.match(r"^(?:## |- )\*\*\d+\.\d+\s", line)),
-        lambda line: bool(re.match(r"^(?:## )?(?:\*\*|_)\d+(?:\.\d+){2,4}\s", line)),
+        lambda line: bool(re.match(r"^(?:## )?(?:\*\*|_)\d+(?:\.\d+){2}\s", line)),
+        lambda line: bool(re.match(r"^(?:## )?(?:\*\*|_)\d+(?:\.\d+){3,}\s", line)),
         starts_with(["## _", "_"]),
     ],
     clean_header=base_header_cleaner,
