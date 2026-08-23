@@ -14,3 +14,4 @@ data/qdrant/
 /logs
 /tests/extraction_ops/diagnostics/data
 /data/raw/custom
+/tests/db_ops/query_metrics/data

@@ -42,8 +42,10 @@ DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "bm25"
 DENSE_MODEL_NAME = "BAAI/bge-large-en-v1.5"  # "BAAI/bge-small-en-v1.5"
 SPARSE_MODEL_NAME = "Qdrant/bm25"
+RERANKING_MODEL_NAME = "jinaai/jina-reranker-v1-turbo-en"
 COLLECTION = "manx-reg-rag-db"
-DEFAULT_CHUNKS_RETRIEVED = 10
+PRE_RERANK_POOL = 50
+RERANKED_POOL = 10
 
 # ========
 # Agent

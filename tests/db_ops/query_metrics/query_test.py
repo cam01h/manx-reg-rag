@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 from fastembed import SparseTextEmbedding, TextEmbedding
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import QdrantClient
 
 from config import (
@@ -13,6 +14,8 @@ from config import (
     DENSE_MODEL_NAME,
     PROJECT_ROOT,
     QDRANT_URL,
+    RERANKED_POOL,
+    RERANKING_MODEL_NAME,
     RETRIEVAL_MODE,
     SPARSE_MODEL_NAME,
     setup_logging,
@@ -21,12 +24,15 @@ from db_ops.retrieval import (
     embed_query_dense,
     embed_query_sparse,
     query_collection,
+    rerank_chunks,
     return_payload,
 )
 from tests.db_ops.query_metrics.query_data import QUERY_TEST_DATA, RetrievalTest
 
-TEST_TOP_N_RESULTS = 1000
-CURRENT_CONFIGURATION = "large_model_hybrid_vector_embedding"
+TEST_TOP_N_RESULTS = 50
+TEST_RERANKED_N_RESULTS = 10
+RERANKED = True
+CURRENT_CONFIGURATION = f"large_model-{'reranked-jina' if RERANKED else 'no_reranker'}"
 RESULTS_DIR = PROJECT_ROOT / "tests/db_ops/query_metrics/data"
 TEST_MODES = ("dense", "sparse", "hybrid")
 
@@ -44,10 +50,12 @@ class MatchedTestChunk:
 
 def build_config(top_n: int, mode: str) -> dict:
     return {
-        "label": f"{CURRENT_CONFIGURATION}_{mode}",
+        "label": f"{CURRENT_CONFIGURATION}-{mode}",
         "dense_model": DENSE_MODEL_NAME,
         "sparse_model": SPARSE_MODEL_NAME,
         "collection": COLLECTION,
+        "reranked": RERANKED,
+        "reranking model": RERANKING_MODEL_NAME,
         "retrieval_mode": mode,
         "top_n": top_n,
     }
@@ -58,6 +66,7 @@ def run_test_query(
     client: QdrantClient,
     dense_model: TextEmbedding,
     sparse_model: SparseTextEmbedding,
+    reranking_model: TextCrossEncoder,
     top_n: int = TEST_TOP_N_RESULTS,
     mode: str = RETRIEVAL_MODE,
 ) -> list[MatchedTestChunk]:
@@ -69,6 +78,8 @@ def run_test_query(
         dense_vector, sparse_vector, client, top_n=top_n, mode=mode
     )
     chunks = return_payload(results)
+    if RERANKED:
+        chunks = rerank_chunks(test.search_term, chunks, reranking_model, RERANKED_POOL)
 
     for doc, anchor_string in test.expected_strings:
         match_id = ""
@@ -123,6 +134,7 @@ def main(mode: str = RETRIEVAL_MODE):
     client = QdrantClient(url=QDRANT_URL)
     dense_model = TextEmbedding(DENSE_MODEL_NAME)
     sparse_model = SparseTextEmbedding(SPARSE_MODEL_NAME)
+    reranking_model = TextCrossEncoder(RERANKING_MODEL_NAME)
 
     logger.info("starting query metrics test [%s]", mode)
     config = build_config(TEST_TOP_N_RESULTS, mode)
@@ -130,7 +142,13 @@ def main(mode: str = RETRIEVAL_MODE):
         m
         for test in QUERY_TEST_DATA
         for m in run_test_query(
-            test, client, dense_model, sparse_model, TEST_TOP_N_RESULTS, mode
+            test,
+            client,
+            dense_model,
+            sparse_model,
+            reranking_model,
+            TEST_TOP_N_RESULTS,
+            mode,
         )
     ]
     path = write_results(matches, config)

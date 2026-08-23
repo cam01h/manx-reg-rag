@@ -1,5 +1,6 @@
 # setup_logging must run before importing app.llm so the agents init log is caught by the handler
 from fastembed import SparseTextEmbedding, TextEmbedding
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 from pydantic_ai import (
     ModelMessage,
     ModelRequest,
@@ -10,7 +11,14 @@ from pydantic_ai import (
 from qdrant_client import QdrantClient
 from app.deps import AppDeps
 from app.models import ConversationStep, UserPrompt
-from config import DENSE_MODEL_NAME, QDRANT_URL, SPARSE_MODEL_NAME, setup_logging
+from config import (
+    DENSE_MODEL_NAME,
+    QDRANT_URL,
+    RERANKING_MODEL_NAME,
+    RETRIEVAL_MODE,
+    SPARSE_MODEL_NAME,
+    setup_logging,
+)
 from cachetools import TTLCache
 
 setup_logging("app")
@@ -30,6 +38,8 @@ async def lifespan(app: FastAPI):
     app.state.qdrant_client = QdrantClient(url=QDRANT_URL)
     app.state.dense_model = TextEmbedding(model_name=DENSE_MODEL_NAME)
     app.state.sparse_model = SparseTextEmbedding(SPARSE_MODEL_NAME)
+    app.state.reranker_model = TextCrossEncoder(model_name=RERANKING_MODEL_NAME)
+    app.state.mode = RETRIEVAL_MODE
     await run_startup_checks()
     yield
     app.state.qdrant_client.close()
@@ -55,6 +65,8 @@ async def query(user_prompt: UserPrompt, request: Request):
         qdrant_client=request.app.state.qdrant_client,
         dense_model=request.app.state.dense_model,
         sparse_model=request.app.state.sparse_model,
+        reranker_model=request.app.state.reranker_model,
+        mode=request.app.state.mode,
     )
     steps = conversations.get(user_prompt.session_id, [])
     try:

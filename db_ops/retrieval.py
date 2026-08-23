@@ -2,12 +2,14 @@ import json
 from pathlib import Path
 from functools import lru_cache
 from fastembed import SparseTextEmbedding, TextEmbedding
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import QdrantClient, models
 from config import (
     COLLECTION,
-    DEFAULT_CHUNKS_RETRIEVED,
     DEFINITIONS_JSONL_PATH,
     DENSE_VECTOR_NAME,
+    PRE_RERANK_POOL,
+    RERANKED_POOL,
     RETRIEVAL_MODE,
     SPARSE_VECTOR_NAME,
 )
@@ -64,11 +66,11 @@ def query_hybrid(client, collection, dense_vec, sparse_vec, top_n):
 
 # results isnt typed as pyright is having a conflict
 def query_collection(
-    dense_vec: list[float],
-    sparse_vec: models.SparseVector,
+    dense_vec: list[float] | None,
+    sparse_vec: models.SparseVector | None,
     client: QdrantClient,
     collection: str = COLLECTION,
-    top_n: int = DEFAULT_CHUNKS_RETRIEVED,
+    top_n: int = PRE_RERANK_POOL,
     mode: str = RETRIEVAL_MODE,
 ):
     try:
@@ -96,8 +98,24 @@ def return_payload(results) -> list[Payload]:
     ]
     logger.info("[%d] chunks returned:", len(chunks))
     for c in chunks:
-        logger.info("[%s]", c.headers)
+        logger.info("[%s] - [%s]", c.document, ", ".join(h for h in c.headers if h))
     return chunks
+
+
+def rerank_chunks(
+    query: str, chunks: list[Payload], encoder: TextCrossEncoder, top_n=RERANKED_POOL
+) -> list[Payload]:
+    scores = list(
+        encoder.rerank(
+            query,
+            [f"{'\n'.join([h for h in c.headers if h])}\n\n{c.body}" for c in chunks],
+        )
+    )
+    ranked = sorted(zip(chunks, scores), key=lambda p: p[1], reverse=True)
+    return [
+        c.model_copy(update={"rank": i + 1, "score": s})
+        for i, (c, s) in enumerate(ranked[:top_n])
+    ]
 
 
 @lru_cache(maxsize=1)
@@ -143,6 +161,14 @@ def match_definitions(
     return matched_definitions
 
 
+def _dense_required(ctx: RunContext[AppDeps]) -> bool:
+    return ctx.deps.mode in ("dense", "hybrid")
+
+
+def _sparse_required(ctx: RunContext[AppDeps]) -> bool:
+    return ctx.deps.mode in ("sparse", "hybrid")
+
+
 def get_chunks_with_definitions(
     ctx: RunContext[AppDeps],
     query: str,
@@ -150,10 +176,20 @@ def get_chunks_with_definitions(
     """Search the Isle of Man AML legislation and guidance for content relevant to the query.
     Returns the most relevant sections from the regulations and any defined terms used in them."""
     logger.info("qdrant queried using search phrase: [%s]", query)
-    dense_vector = embed_query_dense(query, ctx.deps.dense_model)
-    sparse_vector = embed_query_sparse(query, ctx.deps.sparse_model)
-    results = query_collection(dense_vector, sparse_vector, ctx.deps.qdrant_client)
+    dense_vector = None
+    sparse_vector = None
+    if _dense_required(ctx):
+        dense_vector = embed_query_dense(query, ctx.deps.dense_model)
+    if _sparse_required(ctx):
+        sparse_vector = embed_query_sparse(query, ctx.deps.sparse_model)
+    results = query_collection(
+        dense_vector,
+        sparse_vector,
+        ctx.deps.qdrant_client,
+        mode=ctx.deps.mode,
+    )
     chunks = return_payload(results)
+    chunks = rerank_chunks(query, chunks, ctx.deps.reranker_model, RERANKED_POOL)
     definitions_data = load_definitions()
     definitions = match_definitions(chunks, definitions_data)
     return chunks, sorted(definitions, key=lambda d: (d.document, d.term))
