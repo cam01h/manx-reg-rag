@@ -8,15 +8,17 @@ from config import (
     COLLECTION,
     DEFINITIONS_JSONL_PATH,
     DENSE_VECTOR_NAME,
+    FINAL_RETURN_TOP_N,
     PRE_RERANK_POOL,
-    RERANKED_POOL,
     RETRIEVAL_MODE,
     SPARSE_VECTOR_NAME,
+    USE_RERANKER,
 )
 from db_ops.models import DefinitionRecord, Payload
 from pydantic_ai import RunContext
 from app.deps import AppDeps
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -34,30 +36,67 @@ def embed_query_sparse(text: str, model: SparseTextEmbedding) -> models.SparseVe
     )
 
 
-def query_dense(client, collection, dense_vec, top_n):
+def build_exclusion_filter(seen_ids: set[str]) -> models.Filter | None:
+    if not seen_ids:
+        return None
+    point_ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, cid)) for cid in seen_ids]
+    logger.info("excluding [%d] previously returned chunks", len(point_ids))
+    return models.Filter(must_not=[models.HasIdCondition(has_id=point_ids)])  # pyright: ignore[reportArgumentType]
+
+
+def query_dense(
+    client: QdrantClient,
+    collection: str,
+    dense_vec: list[float],
+    top_n: int,
+    seen: set[str],
+):
     return client.query_points(
         collection_name=collection,
         query=dense_vec,
         using=DENSE_VECTOR_NAME,
         limit=top_n,
+        query_filter=build_exclusion_filter(seen),
     )
 
 
-def query_sparse(client, collection, sparse_vec, top_n):
+def query_sparse(
+    client: QdrantClient,
+    collection: str,
+    sparse_vec: models.SparseVector,
+    top_n: int,
+    seen: set[str],
+):
     return client.query_points(
         collection_name=collection,
         query=sparse_vec,
         using=SPARSE_VECTOR_NAME,
         limit=top_n,
+        query_filter=build_exclusion_filter(seen),
     )
 
 
-def query_hybrid(client, collection, dense_vec, sparse_vec, top_n):
+def query_hybrid(
+    client: QdrantClient,
+    collection: str,
+    dense_vec: list[float],
+    sparse_vec: models.SparseVector,
+    top_n: int,
+    seen: set[str],
+):
+    exclusion = build_exclusion_filter(seen)
     return client.query_points(
         collection_name=collection,
         prefetch=[
-            models.Prefetch(query=dense_vec, using=DENSE_VECTOR_NAME, limit=top_n),
-            models.Prefetch(query=sparse_vec, using=SPARSE_VECTOR_NAME, limit=top_n),
+            models.Prefetch(
+                query=dense_vec, using=DENSE_VECTOR_NAME, limit=top_n, filter=exclusion
+            ),
+            models.Prefetch(
+                query=sparse_vec,
+                using=SPARSE_VECTOR_NAME,
+                limit=top_n,
+                filter=exclusion,
+            ),
         ],
         query=models.FusionQuery(fusion=models.Fusion.RRF),
         limit=top_n,
@@ -69,17 +108,22 @@ def query_collection(
     dense_vec: list[float] | None,
     sparse_vec: models.SparseVector | None,
     client: QdrantClient,
+    seen: set[str],
     collection: str = COLLECTION,
-    top_n: int = PRE_RERANK_POOL,
+    pre_rerank_pool: int = PRE_RERANK_POOL,
+    top_n: int = FINAL_RETURN_TOP_N,
     mode: str = RETRIEVAL_MODE,
 ):
+    limit = pre_rerank_pool if USE_RERANKER else top_n
     try:
-        if mode == "dense":
-            results = query_dense(client, collection, dense_vec, top_n)
-        elif mode == "sparse":
-            results = query_sparse(client, collection, sparse_vec, top_n)
-        elif mode == "hybrid":
-            results = query_hybrid(client, collection, dense_vec, sparse_vec, top_n)
+        if mode == "dense" and dense_vec:
+            results = query_dense(client, collection, dense_vec, limit, seen)
+        elif mode == "sparse" and sparse_vec:
+            results = query_sparse(client, collection, sparse_vec, limit, seen)
+        elif mode == "hybrid" and dense_vec and sparse_vec:
+            results = query_hybrid(
+                client, collection, dense_vec, sparse_vec, limit, seen
+            )
         else:
             logger.critical("unknown retrieval mode [%s]", mode)
             raise ValueError(f"unknown retrieval mode: [{mode}]")
@@ -97,13 +141,17 @@ def return_payload(results) -> list[Payload]:
         for i, r in enumerate(results.points)
     ]
     logger.info("[%d] chunks returned:", len(chunks))
-    for c in chunks:
-        logger.info("[%s] - [%s]", c.document, ", ".join(h for h in c.headers if h))
+    if not USE_RERANKER:
+        for c in chunks:
+            logger.info("[%s] - [%s]", c.document, ", ".join(h for h in c.headers if h))
     return chunks
 
 
 def rerank_chunks(
-    query: str, chunks: list[Payload], encoder: TextCrossEncoder, top_n=RERANKED_POOL
+    query: str,
+    chunks: list[Payload],
+    encoder: TextCrossEncoder,
+    top_n=FINAL_RETURN_TOP_N,
 ) -> list[Payload]:
     scores = list(
         encoder.rerank(
@@ -112,10 +160,14 @@ def rerank_chunks(
         )
     )
     ranked = sorted(zip(chunks, scores), key=lambda p: p[1], reverse=True)
-    return [
+    payload = [
         c.model_copy(update={"rank": i + 1, "score": s})
         for i, (c, s) in enumerate(ranked[:top_n])
     ]
+    if USE_RERANKER:
+        for c in payload:
+            logger.info("[%s] - [%s]", c.document, ", ".join(h for h in c.headers if h))
+    return payload
 
 
 @lru_cache(maxsize=1)
@@ -174,7 +226,8 @@ def get_chunks_with_definitions(
     query: str,
 ) -> tuple[list[Payload], list[DefinitionRecord]]:
     """Search the Isle of Man AML legislation and guidance for content relevant to the query.
-    Returns the most relevant sections from the regulations and any defined terms used in them."""
+    The query uses dense embedding in a Qdrant database so write the query as text as it may
+    appear in the documents"""
     logger.info("qdrant queried using search phrase: [%s]", query)
     dense_vector = None
     sparse_vector = None
@@ -187,9 +240,14 @@ def get_chunks_with_definitions(
         sparse_vector,
         ctx.deps.qdrant_client,
         mode=ctx.deps.mode,
+        seen=ctx.deps.seen_chunk_ids,
     )
     chunks = return_payload(results)
-    chunks = rerank_chunks(query, chunks, ctx.deps.reranker_model, RERANKED_POOL)
+    if USE_RERANKER:
+        chunks = rerank_chunks(
+            query, chunks, ctx.deps.reranker_model, FINAL_RETURN_TOP_N
+        )
+    ctx.deps.seen_chunk_ids.update(c.chunk_id for c in chunks)
     definitions_data = load_definitions()
     definitions = match_definitions(chunks, definitions_data)
     return chunks, sorted(definitions, key=lambda d: (d.document, d.term))

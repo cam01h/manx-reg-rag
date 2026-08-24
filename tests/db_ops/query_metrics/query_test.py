@@ -12,9 +12,9 @@ from qdrant_client import QdrantClient
 from config import (
     COLLECTION,
     DENSE_MODEL_NAME,
+    FINAL_RETURN_TOP_N,
     PROJECT_ROOT,
     QDRANT_URL,
-    RERANKED_POOL,
     RERANKING_MODEL_NAME,
     RETRIEVAL_MODE,
     SPARSE_MODEL_NAME,
@@ -31,8 +31,10 @@ from tests.db_ops.query_metrics.query_data import QUERY_TEST_DATA, RetrievalTest
 
 TEST_TOP_N_RESULTS = 50
 TEST_RERANKED_N_RESULTS = 10
-RERANKED = True
-CURRENT_CONFIGURATION = f"large_model-{'reranked-jina' if RERANKED else 'no_reranker'}"
+RERANK_IN_TESTS = True
+CURRENT_CONFIGURATION = (
+    f"large_model-{'reranked-jina' if RERANK_IN_TESTS else 'no_reranker'}"
+)
 RESULTS_DIR = PROJECT_ROOT / "tests/db_ops/query_metrics/data"
 TEST_MODES = ("dense", "sparse", "hybrid")
 
@@ -54,7 +56,7 @@ def build_config(top_n: int, mode: str) -> dict:
         "dense_model": DENSE_MODEL_NAME,
         "sparse_model": SPARSE_MODEL_NAME,
         "collection": COLLECTION,
-        "reranked": RERANKED,
+        "reranked": RERANK_IN_TESTS,
         "reranking model": RERANKING_MODEL_NAME,
         "retrieval_mode": mode,
         "top_n": top_n,
@@ -75,11 +77,13 @@ def run_test_query(
     dense_vector = embed_query_dense(test.search_term, dense_model)
     sparse_vector = embed_query_sparse(test.search_term, sparse_model)
     results = query_collection(
-        dense_vector, sparse_vector, client, top_n=top_n, mode=mode
+        dense_vector, sparse_vector, client, top_n=top_n, mode=mode, seen=set()
     )
     chunks = return_payload(results)
-    if RERANKED:
-        chunks = rerank_chunks(test.search_term, chunks, reranking_model, RERANKED_POOL)
+    if RERANK_IN_TESTS:
+        chunks = rerank_chunks(
+            test.search_term, chunks, reranking_model, FINAL_RETURN_TOP_N
+        )
 
     for doc, anchor_string in test.expected_strings:
         match_id = ""
