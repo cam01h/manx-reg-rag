@@ -9,6 +9,7 @@ from config import (
     DEFINITIONS_JSONL_PATH,
     DENSE_VECTOR_NAME,
     FINAL_RETURN_TOP_N,
+    LEGISLATION_QUOTA_RATIO,
     PRE_RERANK_POOL,
     RETRIEVAL_MODE,
     SPARSE_VECTOR_NAME,
@@ -48,8 +49,8 @@ def query_dense(
     client: QdrantClient,
     collection: str,
     dense_vec: list[float],
-    top_n: int,
     seen: set[str],
+    top_n: int = PRE_RERANK_POOL,
 ):
     return client.query_points(
         collection_name=collection,
@@ -64,8 +65,8 @@ def query_sparse(
     client: QdrantClient,
     collection: str,
     sparse_vec: models.SparseVector,
-    top_n: int,
     seen: set[str],
+    top_n: int = PRE_RERANK_POOL,
 ):
     return client.query_points(
         collection_name=collection,
@@ -81,8 +82,8 @@ def query_hybrid(
     collection: str,
     dense_vec: list[float],
     sparse_vec: models.SparseVector,
-    top_n: int,
     seen: set[str],
+    top_n: int = PRE_RERANK_POOL,
 ):
     exclusion = build_exclusion_filter(seen)
     return client.query_points(
@@ -110,20 +111,15 @@ def query_collection(
     client: QdrantClient,
     seen: set[str],
     collection: str = COLLECTION,
-    pre_rerank_pool: int = PRE_RERANK_POOL,
-    top_n: int = FINAL_RETURN_TOP_N,
     mode: str = RETRIEVAL_MODE,
 ):
-    limit = pre_rerank_pool if USE_RERANKER else top_n
     try:
         if mode == "dense" and dense_vec:
-            results = query_dense(client, collection, dense_vec, limit, seen)
+            results = query_dense(client, collection, dense_vec, seen)
         elif mode == "sparse" and sparse_vec:
-            results = query_sparse(client, collection, sparse_vec, limit, seen)
+            results = query_sparse(client, collection, sparse_vec, seen)
         elif mode == "hybrid" and dense_vec and sparse_vec:
-            results = query_hybrid(
-                client, collection, dense_vec, sparse_vec, limit, seen
-            )
+            results = query_hybrid(client, collection, dense_vec, sparse_vec, seen)
         else:
             logger.critical("unknown retrieval mode [%s]", mode)
             raise ValueError(f"unknown retrieval mode: [{mode}]")
@@ -140,18 +136,39 @@ def return_payload(results) -> list[Payload]:
         Payload(**r.payload, score=r.score, rank=i + 1)
         for i, r in enumerate(results.points)
     ]
-    logger.info("[%d] chunks returned:", len(chunks))
     if not USE_RERANKER:
         for c in chunks:
             logger.info("[%s] - [%s]", c.document, ", ".join(h for h in c.headers if h))
     return chunks
 
 
+def _is_legislation(chunk: Payload) -> bool:
+    return chunk.hierarchy in ("primary legislation", "secondary legislation")
+
+
+def force_legislation_quota(
+    chunks: list[Payload],
+    top_n: int = FINAL_RETURN_TOP_N,
+    quota_float: float = LEGISLATION_QUOTA_RATIO,
+) -> list[Payload]:
+    quota = round(top_n * quota_float)
+    head = chunks[:top_n]
+    tail = chunks[top_n:]
+    legislation = [c for c in head if _is_legislation(c)]
+    guidance = [c for c in head if not _is_legislation(c)]
+
+    shortfall = quota - len(legislation)
+    if shortfall > 0:
+        legislation += [c for c in tail if _is_legislation(c)][:shortfall]
+
+    final = legislation + guidance
+    return final
+
+
 def rerank_chunks(
     query: str,
     chunks: list[Payload],
     encoder: TextCrossEncoder,
-    top_n=FINAL_RETURN_TOP_N,
 ) -> list[Payload]:
     scores = list(
         encoder.rerank(
@@ -162,12 +179,19 @@ def rerank_chunks(
     ranked = sorted(zip(chunks, scores), key=lambda p: p[1], reverse=True)
     payload = [
         c.model_copy(update={"rank": i + 1, "score": s})
-        for i, (c, s) in enumerate(ranked[:top_n])
+        for i, (c, s) in enumerate(ranked)
     ]
-    if USE_RERANKER:
-        for c in payload:
-            logger.info("[%s] - [%s]", c.document, ", ".join(h for h in c.headers if h))
     return payload
+
+
+def normalise_ranks_and_trim(
+    chunks: list[Payload], top_n: int = FINAL_RETURN_TOP_N
+) -> list[Payload]:
+    final = [c.model_copy(update={"rank": i + 1}) for i, c in enumerate(chunks)][:top_n]
+    logger.info("chunks returned - [%s]", len(final))
+    for c in final:
+        logger.info("[%s] - [%s]", c.document, ", ".join(h for h in c.headers if h))
+    return final
 
 
 @lru_cache(maxsize=1)
@@ -209,7 +233,8 @@ def match_definitions(
         logger.warning(
             "no definition found for [%d] terms: [%s]", len(missing), missing
         )
-
+    for d in matched_definitions:
+        logger.info("definition returned - doc: [%s], term: [%s]", d.document, d.term)
     return matched_definitions
 
 
@@ -244,9 +269,10 @@ def get_chunks_with_definitions(
     )
     chunks = return_payload(results)
     if USE_RERANKER:
-        chunks = rerank_chunks(
-            query, chunks, ctx.deps.reranker_model, FINAL_RETURN_TOP_N
-        )
+        chunks = rerank_chunks(query, chunks, ctx.deps.reranker_model)
+    if not ctx.deps.seen_chunk_ids:
+        chunks = force_legislation_quota(chunks)
+    chunks = normalise_ranks_and_trim(chunks)
     ctx.deps.seen_chunk_ids.update(c.chunk_id for c in chunks)
     definitions_data = load_definitions()
     definitions = match_definitions(chunks, definitions_data)

@@ -46,19 +46,17 @@ RERANKING_MODEL_NAME = "jinaai/jina-reranker-v1-turbo-en"
 USE_RERANKER = True
 COLLECTION = "manx-reg-rag-db"
 PRE_RERANK_POOL = 50
-FINAL_RETURN_TOP_N = 10
+FINAL_RETURN_TOP_N = 12
+LEGISLATION_QUOTA_RATIO = 0.5
 
 # ========
 # Agent
 # ========
-MODEL = "openai-responses:gpt-5.4-mini"
+MODEL = "openai-responses:gpt-5.6-terra"
 
 SYSTEM_PROMPT = (
     "You are an expert in Isle of Man financial services regulation, speaking to a "
     "member of a regulated Isle of Man financial services firm. "
-    "Use your tools as many times, and in as many ways, as necessary until you are "
-    "satisfied you have everything needed to answer. Only ever answer using "
-    "information returned by tool calls, never from any other source. "
     "\n"
     "Whilst large scale block quotes should be avoided where not requested, your "
     "answer should use the exact language, terminology and structure of the "
@@ -70,6 +68,10 @@ SYSTEM_PROMPT = (
     "Your answers should be thorough, detailed and use a range of sources. "
     "You should provide grounded and practical information that the user can apply "
     "when conducting the regulated business in a compliant and efficient manner."
+    "\n"
+    "You must continually call tools as many times, and in as many ways, as necessary "
+    "until you are satisfied you have everything needed to answer. Only ever answer using "
+    "information returned by tool calls, never from any other source. "
     "\n"
     "Frame conditional answers as requirements, not permissions: if the user asks "
     "whether something is possible, answer in terms of the specific conditions, "
