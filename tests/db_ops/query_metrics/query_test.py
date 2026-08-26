@@ -12,7 +12,6 @@ from qdrant_client import QdrantClient
 from config import (
     COLLECTION,
     DENSE_MODEL_NAME,
-    FINAL_RETURN_TOP_N,
     PROJECT_ROOT,
     QDRANT_URL,
     RERANKING_MODEL_NAME,
@@ -77,16 +76,15 @@ def run_test_query(
     dense_vector = embed_query_dense(test.search_term, dense_model)
     sparse_vector = embed_query_sparse(test.search_term, sparse_model)
     results = query_collection(
-        dense_vector, sparse_vector, client, top_n=top_n, mode=mode, seen=set()
+        dense_vector, sparse_vector, client, mode=mode, seen=set()
     )
     chunks = return_payload(results)
     if RERANK_IN_TESTS:
-        chunks = rerank_chunks(
-            test.search_term, chunks, reranking_model, FINAL_RETURN_TOP_N
-        )
+        chunks = rerank_chunks(test.search_term, chunks, reranking_model)
 
     for doc, anchor_string in test.expected_strings:
         match_id = ""
+        # zero used as not found rather than a new var
         match_rank = 0
         for i, chunk in enumerate(chunks):
             if chunk.document == doc and anchor_string in chunk.body:
