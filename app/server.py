@@ -18,13 +18,13 @@ import logging  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
-APP = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan)
 
 configure_logfire()
-logfire.instrument_fastapi(APP)
+logfire.instrument_fastapi(app)
 
 
-@APP.post("/query")
+@app.post("/query")
 async def query(user_prompt: UserPrompt, request: Request):
     logger.info("query received: %s", user_prompt.prompt)
     deps = AppDeps(
@@ -55,11 +55,11 @@ async def query(user_prompt: UserPrompt, request: Request):
     return result.output.model_dump()
 
 
-@APP.post("/reset")
+@app.post("/reset")
 async def reset(user_prompt: UserPrompt):
     n = len(CONVERSATIONS.pop(user_prompt.session_id, []))
     logger.info("conversation reset deleting %d interactions", n)
     return {"status": "ok"}
 
 
-APP.mount("/", StaticFiles(directory="web", html=True), name="web")
+app.mount("/", StaticFiles(directory="web", html=True), name="web")

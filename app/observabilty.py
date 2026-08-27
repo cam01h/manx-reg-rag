@@ -9,4 +9,5 @@ def configure_logfire() -> None:
         send_to_logfire=SEND_TO_LOGFIRE,
         console=False,
     )
+    logfire.instrument_pydantic_ai()
     logging.getLogger().addHandler(logfire.LogfireLoggingHandler())
