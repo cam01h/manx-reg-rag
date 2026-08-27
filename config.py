@@ -110,6 +110,11 @@ def get_embedding_dim(embedding_model):
     return TextEmbedding(model_name=embedding_model).embedding_size
 
 
+# logging and logfire
+SERVICE_NAME = "manx-reg-rag"
+SEND_TO_LOGFIRE = os.getenv("SEND_TO_LOGFIRE", "false").lower() == "true"
+
+
 def setup_logging(entry_point: str) -> None:
     date = dt.datetime.today()
     logfile = (
