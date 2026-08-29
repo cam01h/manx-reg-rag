@@ -10,4 +10,6 @@ def configure_logfire() -> None:
         console=False,
     )
     logfire.instrument_pydantic_ai()
-    logging.getLogger().addHandler(logfire.LogfireLoggingHandler())
+    handler = logfire.LogfireLoggingHandler()
+    handler.setLevel(logging.INFO)
+    logging.getLogger().addHandler(handler)

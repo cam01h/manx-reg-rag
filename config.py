@@ -152,6 +152,7 @@ def setup_logging(entry_point: str) -> None:
             "qdrant_client": {"level": "WARNING"},
             "fastembed": {"level": "WARNING"},
             "openai": {"level": "WARNING"},
+            "hugging_face_hub": {"level": "WARNING"},
         },
         "root": {
             "level": "DEBUG",

@@ -1,4 +1,5 @@
-# setup_logging must run before importing app.llm so the agents init log is caught by the handler
+# setup_logging and configure_logfire must run before importing
+# app.llm so the agents init log is caught by the handler
 import logfire
 from app.deps import AppDeps
 from app.lifespan import lifespan
@@ -10,17 +11,18 @@ from config import (
 )
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from app.llm import agent
+import logging
 
 setup_logging("app")
-import logging  # noqa: E402
+configure_logfire()
+
+from app.llm import agent  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
 app = FastAPI(lifespan=lifespan)
 
-configure_logfire()
 logfire.instrument_fastapi(app)
 
 
