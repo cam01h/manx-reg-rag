@@ -263,8 +263,9 @@ def get_chunks_with_definitions(
     query: str,
 ) -> tuple[list[ServedPayload], list[DefinitionRecord]]:
     """Search the Isle of Man AML legislation and guidance for content relevant to the query.
-    The query uses dense embedding in a Qdrant database so write the query as text as it may
-    appear in the documents"""
+    The query uses dense embedding in a Qdrant database so do not use quotation marks,
+    boolean operators, or field syntax. Write the query as a natural phrase as it would
+    appear in the source text."""
     logger.info("qdrant queried using search phrase: [%s]", query)
     dense_vector = None
     sparse_vector = None
