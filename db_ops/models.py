@@ -20,6 +20,13 @@ class Payload(BaseModel):
     rank: int | None = None
 
 
+class ServedPayload(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    title: str
+    hierarchy: str
+    body: str
+
+
 class DefinitionRecord(HashableBaseModel):
     model_config = ConfigDict(frozen=True)
     document: str

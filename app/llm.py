@@ -1,4 +1,5 @@
 from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from app.deps import AppDeps
 from app.models import AgentResponse
 from config import MODEL, SYSTEM_PROMPT
@@ -16,5 +17,6 @@ agent = Agent(
     output_type=AgentResponse,
     tools=[get_chunks_with_definitions],
     deps_type=AppDeps,
+    model_settings=OpenAIResponsesModelSettings(openai_reasoning_summary="concise"),
 )
 logger.info("agent initialised with model name: %s", MODEL)

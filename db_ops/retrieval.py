@@ -3,6 +3,7 @@ from pathlib import Path
 from functools import lru_cache
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
+import logfire
 from qdrant_client import QdrantClient, models
 from config import (
     COLLECTION,
@@ -15,7 +16,7 @@ from config import (
     SPARSE_VECTOR_NAME,
     USE_RERANKER,
 )
-from db_ops.models import DefinitionRecord, Payload
+from db_ops.models import DefinitionRecord, Payload, ServedPayload
 from pydantic_ai import RunContext
 from app.deps import AppDeps
 import logging
@@ -246,34 +247,49 @@ def _sparse_required(ctx: RunContext[AppDeps]) -> bool:
     return ctx.deps.mode in ("sparse", "hybrid")
 
 
+def repack_to_servable_chunk(chunks: list[Payload]) -> list[ServedPayload]:
+    return [
+        ServedPayload(
+            title=f"{c.document}\n{', '.join([h for h in c.headers if h])}",
+            hierarchy=c.hierarchy,
+            body=c.body,
+        )
+        for c in chunks
+    ]
+
+
 def get_chunks_with_definitions(
     ctx: RunContext[AppDeps],
     query: str,
-) -> tuple[list[Payload], list[DefinitionRecord]]:
+) -> tuple[list[ServedPayload], list[DefinitionRecord]]:
     """Search the Isle of Man AML legislation and guidance for content relevant to the query.
     The query uses dense embedding in a Qdrant database so write the query as text as it may
     appear in the documents"""
     logger.info("qdrant queried using search phrase: [%s]", query)
     dense_vector = None
     sparse_vector = None
-    if _dense_required(ctx):
-        dense_vector = embed_query_dense(query, ctx.deps.dense_model)
-    if _sparse_required(ctx):
-        sparse_vector = embed_query_sparse(query, ctx.deps.sparse_model)
-    results = query_collection(
-        dense_vector,
-        sparse_vector,
-        ctx.deps.qdrant_client,
-        mode=ctx.deps.mode,
-        seen=ctx.deps.seen_chunk_ids,
-    )
-    chunks = return_payload(results)
+    with logfire.span("query qdrant"):
+        if _dense_required(ctx):
+            dense_vector = embed_query_dense(query, ctx.deps.dense_model)
+        if _sparse_required(ctx):
+            sparse_vector = embed_query_sparse(query, ctx.deps.sparse_model)
+        results = query_collection(
+            dense_vector,
+            sparse_vector,
+            ctx.deps.qdrant_client,
+            mode=ctx.deps.mode,
+            seen=ctx.deps.seen_chunk_ids,
+        )
+        chunks = return_payload(results)
     if USE_RERANKER:
-        chunks = rerank_chunks(query, chunks, ctx.deps.reranker_model)
+        with logfire.span("rerank chunks"):
+            chunks = rerank_chunks(query, chunks, ctx.deps.reranker_model)
     if not ctx.deps.seen_chunk_ids:
         chunks = force_legislation_quota(chunks)
     chunks = normalise_ranks_and_trim(chunks)
     ctx.deps.seen_chunk_ids.update(c.chunk_id for c in chunks)
-    definitions_data = load_definitions()
-    definitions = match_definitions(chunks, definitions_data)
+    with logfire.span("attach denfinitions"):
+        definitions_data = load_definitions()
+        definitions = match_definitions(chunks, definitions_data)
+    chunks = repack_to_servable_chunk(chunks)
     return chunks, sorted(definitions, key=lambda d: (d.document, d.term))
