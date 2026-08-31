@@ -53,6 +53,7 @@ LEGISLATION_QUOTA_RATIO = 0.5
 # Agent
 # ========
 MODEL = "openai-responses:gpt-5.6-luna"
+REASONING_EFFORT = "medium"
 
 SYSTEM_PROMPT = (
     "You are an expert in Isle of Man financial services regulation, speaking to a "

@@ -2,7 +2,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from app.deps import AppDeps
 from app.models import AgentResponse
-from config import MODEL, SYSTEM_PROMPT
+from config import MODEL, REASONING_EFFORT, SYSTEM_PROMPT
 from db_ops.retrieval import get_chunks_with_definitions
 from dotenv import load_dotenv
 import logging
@@ -18,7 +18,7 @@ agent = Agent(
     tools=[get_chunks_with_definitions],
     deps_type=AppDeps,
     model_settings=OpenAIResponsesModelSettings(
-        openai_reasoning_summary="concise", openai_reasoning_effort="medium"
+        openai_reasoning_summary="concise", openai_reasoning_effort=REASONING_EFFORT
     ),
 )
 logger.info("agent initialised with model name: %s", MODEL)
