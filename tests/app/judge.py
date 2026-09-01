@@ -4,11 +4,11 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.deepseek import DeepSeekProvider
 from tests.app.models import AnchorJudgement, GroundingJudgement
-from agent_metrics import JUDGE_MODEL
 
 load_dotenv()
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+JUDGE_MODEL = "deepseek-v4-flash"
 
 judge_model = OpenAIChatModel(
     JUDGE_MODEL,
