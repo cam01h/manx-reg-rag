@@ -28,14 +28,19 @@ Every answer is built from the actual text of Isle of Man legislation and guidan
 
 ## What it covers right now
 
-Right now the tool only knows AML/CFT-related material. Five documents are loaded:
+Right now the tool only knows AML/CFT-related material. Eleven documents are loaded:
 
 - The AML/CFT Code 2019
 - The AML Handbook (April 2026)
 - The AML/CFT Supplemental Information Document
 - The Proceeds of Crime Act 2008
-- The Terrorism and Crime Act 2008
-- The financial intelligence Unit Act 2011
+- The Financial Intelligence Unit Act 2016
+- Anti-Money Laundering And Countering The Financing Of Terrorism (Civil Penalties) Regulations 2019
+- The Anti-Terrorism and Crime Act 2003
+- The Regulated Activities Order 2011
+- Terrorism And Other Crime (Financial Restrictions) Act 2014
+- Designated Businesses (Registration and Oversight) Act 2015
+- Sanctions Act 2024
 
 More areas of Isle of Man financial services regulation are planned. For now, if your question falls outside AML/CFT, the tool doesn't have the material to answer it well — and it's built to tell you that rather than guess.
 
