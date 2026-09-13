@@ -46,13 +46,14 @@ RERANKING_MODEL_NAME = "jinaai/jina-reranker-v1-turbo-en"
 USE_RERANKER = True
 COLLECTION = "manx-reg-rag-db"
 PRE_RERANK_POOL = 50
-FINAL_RETURN_TOP_N = 12
+FINAL_RETURN_TOP_N = 10
 LEGISLATION_QUOTA_RATIO = 0.5
 
 # ========
 # Agent
 # ========
-MODEL = "openai-responses:gpt-5.6-terra"
+MODEL = "openai-responses:gpt-5.6-luna"
+REASONING_EFFORT = "medium"
 
 SYSTEM_PROMPT = (
     "You are an expert in Isle of Man financial services regulation, speaking to a "
@@ -110,6 +111,11 @@ def get_embedding_dim(embedding_model):
     return TextEmbedding(model_name=embedding_model).embedding_size
 
 
+# logging and logfire
+SERVICE_NAME = "manx-reg-rag"
+SEND_TO_LOGFIRE = os.getenv("SEND_TO_LOGFIRE", "false").lower() == "true"
+
+
 def setup_logging(entry_point: str) -> None:
     date = dt.datetime.today()
     logfile = (
@@ -147,6 +153,7 @@ def setup_logging(entry_point: str) -> None:
             "qdrant_client": {"level": "WARNING"},
             "fastembed": {"level": "WARNING"},
             "openai": {"level": "WARNING"},
+            "hugging_face_hub": {"level": "WARNING"},
         },
         "root": {
             "level": "DEBUG",
