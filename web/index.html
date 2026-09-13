@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>manx-reg-rag</title>
     <link rel="stylesheet" href="/style.css">
 </head>
@@ -9,13 +10,14 @@
 
     <header>
         <h1>manx-reg-rag</h1>
+        <button type="button" id="toggle-citations">Hide citations</button>
     </header>
 
     <main>
         <div id="left-panel">
             <div id="response"></div>
             <form id="prompt-form">
-                <input id="prompt-input" type="text" placeholder="Ask a question...">
+                <textarea id="prompt-input" rows="1" placeholder="Ask a question..."></textarea>
                 <button type="submit">Send</button>
                 <button type="button" id="reset-button">Reset</button>
             </form>

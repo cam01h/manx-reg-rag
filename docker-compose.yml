@@ -11,7 +11,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8000:8000"
+      - "8000:8000"
     environment:
       - QDRANT_URL=http://qdrant:6333
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -22,3 +22,6 @@ services:
       - ./logs:/app/logs
     depends_on:
       - qdrant
+
+volumes:
+  qdrant_data:
