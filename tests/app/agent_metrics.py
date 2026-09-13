@@ -286,7 +286,7 @@ async def main():
     config = build_config()
     results: list[RunResult] = []
 
-    for test in AGENT_TEST_DATA[:1]:
+    for test in AGENT_TEST_DATA:
         for run_index in range(RUNS_PER_QUERY):
             deps = build_deps()
             result = await run_test_case(test, run_index, deps)
