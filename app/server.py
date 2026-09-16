@@ -25,10 +25,17 @@ app = FastAPI(lifespan=lifespan)
 
 logfire.instrument_fastapi(app)
 
+ACCESS_EMAIL_HEADER = "Cf-Access-Authenticated-User-Email"
+
+
+def session_key(user_prompt: UserPrompt, request: Request) -> str:
+    return request.headers.get(ACCESS_EMAIL_HEADER) or user_prompt.session_id
+
 
 @app.post("/query")
 async def query(user_prompt: UserPrompt, request: Request):
-    logger.info("query received: %s", user_prompt.prompt)
+    key = session_key(user_prompt, request)
+    logger.info("query received [%s]: [%s]", key, user_prompt.prompt)
     deps = AppDeps(
         qdrant_client=request.app.state.qdrant_client,
         dense_model=request.app.state.dense_model,
@@ -36,7 +43,7 @@ async def query(user_prompt: UserPrompt, request: Request):
         reranker_model=request.app.state.reranker_model,
         mode=request.app.state.mode,
     )
-    steps = CONVERSATIONS.get(user_prompt.session_id, [])
+    steps = CONVERSATIONS.get(key, [])
     try:
         result = await agent.run(
             user_prompt.prompt,
@@ -46,7 +53,7 @@ async def query(user_prompt: UserPrompt, request: Request):
     except Exception:
         logger.exception("agent.run failed during /query")
         raise
-    CONVERSATIONS[user_prompt.session_id] = steps + [
+    CONVERSATIONS[key] = steps + [
         ConversationStep(
             user_prompt=user_prompt.prompt,
             agent_response=result.output.answer,
@@ -58,9 +65,10 @@ async def query(user_prompt: UserPrompt, request: Request):
 
 
 @app.post("/reset")
-async def reset(user_prompt: UserPrompt):
-    n = len(CONVERSATIONS.pop(user_prompt.session_id, []))
-    logger.info("conversation reset deleting %d interactions", n)
+async def reset(user_prompt: UserPrompt, request: Request):
+    key = session_key(user_prompt, request)
+    n = len(CONVERSATIONS.pop(key, []))
+    logger.info("conversation reset [%s] deleting %d interactions", key, n)
     return {"status": "ok"}
 
 

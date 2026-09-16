@@ -180,14 +180,18 @@ form.addEventListener("submit", async (event) => {
 /* 6. Reset
    ========================================================================== */
 
-resetButton.addEventListener("click", async () => {
-    if (isQuerying) return;
-
-    await fetch("/reset", {
+function clearServerSession() {
+    return fetch("/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: "", session_id: sessionId })
     });
+}
+
+resetButton.addEventListener("click", async () => {
+    if (isQuerying) return;
+
+    await clearServerSession();
     history = [];
     response.innerHTML = "";
     citations.innerHTML = "";
@@ -195,6 +199,9 @@ resetButton.addEventListener("click", async () => {
     resetInputHeight();
 });
 
+// Server keeps history keyed by email; the page doesn't. Clear the server
+// side on load so both start empty and a refresh means a fresh start.
+clearServerSession();
 
 /* 7. Citations toggle
    One class on <body>; the stylesheet decides what it means at each width.
