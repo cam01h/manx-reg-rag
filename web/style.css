@@ -139,7 +139,7 @@ body.citations-hidden #right-panel {
 }
 
 .pending {
-    color: var(--subtext);
+    color: var(--green);
     font-style: italic;
 }
 
