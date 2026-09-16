@@ -1,9 +1,8 @@
+import datetime as dt
 import logging
 import logging.config
-import datetime as dt
-from pathlib import Path
 import os
-
+from pathlib import Path
 
 # ==========
 # file paths
@@ -69,6 +68,8 @@ SYSTEM_PROMPT = (
     "Your answers should be thorough, detailed and use a range of sources. "
     "You should provide grounded and practical information that the user can apply "
     "when conducting the regulated business in a compliant and efficient manner."
+    "Where possible a concise, to the point answers should be prefered and extended "
+    "answers should be reserved for complex answers. "
     "\n"
     "You must continually call tools as many times, and in as many ways, as necessary "
     "until you are satisfied you have everything needed to answer. Only ever answer using "
