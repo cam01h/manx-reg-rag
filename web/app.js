@@ -54,6 +54,13 @@ function renderConversation() {
         assistantTurn.className = "assistant-turn";
         assistantTurn.innerHTML = marked.parse(turn.answer);
 
+        assistantTurn.querySelectorAll("table").forEach((table) => {
+            const wrap = document.createElement("div");
+            wrap.className = "table-wrap";
+            table.before(wrap);
+            wrap.appendChild(table);
+        });
+
         block.append(userTurn, assistantTurn);
         response.appendChild(block);
     }

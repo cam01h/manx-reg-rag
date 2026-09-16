@@ -130,6 +130,30 @@ body.citations-hidden #right-panel {
     font-style: italic;
 }
 
+.assistant-turn th,
+.assistant-turn td {
+    border: 1px solid var(--surface);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.assistant-turn th {
+    background: var(--surface);
+    font-weight: 600;
+}
+
+.assistant-turn table {
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    min-width: 28rem;
+}
+
+.table-wrap {
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
 /* 5. Prompt form
    ========================================================================== */
 
