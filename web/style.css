@@ -10,6 +10,8 @@
     --blue: #89b4fa;
     --green: #a6e3a1;
     --red: #f38ba8;
+    --mauve: #cba6f7;
+    --lavender: #b4befe;
 
     --radius: 8px;
     --radius-sm: 6px;
@@ -38,7 +40,7 @@ body {
     flex-direction: column;
 }
 
-h2 {
+#right-panel h2 {
     margin-top: 0;
     color: var(--blue);
 }
@@ -99,30 +101,28 @@ body.citations-hidden #right-panel {
 /* 4. Conversation
    ========================================================================== */
 
-#response {
-    flex: 1;
-    overflow-y: auto;
-    font-size: 1rem;
-}
-
-.turn {
-    margin-bottom: var(--gap);
-    padding-bottom: var(--gap);
-    border-bottom: 1px solid var(--surface);
-}
-
-.turn:last-child {
-    border-bottom: none;
-}
-
 .user-turn {
-    color: var(--blue);
+    color: var(--lavender);
     font-weight: 600;
     margin-bottom: 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 3px solid var(--lavender);
 }
 
 .assistant-turn {
     color: var(--text);
+}
+
+.assistant-turn h1,
+.assistant-turn h2,
+.assistant-turn h3 {
+    color: var(--mauve);
+    font-size: 1.05rem;
+    margin: 1.25rem 0 0.5rem;
+}
+
+.assistant-turn strong {
+    color: var(--mauve);
 }
 
 .pending {
@@ -203,31 +203,15 @@ button {
     cursor: pointer;
 }
 
-button:hover {
-    background: var(--text);
-}
-
 button:disabled {
     opacity: 0.5;
     cursor: default;
 }
 
-button:disabled:hover {
-    background: var(--blue);
-}
-
-#reset-button:disabled:hover {
-    background: var(--surface);
-    color: var(--text);
-}
-
 #reset-button {
     background: var(--surface);
-}
-
-#reset-button:hover {
-    background: var(--red);
-    color: var(--base);
+    color: var(--text);
+    border: 1px solid var(--surface);
 }
 
 #toggle-citations {
@@ -237,9 +221,24 @@ button:disabled:hover {
     font-size: 0.9rem;
 }
 
-#toggle-citations:hover {
-    background: var(--blue);
-    color: var(--base);
+@media (hover: hover) {
+    button:hover {
+        background: var(--text);
+    }
+
+    #reset-button:hover {
+        background: var(--red);
+        color: var(--base);
+    }
+
+    #toggle-citations:hover {
+        background: var(--blue);
+        color: var(--base);
+    }
+}
+
+button:active {
+    opacity: 0.7;
 }
 
 
