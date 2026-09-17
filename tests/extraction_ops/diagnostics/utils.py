@@ -1,10 +1,20 @@
-import fitz
 import hashlib
-from pathlib import Path
 import logging
 import sys
+from pathlib import Path
+from typing import Literal
+
+import fitz
+
+from config import EXTRACTION_OPS_TEST_DATA
 
 logger = logging.getLogger(__name__)
+
+
+def build_path(
+    stage: str, doc: str, mode: Literal["test", "golden"] = "test", suffix: str = "md"
+) -> Path:
+    return EXTRACTION_OPS_TEST_DATA / f"{stage}/{doc}_{mode}.{suffix}"
 
 
 def _get_pdf_contents(path: Path) -> str:
