@@ -1,7 +1,8 @@
 import argparse
-from pathlib import Path
-from typing import Callable
 import logging
+from collections.abc import Callable
+from pathlib import Path
+
 from config import EXTRACTION_OPS_TEST_DATA, setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
 from extraction_ops.md_ops import pdf_to_md
