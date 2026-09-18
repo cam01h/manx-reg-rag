@@ -7,24 +7,8 @@ run_python() {
   if [ "$MRR_PYTHON" = "host" ]; then
     uv run python "$@"
   else
-    docker compose exec app uv run python "$@"
+    docker compose run --rm --no-deps app uv run python "$@"
   fi
-}
-
-wait_for_qdrant() {
-  echo "Waiting for Qdrant..."
-  local attempt
-  for ((attempt = 0; attempt < 30; attempt++)); do
-    if docker compose exec -T app python -c \
-      "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://qdrant:6333/readyz', timeout=2).status==200 else 1)" \
-      >/dev/null 2>&1; then
-      echo "Qdrant ready"
-      return 0
-    fi
-    sleep 2
-  done
-  echo "Qdrant did not become ready in 60s" >&2
-  return 1
 }
 
 case "${1:-up}" in
@@ -42,17 +26,19 @@ ps)
   docker compose ps
   ;;
 shell)
-  docker compose exec app bash
+  docker compose run --rm --no-deps app bash
   ;;
 rebuild)
   docker compose up -d --build
   ;;
 embed)
-  echo "Ensuring stack is up..."
-  docker compose up -d
-  wait_for_qdrant
+  echo "Starting qdrant..."
+  docker compose up -d qdrant
   echo "Running ingestion (${MRR_PYTHON})..."
   run_python -m db_ops.embed
+  echo "Starting app..."
+  docker compose up -d app
+  echo "Stack running"
   ;;
 *)
   echo "usage: $0 [up|down|logs|ps|shell|rebuild|embed]"
