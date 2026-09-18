@@ -15,8 +15,9 @@ wait_for_qdrant() {
   echo "Waiting for Qdrant..."
   local attempt
   for ((attempt = 0; attempt < 30; attempt++)); do
-    if docker compose exec -T qdrant \
-      sh -c 'wget -q -O- http://localhost:6333/readyz >/dev/null 2>&1'; then
+    if docker compose exec -T app python -c \
+      "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://qdrant:6333/readyz', timeout=2).status==200 else 1)" \
+      >/dev/null 2>&1; then
       echo "Qdrant ready"
       return 0
     fi
