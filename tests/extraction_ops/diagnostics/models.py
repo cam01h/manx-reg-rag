@@ -4,8 +4,8 @@ from collections.abc import Callable
 
 @dataclasses.dataclass(frozen=True)
 class Stage:
-    stage_description: str
     suffix: str
-    loader: Callable
+    consumes: str
     operation: Callable
     test_golden: Callable
+    to_text: Callable
