@@ -11,7 +11,7 @@ services:
   app:
     build: .
     restart: unless-stopped
-    mem_limit: 6g
+    mem_limit: 10g
     ports:
       - "127.0.0.1:8000:8000"
     environment:
