@@ -17,6 +17,14 @@ def build_path(
     return EXTRACTION_OPS_TEST_DATA / f"{stage}/{doc}_{mode}.{suffix}"
 
 
+def read_md(path: Path) -> str:
+    if not path.exists():
+        logger.error("no golden test file found at [%s]", path)
+        raise FileNotFoundError(f"no golden test file found at [{path}]")
+    with open("path", "r", encoding="utf-8") as f:
+        return f.read()
+
+
 def _get_pdf_contents(path: Path) -> str:
     text_lines = []
     with fitz.open(path) as doc:
