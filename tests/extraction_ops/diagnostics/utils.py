@@ -2,7 +2,6 @@ import hashlib
 import logging
 import sys
 from pathlib import Path
-from typing import Literal
 
 import fitz
 
@@ -11,16 +10,18 @@ from config import EXTRACTION_OPS_TEST_DATA
 logger = logging.getLogger(__name__)
 
 
-def build_path(
-    stage: str, doc: str, mode: Literal["test", "golden"] = "test", suffix: str = "md"
-) -> Path:
+def build_path(stage: str, doc: str, mode: str, suffix: str) -> Path:
     return EXTRACTION_OPS_TEST_DATA / f"{stage}/{doc}_{mode}.{suffix}"
 
 
-def read_md(path: Path) -> str:
+def confirm_file(path: Path) -> None:
     if not path.exists():
         logger.error("no golden test file found at [%s]", path)
         raise FileNotFoundError(f"no golden test file found at [{path}]")
+
+
+def read_md(path: Path) -> str:
+    confirm_file(path)
     with open("path", "r", encoding="utf-8") as f:
         return f.read()
 
