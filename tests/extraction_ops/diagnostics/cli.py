@@ -2,15 +2,18 @@ import argparse
 import logging
 from pathlib import Path
 
-from utils import build_path, read_md
+from utils import build_path, read_md, write_md
 
 from extraction_ops import TOOLBELT_REGISTRY
+from tests.extraction_ops.diagnostics.raw_pdf import RawPdf
 
 logger = logging.getLogger(__name__)
 
 _STAGES_NOT_CHAINED = []  # fill in as added
 
-_STAGES = {}  # fill in as i add stages
+_STAGES = {
+    "raw_pdf": RawPdf,
+}  # fill in as i add stages
 
 
 def loader(doc: str, consumes: str) -> str | Path:
@@ -42,7 +45,7 @@ def runner(doc: str, current_stage: str):
     seed_from = _STAGES[keys[0]].consumes
     output = loader(doc, seed_from) if seed_from else None
     for key in keys[:-1]:
-        output = _STAGES[key].opperation(doc, output)
+        output = _STAGES[key].operation(doc, output)
     return output
 
 
@@ -56,9 +59,17 @@ def get_input(doc: str, current_stage: str, source: str):
 
 
 def write_file(doc: str, stage: str, mode: str, output) -> None:
-    path = build_path(stage, doc, mode, _STAGES[stage].suffix)
-    text = _STAGES[stage].to_text(output)
-    path.write_text(text)
+    stage_object = _STAGES[stage]
+    path = build_path(stage, doc, mode, stage_object.suffix)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if stage_object.suffix == "pdf":
+        path.write_bytes(output)
+    elif stage_object.suffix == "md":
+        text = output if stage_object.to_text is None else stage_object.to_text(output)
+        write_md(path, text)
+    else:
+        logger.error("[%s] is not a valid file type", stage_object.suffix)
+        raise TypeError(f"[{stage_object.suffix}] is not a valid file type")
 
 
 def build_cli():
@@ -115,7 +126,7 @@ def main():
     args = build_cli()
     stage = _STAGES[args.stage]
     input = get_input(args.doc, args.stage, args.source)
-    output = stage.opperation(args.doc, input)
+    output = stage.operation(args.doc, input)
     if args.mode == "test_golden":
         stage.test_golden(args.doc, output)
     else:

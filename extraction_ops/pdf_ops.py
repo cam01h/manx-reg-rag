@@ -1,13 +1,14 @@
-from pathlib import Path
-import httpx
-from .models import ToolBelt
 import logging
+from pathlib import Path
 
+import httpx
+
+from .models import ToolBelt
 
 logger = logging.getLogger(__name__)
 
 
-def get_pdf_from_url(doc: str, url: str, path: Path) -> None:
+def fetch_pdf(doc: str, url: str) -> bytes:
     logger.info("downloading [%s]", doc)
     try:
         headers = {
@@ -23,10 +24,14 @@ def get_pdf_from_url(doc: str, url: str, path: Path) -> None:
     if not response.content.startswith(b"%PDF"):
         logger.critical("[%s] did not return a pdf", doc)
         raise ValueError(f"{doc} did not return a pdf")
+    return response.content
+
+
+def get_pdf_from_url(doc: str, url: str, path: Path) -> None:
+    content = fetch_pdf(doc, url)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "wb") as f:
-            f.write(response.content)
+        path.write_bytes(content)
     except Exception:
         logger.exception("failed to write pdf to [%s]", path)
         raise

@@ -26,21 +26,25 @@ def read_md(path: Path) -> str:
         return f.read()
 
 
-def _get_pdf_contents(path: Path) -> str:
-    text_lines = []
-    with fitz.open(path) as doc:
-        for page in doc:
-            text_lines.append(page.get_text())
-    return "".join(text_lines)
+def write_md(path: Path, md: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(md)
 
 
 def _hash_string(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def get_text_hash(path: Path) -> str:
-    text = _get_pdf_contents(path)
-    return _hash_string(text)
+def _get_pdf_contents(data: bytes) -> str:
+    text_lines = []
+    with fitz.open(stream=data, filetype="pdf") as doc:
+        for page in doc:
+            text_lines.append(page.get_text())
+    return "".join(text_lines)
+
+
+def get_text_hash(data: bytes) -> str:
+    return _hash_string(_get_pdf_contents(data))
 
 
 def compare_lines(
