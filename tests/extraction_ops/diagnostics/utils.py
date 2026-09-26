@@ -22,7 +22,7 @@ def confirm_file(path: Path) -> None:
 
 def read_md(path: Path) -> str:
     confirm_file(path)
-    with open("path", "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
 

@@ -1,6 +1,7 @@
-import re
-from config import PROJECT_ROOT
 import logging
+import re
+
+from config import PROJECT_ROOT
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -8,8 +9,8 @@ from extraction_ops.models import (
     ToolBelt,
 )
 from extraction_ops.toolbelts.aml_handbook.pdf_handler import (
-    handbook_redact_margin_citations,
     handbook_redact_legislation_quoted,
+    handbook_redact_margin_citations,
     handbook_remove_cover_and_dividers,
 )
 from extraction_ops.toolbelts.shared_funcs import (
@@ -114,9 +115,9 @@ HandbookSplitters = ChunkSplitters(
 )
 
 AmlHandbook = ToolBelt(
-    document="The AML Handbook (April 2026)",
+    document="The AML Handbook (August 2026)",
     hierarchy="guidance",
-    input_url="https://www.iomfsa.im/media/3590/handbook-april-2026-clean.pdf",
+    input_url="https://www.iomfsa.im/media/3650/handbook-august-2026-clean.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/aml_handbook_april_2026.pdf",
     use_ocr=False,
     pdf_handlers=[

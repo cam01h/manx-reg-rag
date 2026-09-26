@@ -2,18 +2,19 @@ import argparse
 import logging
 from pathlib import Path
 
-from utils import build_path, read_md, write_md
-
+from config import setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
 from tests.extraction_ops.diagnostics.raw_pdf import RawPdf
+from tests.extraction_ops.diagnostics.utils import build_path, read_md, write_md
 
 logger = logging.getLogger(__name__)
 
-_STAGES_NOT_CHAINED = []  # fill in as added
 
 _STAGES = {
     "raw_pdf": RawPdf,
 }  # fill in as i add stages
+
+_STAGES_NOT_CHAINED = ["raw_pdf"]  # fill in as added
 
 
 def loader(doc: str, consumes: str) -> str | Path:
@@ -131,3 +132,8 @@ def main():
         stage.test_golden(args.doc, output)
     else:
         write_file(args.doc, args.stage, args.mode, output)
+
+
+if __name__ == "__main__":
+    setup_logging("diagnostics")
+    main()

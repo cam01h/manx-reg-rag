@@ -1,20 +1,21 @@
 import re
+
 from config import PROJECT_ROOT
 from extraction_ops.models import (
-    DefinitionTools,
-    ToolBelt,
     ChunkSplitters,
+    DefinitionTools,
     SectionMarkers,
+    ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
     base_body_cleaner,
+    base_def_line,
+    base_double_def_line,
+    base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
     split_on_bracketed_letter,
     split_on_bracketed_num,
-    base_def_line,
-    base_double_def_line,
-    base_false_double_def,
     starts_with,
 )
 
