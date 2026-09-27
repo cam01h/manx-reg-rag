@@ -5,9 +5,11 @@ from pathlib import Path
 from config import setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
 
+from .clean_md import CleanMd
 from .handled_pdf import HandledPdf
 from .raw_md import RawMd
 from .raw_pdf import RawPdf
+from .trimmed import TrimmedMd
 from .utils import build_path, read_md, write_md
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,8 @@ _STAGES = {
     "raw_pdf": RawPdf,
     "handled_pdf": HandledPdf,
     "raw_md": RawMd,
+    "clean_md": CleanMd,
+    "trimmed": TrimmedMd,
 }  # fill in as i add stages
 
 _STAGES_NOT_CHAINED = [
