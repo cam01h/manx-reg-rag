@@ -11,8 +11,10 @@ from config import EXTRACTION_OPS_TEST_DATA
 logger = logging.getLogger(__name__)
 
 
-def build_path(stage: str, doc: str, mode: str, suffix: str) -> Path:
-    return EXTRACTION_OPS_TEST_DATA / f"{stage}/{doc}_{mode}.{suffix}"
+def build_path(
+    stage: str, doc: str, source: str = "golden", suffix: str = "md"
+) -> Path:
+    return EXTRACTION_OPS_TEST_DATA / f"{stage}/{doc}_{source}.{suffix}"
 
 
 def confirm_file(path: Path) -> None:

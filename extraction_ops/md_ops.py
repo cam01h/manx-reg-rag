@@ -1,11 +1,11 @@
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, cast
+from typing import cast
 
 import pymupdf4llm
 
 from extraction_ops.models import CleanOutPut, ToolBelt
-
 
 logger = logging.getLogger(__name__)
 
