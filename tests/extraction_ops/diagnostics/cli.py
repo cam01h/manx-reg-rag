@@ -4,6 +4,7 @@ from pathlib import Path
 
 from config import setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
+from tests.extraction_ops.diagnostics.process_lines import ChunkLines, DefLines
 
 from .clean_md import CleanMd
 from .handled_pdf import HandledPdf
@@ -21,6 +22,8 @@ _STAGES = {
     "raw_md": RawMd,
     "clean_md": CleanMd,
     "trimmed": TrimmedMd,
+    "chunk_lines": ChunkLines,
+    "def_lines": DefLines,
 }  # fill in as i add stages
 
 _STAGES_NOT_CHAINED = [
