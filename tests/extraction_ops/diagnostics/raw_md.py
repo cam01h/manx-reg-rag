@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Callable
 from pathlib import Path
 
 from extraction_ops import TOOLBELT_REGISTRY
@@ -12,17 +11,9 @@ logger = logging.getLogger(__name__)
 _STAGE = "raw_md"
 
 
-def _get_start_path(doc: str, handlers: list[Callable[[Path], None]] | None) -> Path:
-    if handlers:
-        return build_path("handled_pdf", doc, "golden", "pdf")
-    else:
-        return build_path("raw_pdf", doc, "golden", "pdf")
-
-
-def _operation(doc: str, md: str) -> str:
+def _operation(doc: str, input: Path) -> str:
     tools = TOOLBELT_REGISTRY[doc]
-    path = _get_start_path(doc, tools.pdf_handlers)
-    return pdf_to_md(path, doc, tools.use_ocr)
+    return pdf_to_md(input, doc, tools.use_ocr)
 
 
 def _test_golden(doc: str, input: str) -> None:
