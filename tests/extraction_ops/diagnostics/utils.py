@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import fitz
@@ -33,6 +34,19 @@ def write_md(path: Path, md: str) -> None:
 
 def _hash_string(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def make_pdf_golden_test(stage: str) -> Callable[[str, bytes], None]:
+    def test_golden(doc: str, output: bytes) -> None:
+        path = build_path(stage, doc, "golden", "pdf")
+        confirm_file(path)
+        if get_text_hash(output) == get_text_hash(path.read_bytes()):
+            logger.info("test passed: matching text hashes")
+        else:
+            logger.warning("test failed: text hashes do not match")
+            sys.exit(1)
+
+    return test_golden
 
 
 def _get_pdf_contents(data: bytes) -> str:
