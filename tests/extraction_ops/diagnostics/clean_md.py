@@ -1,8 +1,7 @@
 import logging
-from pathlib import Path
 
 from extraction_ops import TOOLBELT_REGISTRY
-from extraction_ops.md_ops import pdf_to_md
+from extraction_ops.md_ops import clean_md_to_lines
 from tests.extraction_ops.diagnostics.models import Stage
 from tests.extraction_ops.diagnostics.utils import (
     make_md_golden_test,
@@ -10,17 +9,19 @@ from tests.extraction_ops.diagnostics.utils import (
 
 logger = logging.getLogger(__name__)
 
-_STAGE = "raw_md"
+_STAGE = "clean_md"
 
 
-def _operation(doc: str, input: Path) -> str:
+def _operation(doc: str, input: str) -> str:
     tools = TOOLBELT_REGISTRY[doc]
-    return pdf_to_md(input, doc, tools.use_ocr)
+    clean_md = clean_md_to_lines(tools.clean_text, input)
+    logger.info("cleaner applied to [%s]", doc)
+    return "\n".join(clean_md)
 
 
-RawMd = Stage(
+CleanMd = Stage(
     suffix="md",
-    consumes="handled_pdf",
+    consumes="raw_md",
     operation=_operation,
     test_golden=make_md_golden_test(_STAGE),
     to_text=None,

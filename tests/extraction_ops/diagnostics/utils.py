@@ -11,10 +11,8 @@ from config import EXTRACTION_OPS_TEST_DATA
 logger = logging.getLogger(__name__)
 
 
-def build_path(
-    stage: str, doc: str, source: str = "golden", suffix: str = "md"
-) -> Path:
-    return EXTRACTION_OPS_TEST_DATA / f"{stage}/{doc}_{source}.{suffix}"
+def build_path(stage: str, doc: str, mode: str = "golden", suffix: str = "md") -> Path:
+    return EXTRACTION_OPS_TEST_DATA / f"{stage}/{doc}_{mode}.{suffix}"
 
 
 def confirm_file(path: Path) -> None:
@@ -47,6 +45,16 @@ def make_pdf_golden_test(stage: str) -> Callable[[str, bytes], None]:
         else:
             logger.warning("test failed: text hashes do not match")
             sys.exit(1)
+
+    return test_golden
+
+
+def make_md_golden_test(stage: str) -> Callable[[str, str], None]:
+    def test_golden(doc: str, input: str) -> None:
+        golden_md_path = build_path(stage, doc)
+        golden_md_lines = read_md(golden_md_path).splitlines()
+        test_md_lines = input.splitlines()
+        compare_lines(test_md_lines, golden_md_lines)
 
     return test_golden
 

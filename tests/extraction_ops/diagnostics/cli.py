@@ -19,7 +19,11 @@ _STAGES = {
     "raw_md": RawMd,
 }  # fill in as i add stages
 
-_STAGES_NOT_CHAINED = ["raw_pdf"]  # fill in as added
+_STAGES_NOT_CHAINED = [
+    "raw_pdf",
+    "handled_pdf",
+    "raw_md",
+]  # fill in as added
 
 
 def loader(doc: str, consumes: str) -> str | Path:
