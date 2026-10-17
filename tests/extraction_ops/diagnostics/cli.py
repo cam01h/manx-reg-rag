@@ -7,13 +7,14 @@ from pydantic import TypeAdapter
 
 from config import setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
-from tests.extraction_ops.diagnostics.process_lines import ChunkLines, DefLines
-from tests.extraction_ops.diagnostics.seg_by_head import Headers, Sections
 
 from .clean_md import CleanMd
 from .handled_pdf import HandledPdf
+from .normalise_sections import NormSections
+from .process_lines import ChunkLines, DefLines
 from .raw_md import RawMd
 from .raw_pdf import RawPdf
+from .seg_by_head import Headers, Sections
 from .trimmed import Trimmed
 from .utils import build_path, read_md, write_json, write_md
 
@@ -30,6 +31,7 @@ _STAGES = {
     "def_lines": DefLines,
     "raw_sections": Sections,
     "headers": Headers,
+    "norm_sections": NormSections,
 }  # fill in as i add stages
 
 _STAGES_NOT_CHAINED = [
