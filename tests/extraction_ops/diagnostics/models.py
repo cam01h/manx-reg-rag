@@ -10,3 +10,4 @@ class Stage:
     operation: Callable[[str, Any], Any]
     test_golden: Callable[[str, Any], None]
     to_text: Callable[[Any], str] | None
+    model: type | None = None

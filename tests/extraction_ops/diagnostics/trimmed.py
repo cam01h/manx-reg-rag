@@ -7,7 +7,7 @@ from tests.extraction_ops.diagnostics.utils import make_md_golden_test
 
 logger = logging.getLogger(__name__)
 
-_STAGE = "trimmed_md"
+_STAGE = "trimmed"
 
 
 def _operation(doc: str, input: str) -> str:
@@ -33,9 +33,9 @@ def _operation(doc: str, input: str) -> str:
     return "\n".join(kept_lines)
 
 
-TrimmedMd = Stage(
+Trimmed = Stage(
     suffix="md",
-    consumes="clean_md",
+    consumes="clean",
     operation=_operation,
     test_golden=make_md_golden_test(_STAGE),
     to_text=None,

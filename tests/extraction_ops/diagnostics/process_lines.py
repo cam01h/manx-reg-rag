@@ -13,7 +13,7 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 _CHUNK_STAGE = "chunk_lines"
-_DEFINITION_STAGE = "definition_lines"
+_DEFINITION_STAGE = "def_lines"
 
 
 def _operation_builder(

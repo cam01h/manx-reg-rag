@@ -9,7 +9,7 @@ from tests.extraction_ops.diagnostics.utils import (
 
 logger = logging.getLogger(__name__)
 
-_STAGE = "clean_md"
+_STAGE = "clean"
 
 
 def _operation(doc: str, input: str) -> str:

@@ -1,9 +1,10 @@
-import logging
 import hashlib
+import logging
+from collections.abc import Callable
 from dataclasses import replace
-from typing import Callable
-from extraction_ops.models import Chunk, CleanSection, Section, ToolBelt
+
 from config import MAX_CHUNK_CHAR, MIN_CHUNK_CHAR, TARGET_CHUNK_CHAR
+from extraction_ops.models import Chunk, CleanSection, Section, ToolBelt
 
 logger = logging.getLogger(__name__)
 

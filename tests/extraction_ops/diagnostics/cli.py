@@ -1,17 +1,21 @@
 import argparse
 import logging
 from pathlib import Path
+from typing import Any
+
+from pydantic import TypeAdapter
 
 from config import setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
 from tests.extraction_ops.diagnostics.process_lines import ChunkLines, DefLines
+from tests.extraction_ops.diagnostics.seg_by_head import Headers, Sections
 
 from .clean_md import CleanMd
 from .handled_pdf import HandledPdf
 from .raw_md import RawMd
 from .raw_pdf import RawPdf
-from .trimmed import TrimmedMd
-from .utils import build_path, read_md, write_md
+from .trimmed import Trimmed
+from .utils import build_path, read_md, write_json, write_md
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +24,12 @@ _STAGES = {
     "raw_pdf": RawPdf,
     "handled_pdf": HandledPdf,
     "raw_md": RawMd,
-    "clean_md": CleanMd,
-    "trimmed": TrimmedMd,
+    "clean": CleanMd,
+    "trimmed": Trimmed,
     "chunk_lines": ChunkLines,
     "def_lines": DefLines,
+    "raw_sections": Sections,
+    "headers": Headers,
 }  # fill in as i add stages
 
 _STAGES_NOT_CHAINED = [
@@ -33,16 +39,19 @@ _STAGES_NOT_CHAINED = [
 ]  # fill in as added
 
 
-def loader(doc: str, consumes: str) -> str | Path:
-    suffix_consumed = _STAGES[consumes].suffix
-    path = build_path(consumes, doc, "golden", suffix_consumed)
-    if suffix_consumed == "md":
+def loader(doc: str, consumes: str) -> str | Path | list[Any]:
+    stage_consumed = _STAGES[consumes]
+    if stage_consumed.model is not None:
+        path = build_path(consumes, doc, suffix="json")
+        return TypeAdapter(list[stage_consumed.model]).validate_json(read_md(path))
+    path = build_path(consumes, doc, suffix=stage_consumed.suffix)
+    if stage_consumed.suffix == "md":
         return read_md(path)
-    elif suffix_consumed == "pdf":
+    elif stage_consumed.suffix == "pdf":
         return path
     else:
-        logger.error("[%s] is not a valid file type", suffix_consumed)
-        raise TypeError(f"[{suffix_consumed}] is not a valid file type")
+        logger.error("[%s] is not a valid file type", stage_consumed.suffix)
+        raise TypeError(f"[{stage_consumed.suffix}] is not a valid file type")
 
 
 def chain(current_stage: str) -> list[str]:
@@ -78,12 +87,17 @@ def get_input(doc: str, current_stage: str, source: str):
 def write_file(doc: str, stage: str, mode: str, output) -> None:
     stage_object = _STAGES[stage]
     path = build_path(stage, doc, mode, stage_object.suffix)
-    path.parent.mkdir(parents=True, exist_ok=True)
     if stage_object.suffix == "pdf":
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(output)
     elif stage_object.suffix == "md":
-        text = output if stage_object.to_text is None else stage_object.to_text(output)
-        write_md(path, text)
+        if stage_object.to_text:
+            json_path = build_path(stage, doc, mode, "json")
+            write_json(json_path, output)
+            text = stage_object.to_text(output)
+            write_md(path, text)
+        else:
+            write_md(path, output)
     else:
         logger.error("[%s] is not a valid file type", stage_object.suffix)
         raise TypeError(f"[{stage_object.suffix}] is not a valid file type")
