@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 # TODO: lists within a frozen dataclass creates false imutability and hashing will cause a TypeError. Consider replacing with tuples
 
