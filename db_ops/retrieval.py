@@ -1,10 +1,16 @@
 import json
-from pathlib import Path
+import logging
+import uuid
 from functools import lru_cache
+from pathlib import Path
+
+import logfire
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
-import logfire
+from pydantic_ai import RunContext
 from qdrant_client import QdrantClient, models
+
+from app.deps import AppDeps
 from config import (
     COLLECTION,
     DEFINITIONS_JSONL_PATH,
@@ -17,10 +23,6 @@ from config import (
     USE_RERANKER,
 )
 from db_ops.models import DefinitionRecord, Payload, ServedPayload
-from pydantic_ai import RunContext
-from app.deps import AppDeps
-import logging
-import uuid
 
 logger = logging.getLogger(__name__)
 
