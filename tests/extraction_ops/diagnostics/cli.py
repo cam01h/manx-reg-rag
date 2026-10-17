@@ -7,6 +7,7 @@ from pydantic import TypeAdapter
 
 from config import setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
+from tests.extraction_ops.diagnostics.segment_by_definitions import DefSegs
 
 from .clean_md import CleanMd
 from .handled_pdf import HandledPdf
@@ -32,6 +33,7 @@ _STAGES = {
     "raw_sections": Sections,
     "headers": Headers,
     "norm_sections": NormSections,
+    "def_segs": DefSegs,
 }  # fill in as i add stages
 
 _STAGES_NOT_CHAINED = [

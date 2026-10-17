@@ -1,10 +1,12 @@
 import logging
 import re
-from typing import Callable
-import inflect
-from extraction_ops.md_ops import normalise_serial_new_lines
-from extraction_ops.models import Definition, DefinitionTools, ToolBelt, Chunk
+from collections.abc import Callable
 from dataclasses import replace
+
+import inflect
+
+from extraction_ops.md_ops import normalise_serial_new_lines
+from extraction_ops.models import Chunk, Definition, DefinitionTools, ToolBelt
 from extraction_ops.term_varient_overrides import TERM_VARIANT_OVERRIDES
 
 logger = logging.getLogger(__name__)
@@ -14,12 +16,6 @@ p = inflect.engine()
 def segment_by_definitions(
     lines: list[str], is_definition_line: Callable[[str], bool]
 ) -> list[list[str]]:
-    """Group lines into one list per definition.
-
-    Each group's first line is the definition line and the rest are its body.
-    A leading group whose first line is not a definition line is orphan text
-    that preceded the first definition.
-    """
     sections: list[list[str]] = []
     buffer: list[str] = []
 
@@ -43,7 +39,6 @@ def split_definition_line(line: str, clean_header: Callable[[str], str]) -> list
 def parse_definition_line(
     segments: list[str], def_tools: DefinitionTools
 ) -> tuple[list[str], str] | None:
-    """Return (terms, opening body text) for a definition line, or None if unparseable."""
     if len(segments) == 3:
         return [segments[1]], segments[2]
 
@@ -63,7 +58,6 @@ def parse_definition_line(
 
 
 def pack_definitions(section: list[str], toolbelt: ToolBelt) -> list[Definition]:
-    """Turn one section into a Definition per term. Section[0] is always the definition line."""
     def_tools = toolbelt.definition_tools
     if def_tools is None:
         return []
