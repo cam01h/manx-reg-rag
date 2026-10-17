@@ -1,8 +1,9 @@
+import logging
 import re
 from pathlib import Path
 from typing import Any, cast
+
 import fitz
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,9 @@ CITATION_PREFIX = re.compile(r"^(?:Code|POCA|ATCA|TOCFRA|DBROA|POC|IA)\b")
 # a fragment that's purely numbers/punctuation, no real words at all
 PURE_CITATION_SHAPE = re.compile(r"^[\d\(\)\[\]\,\.\s\-\u2013]+$")
 # guards: protect these even when they're small and margin-confined
-TOC_NUMBER_SHAPE = re.compile(r"^\d+\.(?:\d+)?$")  # bare "1.1", "4."
+# section numbers at any depth: "4.", "1.1", "2.2.3.1", "2.2.4.1.1" - level 4/5 headings
+# are 12pt and start in the margin column, so must be guarded like TOC numbers
+SECTION_NUMBER_SHAPE = re.compile(r"^(?:\d+\.)+\d*$")
 GLOSSARY_YEAR_SHAPE = re.compile(r"^\d{4}\)?,?$")  # "2011", "2023)"
 
 
@@ -27,7 +30,7 @@ def _is_margin_citation(text: str, x1: float, size: float) -> bool:
     if size <= MARGIN_FONT_SIZE:
         return True
     if size <= LARGE_MARGIN_FONT_SIZE:
-        if TOC_NUMBER_SHAPE.match(text) or GLOSSARY_YEAR_SHAPE.match(text):
+        if SECTION_NUMBER_SHAPE.match(text) or GLOSSARY_YEAR_SHAPE.match(text):
             return False
         if CITATION_PREFIX.match(text) or PURE_CITATION_SHAPE.match(text):
             return True
@@ -118,7 +121,7 @@ def handbook_redact_legislation_quoted(path: Path) -> None:
     tmp_path.replace(path)
 
 
-"""<=== REMOVAL OF LEGISLATION QUOTES ===>"""
+"""<=== REMOVAL OF COVER PAGES AND DIVIDERS ===>"""
 
 DIVIDER_MAX_LENGTH = 200  # in chars
 

@@ -31,12 +31,12 @@ logger = logging.getLogger(__name__)
 
 REPLACEMENTS = {
     # reshaping definition lines in 3.2
-    '_Customer due diligence ("CDD")_': '\n- "Customer due diligence" or "CDD" ',
-    '_Identification and Verification ("ID&V")_': '- "Identification and Verification" or "ID&V"',
-    "_Reasonable measures_": '- "Reasonable measures"',
-    '_Enhanced customer due diligence ("ECDD")_': '- "Enhanced customer due diligence" or "ECDD"',
-    "_Ongoing monitoring_": '- "Ongoing monitoring"',
-    "_Enhanced Ongoing Monitoring_": '- "Enhanced Ongoing Monitoring"',
+    '## _3.2.1.1 Customer due diligence ("CDD")_': '\n- "Customer due diligence" or "CDD" ',
+    '## _3.2.1.2 Identification and Verification ("ID&V")_ ': '- "Identification and Verification" or "ID&V"',
+    "## _3.2.1.3 Reasonable measures_ ": '- "Reasonable measures"',
+    '## _3.2.1.4 Enhanced customer due diligence ("ECDD")_ ': '- "Enhanced customer due diligence" or "ECDD"',
+    "## _3.2.1.5 Ongoing monitoring_ ": '- "Ongoing monitoring"',
+    "## _3.2.1.6 Enhanced Ongoing Monitoring_ ": '- "Enhanced Ongoing Monitoring"',
     # ungluing headers from bodies
     "provided** The FATF": "provided**\n\nThe FATF",
     "signatories/directors** Considerations": "signatories/directors**\n\nConsiderations",
@@ -50,6 +50,17 @@ REPLACEMENTS = {
     "and address** In order to": "and address**\n\nIn order to",
     "and Arrangements_ Additional requirements": "and Arrangements_\n\nAdditional requirements",
     "CDD requirements_ Certain CDD": "CDD requirements_\n\nCertain CDD",
+    "monitoring and enhanced** \n\n## **measures**": "monitoring and enhanced measures**",
+    "enhanced measures** The purpose of CDD": "enhanced measures**\n\nThe purpose of CDD",
+    "methodology** Risk assessments": "methodology**\n\nRisk assessments",
+    "and/or wealth** When researching": "and/or wealth**\n\nWhen researching",
+    "the concession** If the conditions": "the concession**\n\nIf the conditions",
+    # removing heading markers from bullets
+    "## a. Understanding Source": "- a. Understanding Source",
+    "## c. Independent Verification": "- c. Independent Verification",
+    "## d. Face to Face": "- d. Face to Face",
+    "## e. Ongoing Monitoring": "- e. Ongoing Monitoring",
+    "## 2. assessing those": "      2. assessing those",
 }
 
 
@@ -85,7 +96,7 @@ HandbookRiskDefMarker221 = SectionMarkers(
 
 HandbookRiskDefMarker32 = SectionMarkers(
     start=in_line(['- "Customer due diligence"']),
-    end=in_line(["Enhanced ongoing monitoring falls"]),
+    end=in_line(["Guidance on enhanced ongoing monitoring is at section 3.4.7"]),
 )
 
 HandbookRiskDefMarker431 = SectionMarkers(
@@ -131,9 +142,9 @@ AmlHandbook = ToolBelt(
     re_pack_splitters=HandbookSplitters,
     header_matchers=[
         lambda line: bool(re.match(r"^## \*\*\d+\.\s", line)),
-        lambda line: bool(re.match(r"^(?:## |- )\*\*\d+\.\d+\s", line)),
-        lambda line: bool(re.match(r"^(?:## )?(?:\*\*|_)\d+(?:\.\d+){2}\s", line)),
-        lambda line: bool(re.match(r"^(?:## )?(?:\*\*|_)\d+(?:\.\d+){3,}\s", line)),
+        lambda line: bool(re.match(r"^(?:## |- )?\*\*\d+\.\d+\s", line)),
+        lambda line: bool(re.match(r"^(?:## |- )?(?:\*\*|_)\d+(?:\.\d+){2}\s", line)),
+        lambda line: bool(re.match(r"^(?:## |- )?(?:\*\*|_)\d+(?:\.\d+){3,}\s", line)),
         starts_with(["## _", "_"]),
     ],
     clean_header=base_header_cleaner,

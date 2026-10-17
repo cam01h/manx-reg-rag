@@ -17,6 +17,7 @@ from .raw_md import RawMd
 from .raw_pdf import RawPdf
 from .seg_by_head import Headers, Sections
 from .segment_by_definitions import DefSegs
+from .term_variants import Variants
 from .trimmed import Trimmed
 from .utils import build_path, read_md, write_json, write_md
 
@@ -36,7 +37,8 @@ _STAGES = {
     "norm_sections": NormSections,
     "def_segs": DefSegs,
     "definitions": Definitions,
-}  # fill in as i add stages
+    "variants": Variants,
+}
 
 _STAGES_NOT_CHAINED = [
     "raw_pdf",
