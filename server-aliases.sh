@@ -37,4 +37,4 @@ logs-g() {
 diag() { (cd "$MRR" && uv run python -m tests.extraction_ops.diagnostics.cli "$@"); }
 
 # process documents
-alias mrr-pd='uv run --directory "$MRR" python -m extraction_ops.process_documents'
+alias mrr-pd='docker compose --project-directory "$MRR" run --rm --no-deps app uv run python -m extraction_ops.process_documents'
