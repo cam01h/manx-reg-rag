@@ -40,4 +40,4 @@ diag() { (cd "$MRR" && uv run python -m tests.extraction_ops.diagnostics.cli "$@
 alias mrr-pd='uv run python -m extraction_ops.process_documents'
 
 # qdrant embed
-alias mrr-embed='(cd "$MRR" && ./mrr.sh embed)'
+mrr() { (cd "$MRR" && ./mrr.sh "$@"); }
