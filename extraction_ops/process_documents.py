@@ -4,12 +4,8 @@ import logging
 from dataclasses import asdict
 from pathlib import Path
 
-from config import (
-    CHUNKS_JSONL_PATH,
-    DEFINITIONS_JSONL_PATH,
-    setup_logging,
-)
-from extraction_ops import ALL_TOOLBELTS, TOOLBELT_REGISTRY
+from config import CHUNKS_DIR, DEFINITIONS_DIR, setup_logging
+from extraction_ops import TOOLBELT_REGISTRY
 from extraction_ops.md_ops import pdf_to_output
 from extraction_ops.pdf_ops import apply_pdf_handlers, get_pdf_from_url
 
@@ -20,45 +16,26 @@ from .models import Chunk, Definition, ToolBelt
 logger = logging.getLogger(__name__)
 
 
-def _write_chunks(chunks: list[Chunk], path: Path) -> None:
+def _write_jsonl(records: list[Chunk] | list[Definition], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with path.open("w") as f:
-            for c in chunks:
-                f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")
-        logger.info("[%d] chunks written to [%s]", len(chunks), path)
+            for r in records:
+                f.write(json.dumps(asdict(r), ensure_ascii=False) + "\n")
+        logger.info("[%d] records written to [%s]", len(records), path)
     except Exception:
-        logger.exception("failed to write chunks to [%s]", path)
+        logger.exception("failed to write records to [%s]", path)
         raise
 
 
-def _write_definitions(definitions: list[Definition], path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with path.open("w") as f:
-            for d in definitions:
-                f.write(json.dumps(asdict(d), ensure_ascii=False) + "\n")
-        logger.info("[%d] definitions written to [%s]", len(definitions), path)
-    except Exception:
-        logger.exception("failed to write definitions to [%s]", path)
-        raise
+def select_toolbelts(doc: str | None) -> dict[str, ToolBelt]:
+    if doc is None:
+        return TOOLBELT_REGISTRY
+    return {doc: TOOLBELT_REGISTRY[doc]}
 
 
-def write_chunks_and_definitions(toolbelts: list[ToolBelt]) -> None:
-    chunks_with_definitions: list[Chunk] = []
-    definitions: list[Definition] = []
-    for tools in toolbelts:
-        output = pdf_to_output(tools)
-        doc_definitions = extract_to_definitions(tools, output.definition_lines)
-        definitions.extend(doc_definitions)
-        doc_chunks = extract_to_chunks(tools, output.chunk_lines)
-        chunks_with_definitions.extend(attach_definitions(doc_chunks, doc_definitions))
-    _write_chunks(chunks_with_definitions, CHUNKS_JSONL_PATH)
-    _write_definitions(definitions, DEFINITIONS_JSONL_PATH)
-
-
-def check_pdf_paths(toolbelts: list[ToolBelt]) -> None:
-    for tools in ALL_TOOLBELTS:
+def check_pdf_paths(toolbelts: dict[str, ToolBelt]) -> None:
+    for tools in toolbelts.values():
         if not tools.pdf_path.exists():
             logger.error(
                 "no pdf for [%s] found at pdf path: [%s]",
@@ -71,14 +48,41 @@ def check_pdf_paths(toolbelts: list[ToolBelt]) -> None:
     logger.info("all [%d] pdf files located", len(toolbelts))
 
 
-def main() -> None:
+def get_pdfs(toolbelts: dict[str, ToolBelt]) -> None:
+    for tools in toolbelts.values():
+        get_pdf_from_url(tools.document, tools.input_url, tools.pdf_path)
+
+
+def handle_pdfs(toolbelts: dict[str, ToolBelt]) -> None:
+    check_pdf_paths(toolbelts)
+    for tools in toolbelts.values():
+        apply_pdf_handlers(tools)
+
+
+def ingest_document(key: str, tools: ToolBelt) -> None:
+    output = pdf_to_output(tools)
+    definitions = extract_to_definitions(tools, output.definition_lines)
+    chunks = extract_to_chunks(tools, output.chunk_lines)
+    _write_jsonl(attach_definitions(chunks, definitions), CHUNKS_DIR / f"{key}.jsonl")
+    _write_jsonl(definitions, DEFINITIONS_DIR / f"{key}.jsonl")
+
+
+def ingest(toolbelts: dict[str, ToolBelt]) -> None:
+    check_pdf_paths(toolbelts)
+    for key, tools in toolbelts.items():
+        ingest_document(key, tools)
+
+
+def build_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Ingest documents from url to formatted chunks and definitions"
     )
-    group = parser.add_mutually_exclusive_group()
     parser.add_argument(
-        "--doc", choices=TOOLBELT_REGISTRY.keys(), help="the name of the document"
+        "--doc",
+        choices=TOOLBELT_REGISTRY.keys(),
+        help="process a single document (default: all documents)",
     )
+    group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--get-pdfs",
         action="store_true",
@@ -87,29 +91,29 @@ def main() -> None:
     group.add_argument(
         "--handle-pdfs",
         action="store_true",
-        help="appply pdf handlers attached in toolbelt",
+        help="apply pdf handlers attached in toolbelt",
     )
     group.add_argument(
         "--ingest",
         action="store_true",
-        help="process each pdf into chunks and defintions that are then written to jsonl files",
+        help="process each pdf into chunks and definitions, written to per-document jsonl files",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = build_cli()
+    toolbelts = select_toolbelts(args.doc)
     if args.get_pdfs:
-        for tools in ALL_TOOLBELTS:
-            get_pdf_from_url(tools.document, tools.input_url, tools.pdf_path)
+        get_pdfs(toolbelts)
     elif args.handle_pdfs:
-        check_pdf_paths(ALL_TOOLBELTS)
-        for tools in ALL_TOOLBELTS:
-            apply_pdf_handlers(tools)
+        handle_pdfs(toolbelts)
     elif args.ingest:
-        check_pdf_paths(ALL_TOOLBELTS)
-        write_chunks_and_definitions(ALL_TOOLBELTS)
+        ingest(toolbelts)
     else:
-        for tools in ALL_TOOLBELTS:
-            get_pdf_from_url(tools.document, tools.input_url, tools.pdf_path)
-            apply_pdf_handlers(tools)
-        write_chunks_and_definitions(ALL_TOOLBELTS)
+        get_pdfs(toolbelts)
+        handle_pdfs(toolbelts)
+        ingest(toolbelts)
 
 
 if __name__ == "__main__":
