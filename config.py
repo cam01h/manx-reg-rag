@@ -11,6 +11,8 @@ PROJECT_ROOT = Path(__file__).parent
 # Intermediate
 CHUNKS_JSONL_PATH = PROJECT_ROOT / "data/processed/chunks.jsonl"
 DEFINITIONS_JSONL_PATH = PROJECT_ROOT / "data/processed/definitions.jsonl"
+CHUNKS_DIR = PROJECT_ROOT / "data/processed/chunks/"
+DEFINITIONS_DIR = PROJECT_ROOT / "data/processed/definitions/"
 # db path
 DB_PATH = PROJECT_ROOT / "data/qdrant"
 # Testing

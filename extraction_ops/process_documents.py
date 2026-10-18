@@ -1,19 +1,21 @@
 import argparse
-from dataclasses import asdict
 import json
+import logging
+from dataclasses import asdict
 from pathlib import Path
-from extraction_ops import ALL_TOOLBELTS
-from extraction_ops.md_ops import pdf_to_output
-from extraction_ops.pdf_ops import apply_pdf_handlers, get_pdf_from_url
-from .models import Chunk, Definition, ToolBelt
-from .chunking import extract_to_chunks
-from .definitions import extract_to_definitions, attach_definitions
+
 from config import (
     CHUNKS_JSONL_PATH,
     DEFINITIONS_JSONL_PATH,
     setup_logging,
 )
-import logging
+from extraction_ops import ALL_TOOLBELTS, TOOLBELT_REGISTRY
+from extraction_ops.md_ops import pdf_to_output
+from extraction_ops.pdf_ops import apply_pdf_handlers, get_pdf_from_url
+
+from .chunking import extract_to_chunks
+from .definitions import attach_definitions, extract_to_definitions
+from .models import Chunk, Definition, ToolBelt
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +76,9 @@ def main() -> None:
         description="Ingest documents from url to formatted chunks and definitions"
     )
     group = parser.add_mutually_exclusive_group()
+    parser.add_argument(
+        "--doc", choices=TOOLBELT_REGISTRY.keys(), help="the name of the document"
+    )
     group.add_argument(
         "--get-pdfs",
         action="store_true",
