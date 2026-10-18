@@ -25,6 +25,24 @@ DENSE_MODEL = TextEmbedding(DENSE_MODEL_NAME)
 SPARSE_MODEL = SparseTextEmbedding(SPARSE_MODEL_NAME)
 
 
+def get_existing_point_ids(client: QdrantClient) -> set[str]:
+    point_ids: set[str] = set()
+    offset_id = None
+    while True:
+        points = client.scroll(
+            collection_name=COLLECTION,
+            offset=offset_id,
+            limit=1000,
+            with_payload=False,
+            with_vectors=False,
+        )
+        point_ids.update(str(record.id) for record in points[0])
+        offset_id = points[1]
+        if offset_id is None:
+            break
+    return point_ids
+
+
 def load_chunks(path: Path) -> list[Chunk]:
     if not path.exists():
         logger.critical("no chunks jsonl file found at [%s]", path)
@@ -57,6 +75,10 @@ def build_sparse_vector(
     return vector
 
 
+def build_point_id(chunk: Chunk) -> str:
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, chunk.chunk_id))
+
+
 def build_point(
     chunk: Chunk,
     dense_vec: list[float],
@@ -64,7 +86,7 @@ def build_point(
 ) -> models.PointStruct:
     try:
         point = models.PointStruct(
-            id=str(uuid.uuid5(uuid.NAMESPACE_URL, chunk.chunk_id)),
+            id=build_point_id(chunk),
             vector={"dense": dense_vec, "bm25": sparse_vec},
             payload=asdict(chunk),
         )
@@ -133,6 +155,7 @@ def upload_collection(
 def build_collection(input_path: Path, collection: str, rebuild: bool = False) -> None:
     chunks = load_chunks(input_path)
     client = QdrantClient(url=QDRANT_URL)
+    existing_ids = get_existing_point_ids(client)
     create_collection(client, collection, rebuild)
     vectors = [
         (
