@@ -9,7 +9,7 @@ from fastembed import SparseTextEmbedding, TextEmbedding
 from qdrant_client import QdrantClient, models
 
 from config import (
-    CHUNKS_JSONL_PATH,
+    CHUNKS_DIR,
     COLLECTION,
     DENSE_MODEL_NAME,
     QDRANT_URL,
@@ -17,7 +17,9 @@ from config import (
     get_embedding_dim,
     setup_logging,
 )
-from extraction_ops.models import Chunk
+
+from .get_jsonl import load_jsonl_dir
+from .models import Chunk
 
 logger = logging.getLogger(__name__)
 
@@ -171,8 +173,8 @@ def delete_stale_points(
     logger.info("successfully deleted [%d] stale points", len(points_to_delete))
 
 
-def build_collection(input_path: Path, collection: str, rebuild: bool = False) -> None:
-    chunks = load_chunks(input_path)
+def build_collection(chunk_dir: Path, collection: str, rebuild: bool = False) -> None:
+    chunks = load_jsonl_dir(chunk_dir, Chunk)
     client = QdrantClient(url=QDRANT_URL)
     create_collection(client, collection, rebuild)
     existing_ids = get_existing_point_ids(client)
@@ -193,4 +195,4 @@ def build_collection(input_path: Path, collection: str, rebuild: bool = False) -
 if __name__ == "__main__":
     setup_logging("embedding")
     args = build_cli()
-    build_collection(CHUNKS_JSONL_PATH, COLLECTION, args.rebuild)
+    build_collection(CHUNKS_DIR, COLLECTION, args.rebuild)

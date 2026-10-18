@@ -1,4 +1,3 @@
-import json
 import logging
 import uuid
 from functools import lru_cache
@@ -13,7 +12,7 @@ from qdrant_client import QdrantClient, models
 from app.deps import AppDeps
 from config import (
     COLLECTION,
-    DEFINITIONS_JSONL_PATH,
+    DEFINITIONS_DIR,
     DENSE_VECTOR_NAME,
     FINAL_RETURN_TOP_N,
     LEGISLATION_QUOTA_RATIO,
@@ -22,6 +21,7 @@ from config import (
     SPARSE_VECTOR_NAME,
     USE_RERANKER,
 )
+from db_ops.get_jsonl import load_jsonl_dir
 from db_ops.models import DefinitionRecord, Payload, ServedPayload
 
 logger = logging.getLogger(__name__)
@@ -198,21 +198,8 @@ def normalise_ranks_and_trim(
 
 
 @lru_cache(maxsize=1)
-def load_definitions(
-    path: Path = DEFINITIONS_JSONL_PATH,
-) -> tuple[DefinitionRecord, ...]:
-    if not path.exists():
-        logger.critical("no definitions jsonl file found at [%s]", path)
-        raise FileNotFoundError(f"no definitions jsonl file found at [{path}]")
-    try:
-        definitions = tuple(
-            DefinitionRecord(**json.loads(line))
-            for line in path.read_text().splitlines()
-        )
-    except (json.JSONDecodeError, TypeError):
-        logger.exception("failed to read to [%s]", path)
-        raise
-    return definitions
+def load_definitions(path: Path = DEFINITIONS_DIR) -> tuple[DefinitionRecord, ...]:
+    return tuple(load_jsonl_dir(path, DefinitionRecord))
 
 
 def match_definitions(

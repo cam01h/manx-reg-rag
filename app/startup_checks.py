@@ -1,8 +1,16 @@
 import logging
-import json
+
 from pydantic_ai.models import infer_model
 from qdrant_client import QdrantClient
-from config import DEFINITIONS_JSONL_PATH, MODEL, QDRANT_URL, COLLECTION
+
+from config import (
+    COLLECTION,
+    DEFINITIONS_DIR,
+    MODEL,
+    QDRANT_URL,
+)
+from db_ops.get_jsonl import load_jsonl_dir
+from extraction_ops.models import Definition
 
 logger = logging.getLogger(__name__)
 
@@ -32,19 +40,10 @@ async def check_qdrant() -> None:
 
 
 async def check_definitions_file() -> None:
-    try:
-        raw = DEFINITIONS_JSONL_PATH.read_text()
-    except Exception:
-        logger.exception("unable to read file at %s", DEFINITIONS_JSONL_PATH)
-        raise
-    try:
-        definitions = [json.loads(line) for line in raw.splitlines() if line.strip()]
-    except json.JSONDecodeError:
-        logger.exception("%s not parsable json", DEFINITIONS_JSONL_PATH)
-        raise
+    definitions = load_jsonl_dir(DEFINITIONS_DIR, Definition)
     if not definitions:
-        logger.critical("%s contains no definitions", DEFINITIONS_JSONL_PATH)
-        raise RuntimeError(f"{DEFINITIONS_JSONL_PATH} contains no definitions")
+        logger.critical("[%s] contains no definitions", DEFINITIONS_DIR)
+        raise RuntimeError(f"[{DEFINITIONS_DIR}] contains no definitions")
     logger.info("definitions from %d documents reachable", len(definitions))
 
 
