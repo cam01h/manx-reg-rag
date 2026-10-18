@@ -2,6 +2,8 @@
    ========================================================================== */
 
 :root {
+    color-scheme: dark;
+
     --base: #1e1e2e;
     --mantle: #181825;
     --surface: #313244;
@@ -25,6 +27,8 @@
 
 * {
     box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface) transparent;
 }
 
 body {
