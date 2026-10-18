@@ -129,7 +129,7 @@ AmlHandbook = ToolBelt(
     document="The AML Handbook (August 2026)",
     hierarchy="guidance",
     input_url="https://www.iomfsa.im/media/3650/handbook-august-2026-clean.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/aml_handbook_april_2026.pdf",
+    pdf_path=PROJECT_ROOT / "data/raw/custom/aml_handbook_aug_2026.pdf",
     use_ocr=False,
     pdf_handlers=[
         handbook_remove_cover_and_dividers,
