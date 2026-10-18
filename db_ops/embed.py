@@ -1,9 +1,13 @@
-from dataclasses import asdict
+import argparse
 import json
+import logging
 import uuid
+from dataclasses import asdict
 from pathlib import Path
+
 from fastembed import SparseTextEmbedding, TextEmbedding
 from qdrant_client import QdrantClient, models
+
 from config import (
     CHUNKS_JSONL_PATH,
     COLLECTION,
@@ -13,7 +17,6 @@ from config import (
     get_embedding_dim,
     setup_logging,
 )
-import logging
 from extraction_ops.models import Chunk
 
 logger = logging.getLogger(__name__)
@@ -40,13 +43,13 @@ def build_embedding_text(chunk: Chunk) -> str:
 
 
 def build_dense_vector(chunk: Chunk, model: TextEmbedding) -> list[float]:
-    return list(model.embed([build_embedding_text(chunk)]))[0].tolist()
+    return next(iter(model.embed([build_embedding_text(chunk)]))).tolist()
 
 
 def build_sparse_vector(
     chunk: Chunk, model: SparseTextEmbedding
 ) -> models.SparseVector:
-    emb = list(model.embed([build_embedding_text(chunk)]))[0]
+    emb = next(iter(model.embed([build_embedding_text(chunk)])))
     vector = models.SparseVector(
         indices=emb.indices.tolist(),
         values=emb.values.tolist(),
@@ -71,11 +74,30 @@ def build_point(
     return point
 
 
-def create_collection(client: QdrantClient, collection: str) -> None:
+def build_cli() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Tool for embedding chunks as vectors and payloads in Qdrant"
+    )
+    parser.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="Delete all db entries and recreate. Should be used when changing embedding model",
+    )
+    return parser.parse_args()
+
+
+def create_collection(
+    client: QdrantClient, collection: str, rebuild: bool = False
+) -> None:
     try:
-        if client.collection_exists(collection):
+        exists = client.collection_exists(collection)
+        if exists and rebuild:
             client.delete_collection(collection)
             logger.info("existing [%s] collection deleted", collection)
+            exists = False
+        if exists:
+            logger.info("using existing [%s] collection", collection)
+            return
         client.create_collection(
             collection_name=collection,
             vectors_config={
@@ -108,10 +130,10 @@ def upload_collection(
         raise
 
 
-def build_collection(input_path: Path, collection: str) -> None:
+def build_collection(input_path: Path, collection: str, rebuild: bool = False) -> None:
     chunks = load_chunks(input_path)
     client = QdrantClient(url=QDRANT_URL)
-    create_collection(client, collection)
+    create_collection(client, collection, rebuild)
     vectors = [
         (
             c,
@@ -126,4 +148,5 @@ def build_collection(input_path: Path, collection: str) -> None:
 
 if __name__ == "__main__":
     setup_logging("embedding")
-    build_collection(CHUNKS_JSONL_PATH, COLLECTION)
+    args = build_cli()
+    build_collection(CHUNKS_JSONL_PATH, COLLECTION, args.rebuild)
