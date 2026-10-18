@@ -16,7 +16,7 @@ DB_PATH = PROJECT_ROOT / "data/qdrant"
 # Testing
 EXTRACTION_OPS_TEST_DATA = PROJECT_ROOT / "tests/extraction_ops/diagnostics/data"
 # Agent
-SYSTEM_PROMPT_PATH = PROJECT_ROOT / "prompts/system_prompt.md"
+SYSTEM_PROMPT_PATH = PROJECT_ROOT / "system_prompt.md"
 
 # =========
 # Chunks
