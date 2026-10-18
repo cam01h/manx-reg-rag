@@ -19,6 +19,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SEND_TO_LOGFIRE=${SEND_TO_LOGFIRE:-true}
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN}
+      - FASTEMBED_CACHE_PATH=/root/.cache/fastembed
     volumes:
       - fastembed_cache:/root/.cache/fastembed
       - ./data/processed/:/app/data/processed
