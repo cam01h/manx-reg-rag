@@ -1,9 +1,8 @@
-from tests.app.models import Anchor, AgentTest
-
+from tests.app.models import AgentTest, Anchor
 
 """ documents - must match the document field in chunks.jsonl exactly """
 CODE = "The AML/CFT Code 2019"
-HANDBOOK = "The AML Handbook (April 2026)"
+HANDBOOK = "The AML Handbook (August 2026)"
 POCA = "The Proceeds of Crime Act (POCA) 2008"
 ATCA = "The Anti-Terrorism and Crime Act 2003"
 RAO = "The Regulated Activities Order 2011"

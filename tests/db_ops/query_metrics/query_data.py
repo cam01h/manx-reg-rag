@@ -8,7 +8,7 @@ class RetrievalTest(BaseModel):
 
 """ documents - must match the document field in chunks.jsonl exactly """
 CODE = "The AML/CFT Code 2019"
-HANDBOOK = "The AML Handbook (April 2026)"
+HANDBOOK = "The AML Handbook (August 2026)"
 SID = "AML/CFT Supplemental Information Document (July 2021)"
 POCA = "The Proceeds of Crime Act (POCA) 2008"
 ATCA = "The Anti-Terrorism and Crime Act 2003"

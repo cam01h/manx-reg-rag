@@ -1,5 +1,4 @@
 import argparse
-import json
 import logging
 import uuid
 from dataclasses import asdict
@@ -17,9 +16,9 @@ from config import (
     get_embedding_dim,
     setup_logging,
 )
+from extraction_ops.models import Chunk
 
 from .get_jsonl import load_jsonl_dir
-from .models import Chunk
 
 logger = logging.getLogger(__name__)
 
@@ -43,19 +42,6 @@ def get_existing_point_ids(client: QdrantClient) -> set[str]:
         if offset_id is None:
             break
     return point_ids
-
-
-def load_chunks(path: Path) -> list[Chunk]:
-    if not path.exists():
-        logger.critical("no chunks jsonl file found at [%s]", path)
-        raise FileNotFoundError
-    try:
-        chunks = [Chunk(**json.loads(line)) for line in path.read_text().splitlines()]
-        logger.info("loaded [%s] into [%d] chunks", path, len(chunks))
-    except (FileNotFoundError, json.JSONDecodeError, TypeError):
-        logger.exception("failed to read to [%s]", path)
-        raise
-    return chunks
 
 
 def build_embedding_text(chunk: Chunk) -> str:
