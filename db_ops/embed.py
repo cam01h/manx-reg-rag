@@ -152,11 +152,30 @@ def upload_collection(
         raise
 
 
+def delete_stale_points(
+    client: QdrantClient, chunks: list[Chunk], existing_ids: set[str]
+) -> None:
+    ids_from_jsonl = {build_point_id(c) for c in chunks}
+    points_to_delete = [id for id in existing_ids if id not in ids_from_jsonl]
+    if not points_to_delete:
+        logger.info("no stale points to delete")
+        return
+    try:
+        client.delete(
+            collection_name=COLLECTION,
+            points_selector=models.PointIdsList(points=list(points_to_delete)),
+        )
+    except Exception:
+        logger.exception("failed to delete stale points")
+        raise
+    logger.info("successfully deleted [%d] stale points", len(points_to_delete))
+
+
 def build_collection(input_path: Path, collection: str, rebuild: bool = False) -> None:
     chunks = load_chunks(input_path)
     client = QdrantClient(url=QDRANT_URL)
-    existing_ids = get_existing_point_ids(client)
     create_collection(client, collection, rebuild)
+    existing_ids = get_existing_point_ids(client)
     vectors = [
         (
             c,
@@ -164,9 +183,11 @@ def build_collection(input_path: Path, collection: str, rebuild: bool = False) -
             build_sparse_vector(c, SPARSE_MODEL),
         )
         for c in chunks
+        if build_point_id(c) not in existing_ids
     ]
     points = [build_point(v[0], v[1], v[2]) for v in vectors]
     upload_collection(client, collection, points)
+    delete_stale_points(client, chunks, existing_ids)
 
 
 if __name__ == "__main__":
