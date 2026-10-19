@@ -9,7 +9,7 @@ from config import (
     MODEL,
     QDRANT_URL,
 )
-from db_ops.get_jsonl import load_jsonl_dir
+from db_ops.utils import load_jsonl_dir
 from extraction_ops.models import Definition
 
 logger = logging.getLogger(__name__)
