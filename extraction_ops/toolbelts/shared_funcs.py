@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Callable
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +136,9 @@ def rejoin_page_breaks(text: str) -> str:
     return text
 
 
-# [1] style and **[1]** style
+# [1], **[1]** and _**[1]**_ styles
 def strip_footnote_markers(text: str) -> str:
-    return re.sub(r"\s*(?:\*\* *\[\d+\] *\*\*|\[\d+\])", "", text)
+    return re.sub(r"\s*(?:_\*\* *\[\d+\] *\*\*_|\*\* *\[\d+\] *\*\*|\[\d+\])", "", text)
 
 
 # strips > style footnote
@@ -162,7 +162,7 @@ def strip_square_bracket_legislation_ids(text: str) -> str:
 
 # splitters
 def split_on_bracketed_num(text: str) -> list[str]:
-    return re.split(r"\n(?=- \(\d+\))", text)
+    return re.split(r"\n(?=[ \t]*(?:- )?\(\d+[A-Z]*\))", text)
 
 
 # eg (2A) or (3ZB)
@@ -171,7 +171,7 @@ def split_on_bracketed_amended_num(text: str) -> list[str]:
 
 
 def split_on_bracketed_letter(text: str) -> list[str]:
-    return re.split(r"\n(?=- \([a-z]+\))", text)
+    return re.split(r"\n(?=[ \t]*(?:- )?\([a-z]+\))", text)
 
 
 def split_on_paragraph(text: str) -> list[str]:
