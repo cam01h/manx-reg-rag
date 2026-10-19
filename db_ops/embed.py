@@ -1,6 +1,5 @@
 import argparse
 import logging
-import uuid
 from dataclasses import asdict
 from pathlib import Path
 
@@ -17,18 +16,17 @@ from config import (
 )
 from extraction_ops.models import Chunk
 
-from .get_jsonl import load_jsonl_dir
+from .utils import (
+    build_dense_vector,
+    build_point_id,
+    build_sparse_vector,
+    load_jsonl_dir,
+)
 
 logger = logging.getLogger(__name__)
 
 DENSE_MODEL = TextEmbedding(DENSE_MODEL_NAME)
 SPARSE_MODEL = SparseTextEmbedding(SPARSE_MODEL_NAME)
-
-
-def get_embedding_dim(embedding_model):
-    from fastembed import TextEmbedding
-
-    return TextEmbedding(model_name=embedding_model).embedding_size
 
 
 def get_existing_point_ids(client: QdrantClient) -> set[str]:
@@ -53,25 +51,6 @@ def build_embedding_text(chunk: Chunk) -> str:
     return f"{'\n'.join(h for h in chunk.headers if h)}\n{chunk.body}"
 
 
-def build_dense_vector(chunk: Chunk, model: TextEmbedding) -> list[float]:
-    return next(iter(model.embed([build_embedding_text(chunk)]))).tolist()
-
-
-def build_sparse_vector(
-    chunk: Chunk, model: SparseTextEmbedding
-) -> models.SparseVector:
-    emb = next(iter(model.embed([build_embedding_text(chunk)])))
-    vector = models.SparseVector(
-        indices=emb.indices.tolist(),
-        values=emb.values.tolist(),
-    )
-    return vector
-
-
-def build_point_id(chunk: Chunk) -> str:
-    return str(uuid.uuid5(uuid.NAMESPACE_URL, chunk.chunk_id))
-
-
 def build_point(
     chunk: Chunk,
     dense_vec: list[float],
@@ -79,7 +58,7 @@ def build_point(
 ) -> models.PointStruct:
     try:
         point = models.PointStruct(
-            id=build_point_id(chunk),
+            id=build_point_id(chunk.chunk_id),
             vector={"dense": dense_vec, "bm25": sparse_vec},
             payload=asdict(chunk),
         )
@@ -117,7 +96,7 @@ def create_collection(
             collection_name=collection,
             vectors_config={
                 "dense": models.VectorParams(
-                    size=get_embedding_dim(DENSE_MODEL_NAME),
+                    size=DENSE_MODEL.embedding_size,
                     distance=models.Distance.COSINE,
                 )
             },
@@ -129,6 +108,15 @@ def create_collection(
     except Exception:
         logger.exception("failed to create collection")
         raise
+
+
+def embed_chunk(chunk: Chunk) -> models.PointStruct:
+    text = build_embedding_text(chunk)
+    return build_point(
+        chunk,
+        build_dense_vector(text, DENSE_MODEL),
+        build_sparse_vector(text, SPARSE_MODEL),
+    )
 
 
 def upload_collection(
@@ -148,7 +136,7 @@ def upload_collection(
 def delete_stale_points(
     client: QdrantClient, chunks: list[Chunk], existing_ids: set[str]
 ) -> None:
-    ids_from_jsonl = {build_point_id(c) for c in chunks}
+    ids_from_jsonl = {build_point_id(c.chunk_id) for c in chunks}
     points_to_delete = [id for id in existing_ids if id not in ids_from_jsonl]
     if not points_to_delete:
         logger.info("no stale points to delete")
@@ -164,23 +152,43 @@ def delete_stale_points(
     logger.info("successfully deleted [%d] stale points", len(points_to_delete))
 
 
+def update_payloads(
+    client: QdrantClient, chunks: list[Chunk], existing_ids: set[str]
+) -> None:
+    kept = [c for c in chunks if build_point_id(c.chunk_id) in existing_ids]
+    if not kept:
+        logger.info("no existing points to refresh")
+        return
+    try:
+        client.batch_update_points(
+            collection_name=COLLECTION,
+            update_operations=[
+                models.OverwritePayloadOperation(
+                    overwrite_payload=models.SetPayload(
+                        payload=asdict(c),
+                        points=[build_point_id(c.chunk_id)],
+                    )
+                )
+                for c in kept
+            ],
+        )
+    except Exception:
+        logger.exception("failed to refresh payloads")
+        raise
+    logger.info("refreshed payloads on [%d] existing points", len(kept))
+
+
 def build_collection(chunk_dir: Path, collection: str, rebuild: bool = False) -> None:
-    chunks = load_jsonl_dir(chunk_dir, Chunk)
+    chunks: list[Chunk] = load_jsonl_dir(chunk_dir, Chunk)
     client = QdrantClient(url=QDRANT_URL)
     create_collection(client, collection, rebuild)
     existing_ids = get_existing_point_ids(client)
-    vectors = [
-        (
-            c,
-            build_dense_vector(c, DENSE_MODEL),
-            build_sparse_vector(c, SPARSE_MODEL),
-        )
-        for c in chunks
-        if build_point_id(c) not in existing_ids
-    ]
-    points = [build_point(v[0], v[1], v[2]) for v in vectors]
+    new_chunks = [c for c in chunks if build_point_id(c.chunk_id) not in existing_ids]
+    logger.info("embedding [%d] new chunks", len(new_chunks))
+    points = [embed_chunk(c) for c in new_chunks]
     upload_collection(client, collection, points)
     delete_stale_points(client, chunks, existing_ids)
+    update_payloads(client, chunks, existing_ids)
 
 
 if __name__ == "__main__":

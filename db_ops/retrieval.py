@@ -1,10 +1,8 @@
 import logging
-import uuid
 from functools import lru_cache
 from pathlib import Path
 
 import logfire
-from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from pydantic_ai import RunContext
 from qdrant_client import QdrantClient, models
@@ -21,29 +19,22 @@ from config import (
     SPARSE_VECTOR_NAME,
     USE_RERANKER,
 )
-from db_ops.get_jsonl import load_jsonl_dir
-from db_ops.models import DefinitionRecord, Payload, ServedPayload
+
+from .models import DefinitionRecord, Payload, ServedPayload
+from .utils import (
+    build_dense_vector,
+    build_point_id,
+    build_sparse_vector,
+    load_jsonl_dir,
+)
 
 logger = logging.getLogger(__name__)
-
-
-# fastembed used directly to avoid concurecy issues in qudrant client
-def embed_query_dense(text: str, model: TextEmbedding) -> list[float]:
-    return list(model.embed([text]))[0].tolist()
-
-
-def embed_query_sparse(text: str, model: SparseTextEmbedding) -> models.SparseVector:
-    vector = list(model.embed([text]))[0]
-    return models.SparseVector(
-        indices=vector.indices.tolist(),
-        values=vector.values.tolist(),
-    )
 
 
 def build_exclusion_filter(seen_ids: set[str]) -> models.Filter | None:
     if not seen_ids:
         return None
-    point_ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, cid)) for cid in seen_ids]
+    point_ids = [build_point_id(id) for id in seen_ids]
     logger.info("excluding [%d] previously returned chunks", len(point_ids))
     return models.Filter(must_not=[models.HasIdCondition(has_id=point_ids)])  # pyright: ignore[reportArgumentType]
 
@@ -260,9 +251,9 @@ def get_chunks_with_definitions(
     sparse_vector = None
     with logfire.span("query qdrant"):
         if _dense_required(ctx):
-            dense_vector = embed_query_dense(query, ctx.deps.dense_model)
+            dense_vector = build_dense_vector(query, ctx.deps.dense_model)
         if _sparse_required(ctx):
-            sparse_vector = embed_query_sparse(query, ctx.deps.sparse_model)
+            sparse_vector = build_sparse_vector(query, ctx.deps.sparse_model)
         results = query_collection(
             dense_vector,
             sparse_vector,

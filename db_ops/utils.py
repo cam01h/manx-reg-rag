@@ -1,8 +1,11 @@
 import logging
+import uuid
 from pathlib import Path
 from typing import Any
 
+from fastembed import SparseTextEmbedding, TextEmbedding
 from pydantic import TypeAdapter, ValidationError
+from qdrant_client import models
 
 logger = logging.getLogger(__name__)
 
@@ -24,3 +27,20 @@ def load_jsonl_dir(path: Path, model: type) -> list[Any]:
             logger.exception("failed to load/validate objects in [%s]", f)
             raise
     return objects
+
+
+def build_point_id(chunk_id: str) -> str:
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, chunk_id))
+
+
+def build_dense_vector(text: str, model: TextEmbedding) -> list[float]:
+    return next(iter(model.embed([text]))).tolist()
+
+
+def build_sparse_vector(text: str, model: SparseTextEmbedding) -> models.SparseVector:
+    emb = next(iter(model.embed([text])))
+    vector = models.SparseVector(
+        indices=emb.indices.tolist(),
+        values=emb.values.tolist(),
+    )
+    return vector
