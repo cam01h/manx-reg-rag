@@ -55,12 +55,6 @@ REASONING_EFFORT = "medium"
 SYSTEM_PROMPT = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip()
 
 
-def get_embedding_dim(embedding_model):
-    from fastembed import TextEmbedding
-
-    return TextEmbedding(model_name=embedding_model).embedding_size
-
-
 # logging and logfire
 SERVICE_NAME = "manx-reg-rag"
 SEND_TO_LOGFIRE = os.getenv("SEND_TO_LOGFIRE", "false").lower() == "true"

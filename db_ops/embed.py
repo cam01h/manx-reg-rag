@@ -13,7 +13,6 @@ from config import (
     DENSE_MODEL_NAME,
     QDRANT_URL,
     SPARSE_MODEL_NAME,
-    get_embedding_dim,
     setup_logging,
 )
 from extraction_ops.models import Chunk
@@ -24,6 +23,12 @@ logger = logging.getLogger(__name__)
 
 DENSE_MODEL = TextEmbedding(DENSE_MODEL_NAME)
 SPARSE_MODEL = SparseTextEmbedding(SPARSE_MODEL_NAME)
+
+
+def get_embedding_dim(embedding_model):
+    from fastembed import TextEmbedding
+
+    return TextEmbedding(model_name=embedding_model).embedding_size
 
 
 def get_existing_point_ids(client: QdrantClient) -> set[str]:
