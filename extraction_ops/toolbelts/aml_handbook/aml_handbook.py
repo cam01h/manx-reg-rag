@@ -2,6 +2,7 @@ import logging
 import re
 
 from config import PROJECT_ROOT
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -19,6 +20,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     in_line,
     redact_md_tables,
     replace_from_dict,
@@ -128,6 +130,7 @@ HandbookSplitters = ChunkSplitters(
 AmlHandbook = ToolBelt(
     document="The AML Handbook (August 2026)",
     hierarchy="guidance",
+    sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://www.iomfsa.im/media/3650/handbook-august-2026-clean.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/aml_handbook_aug_2026.pdf",
     use_ocr=False,

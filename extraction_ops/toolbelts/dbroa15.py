@@ -1,5 +1,7 @@
 import re
+
 from config import PROJECT_ROOT
+from core.sectors import DESIGNATED_BUSINESSES
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -13,6 +15,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     in_line,
     rejoin_page_breaks,
     replace_from_dict,
@@ -80,6 +83,7 @@ DbroaSplitters = ChunkSplitters(
 Dbroa = ToolBelt(
     document="Designated Businesses (Registration and Oversight) Act 2015",
     hierarchy="primary legislation",
+    sectors=fixed_sectors(DESIGNATED_BUSINESSES),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2015/2015-0009/2015-0009_13.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/dbroa.pdf",
     use_ocr=True,

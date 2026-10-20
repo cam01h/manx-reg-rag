@@ -1,4 +1,5 @@
 from config import PROJECT_ROOT
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -11,6 +12,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     rejoin_page_breaks_with_marker,
     replace_from_dict,
     split_on_bracketed_num,
@@ -75,6 +77,7 @@ TerrorCivPenSplitters = ChunkSplitters(
 TerrorCivPen = ToolBelt(
     document="Anti-Money Laundering And Countering The Financing Of Terrorism (Civil Penalties) Regulations 2019",
     hierarchy="secondary legislation",
+    sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0201/2019-0201_1.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/terror_civ_pen.pdf",
     use_ocr=True,

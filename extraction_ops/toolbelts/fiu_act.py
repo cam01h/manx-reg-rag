@@ -1,5 +1,7 @@
 import re
+
 from config import PROJECT_ROOT
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -12,6 +14,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     in_line,
     rejoin_page_breaks,
     replace_from_dict,
@@ -81,6 +84,7 @@ FiuSplitters = ChunkSplitters(
 FiuAct = ToolBelt(
     document="The Financial Intelligence Unit Act 2016",
     hierarchy="primary legislation",
+    sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2016/2016-0005/2016-0005_6.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/fiu_act.pdf",
     use_ocr=True,

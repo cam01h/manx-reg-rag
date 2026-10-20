@@ -1,6 +1,7 @@
 import re
 
 from config import PROJECT_ROOT
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -14,6 +15,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     split_on_bracketed_letter,
     split_on_bracketed_num,
     starts_with,
@@ -58,6 +60,7 @@ AmlCodeSplitters = ChunkSplitters(
 AmlCode = ToolBelt(
     document="The AML/CFT Code 2019",
     hierarchy="secondary legislation",
+    sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0202/2019-0202_2.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/the_aml_code_2019.pdf",
     use_ocr=True,

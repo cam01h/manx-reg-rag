@@ -1,13 +1,17 @@
 import re
+
 from config import PROJECT_ROOT
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import ChunkSplitters, SectionMarkers, ToolBelt
 from extraction_ops.toolbelts.custom_flatteners import (
     flatten_supplemental_information_tables,
 )
+
 from .shared_funcs import (
     base_body_cleaner,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     replace_from_dict,
     split_on_new_sentence,
     split_on_paragraph,
@@ -67,6 +71,7 @@ SupplementalSplitter = ChunkSplitters(
 SupplementalInformation = ToolBelt(
     document="AML/CFT Supplemental Information Document (July 2021)",
     hierarchy="supplemental",
+    sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://www.iomfsa.im/media/2913/supplemental-information-document-july-2021-published-version.pdf",
     pdf_path=PROJECT_ROOT
     / "data/raw/custom/aml_cft_supplemental_information_document.pdf",

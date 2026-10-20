@@ -1,4 +1,5 @@
 from config import PROJECT_ROOT
+from core.sectors import LICENCE_CLASSES
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -11,6 +12,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     replace_from_dict,
     replace_section,
     split_on_bracketed_num,
@@ -340,6 +342,7 @@ RaoSplitters = ChunkSplitters(
 Rao = ToolBelt(
     document="The Regulated Activities Order 2011",
     hierarchy="secondary legislation",
+    sectors=fixed_sectors(LICENCE_CLASSES),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2011/2011-0884/2011-0884_8.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/regulated_activities_order.pdf",
     use_ocr=True,

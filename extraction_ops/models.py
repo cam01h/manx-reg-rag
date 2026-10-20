@@ -69,6 +69,7 @@ class ChunkSplitters:
 class ToolBelt:
     document: str
     hierarchy: str
+    sectors: Callable[[tuple[str, ...]], tuple[str, ...]]
     # check if header list is in keys of manual dict, if true then append the usage note_id. this allows for section level usage notes
     # input is None as it will used variables defined in the same file
     input_url: str

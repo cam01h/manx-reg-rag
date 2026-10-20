@@ -194,3 +194,12 @@ def base_double_def_line(segs: list[str]) -> bool:
 
 def base_false_double_def(segs: list[str]) -> bool:
     return len(segs) == 5 and segs[2].strip() != "or"
+
+
+def fixed_sectors(
+    sectors: tuple[str, ...],
+) -> Callable[[tuple[str, ...]], tuple[str, ...]]:
+    def inner(headers: tuple[str, ...]) -> tuple[str, ...]:
+        return sectors
+
+    return inner

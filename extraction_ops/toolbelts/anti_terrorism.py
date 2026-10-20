@@ -1,5 +1,7 @@
 import re
+
 from config import PROJECT_ROOT
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -12,6 +14,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     in_line,
     redact_md_tables,
     rejoin_page_breaks,
@@ -202,6 +205,7 @@ AntiTerrorSplitters = ChunkSplitters(
 AntiTerror = ToolBelt(
     document="The Anti-Terrorism and Crime Act 2003",
     hierarchy="primary legislation",
+    sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2003/2003-0006/2003-0006_15.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/anti_terror.pdf",
     use_ocr=True,

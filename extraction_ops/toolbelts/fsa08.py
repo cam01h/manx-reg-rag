@@ -1,6 +1,7 @@
 import re
 
 from config import PROJECT_ROOT
+from core.sectors import FSA08_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -13,6 +14,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     rejoin_page_breaks,
     replace_from_dict,
     replace_section,
@@ -136,6 +138,7 @@ Fsa08Splitters = ChunkSplitters(
 Fsa08 = ToolBelt(
     document="Financial Services Act 2008",
     hierarchy="primary legislation",
+    sectors=fixed_sectors(FSA08_SECTORS),
     input_url="https://www.iomfsa.im/media/2376/financialservicesact2008.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/fsa08.pdf",
     use_ocr=True,

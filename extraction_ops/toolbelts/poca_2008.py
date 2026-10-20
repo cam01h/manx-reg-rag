@@ -1,5 +1,7 @@
 import re
+
 from config import PROJECT_ROOT
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -12,6 +14,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     in_line,
     replace_from_dict,
     split_on_bracketed_letter,
@@ -135,6 +138,7 @@ Poca = ToolBelt(
     document="The Proceeds of Crime Act (POCA) 2008",
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2008/2008-0013/2008-0013_28.pdf",
     hierarchy="primary legislation",
+    sectors=fixed_sectors(ALL_SECTORS),
     use_ocr=True,
     pdf_handlers=None,
     pdf_path=PROJECT_ROOT / "data/raw/custom/poca.pdf",

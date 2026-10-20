@@ -1,5 +1,7 @@
 import re
+
 from config import PROJECT_ROOT
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -12,6 +14,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     replace_from_dict,
     replace_section,
     split_on_bracketed_num,
@@ -76,6 +79,7 @@ SanctionsSplitters = ChunkSplitters(
 Sanctions = ToolBelt(
     document="Sanctions Act 2024",
     hierarchy="primary legislation",
+    sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2024/2024-0002/2024-0002_1.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/sanctions.pdf",
     use_ocr=True,

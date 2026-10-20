@@ -47,7 +47,7 @@ DESIGNATED_BUSINESSES: tuple[str, ...] = (
     HIGH_VALUE_DEALER,
     SAFE_CUSTODY,
     VASP,
-    MONEY_ADMINISTRATION,  # administering or managing money on behalf of another
+    MONEY_ADMINISTRATION,
 )
 
 SECTOR_LABELS: dict[str, str] = {
@@ -79,7 +79,7 @@ SECTOR_LABELS: dict[str, str] = {
 
 # --- Sector groupings ---
 ALL_SECTORS: tuple[str, ...] = LICENCE_CLASSES + DESIGNATED_BUSINESSES
-RB_ALL: tuple[str, ...] = (
+FSA08_SECTORS: tuple[str, ...] = (
     CLASS_1,
     CLASS_2,
     CLASS_3,
@@ -88,6 +88,7 @@ RB_ALL: tuple[str, ...] = (
     CLASS_7,
     CLASS_8,
 )
+RB_ALL: tuple[str, ...] = ()
 NON_BANK: tuple[str, ...] = (CLASS_2, CLASS_3, CLASS_4, CLASS_5, CLASS_8)
 TCSP: tuple[str, ...] = (CLASS_4, CLASS_5)
 
