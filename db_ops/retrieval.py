@@ -31,12 +31,27 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 
-def build_exclusion_filter(seen_ids: set[str]) -> models.Filter | None:
-    if not seen_ids:
+def build_query_filter(
+    seen_ids: set[str], sectors: tuple[str, ...]
+) -> models.Filter | None:
+    must: list[models.Condition] = []
+    must_not: list[models.Condition] = []
+
+    if sectors:
+        logger.info("filtering to sectors [%s]", ", ".join(sectors))
+        must.append(
+            models.FieldCondition(
+                key="sectors", match=models.MatchAny(any=list(sectors))
+            )
+        )
+    if seen_ids:
+        point_ids = [build_point_id(id) for id in seen_ids]
+        logger.info("excluding [%d] previously returned chunks", len(point_ids))
+        must_not.append(models.HasIdCondition(has_id=point_ids))  # pyright: ignore[reportArgumentType]
+
+    if not must and not must_not:
         return None
-    point_ids = [build_point_id(id) for id in seen_ids]
-    logger.info("excluding [%d] previously returned chunks", len(point_ids))
-    return models.Filter(must_not=[models.HasIdCondition(has_id=point_ids)])  # pyright: ignore[reportArgumentType]
+    return models.Filter(must=must or None, must_not=must_not or None)
 
 
 def query_dense(
@@ -44,6 +59,7 @@ def query_dense(
     collection: str,
     dense_vec: list[float],
     seen: set[str],
+    sectors: tuple[str, ...],
     top_n: int = PRE_RERANK_POOL,
 ):
     return client.query_points(
@@ -51,7 +67,7 @@ def query_dense(
         query=dense_vec,
         using=DENSE_VECTOR_NAME,
         limit=top_n,
-        query_filter=build_exclusion_filter(seen),
+        query_filter=build_query_filter(seen, sectors),
     )
 
 
@@ -60,6 +76,7 @@ def query_sparse(
     collection: str,
     sparse_vec: models.SparseVector,
     seen: set[str],
+    sectors: tuple[str, ...],
     top_n: int = PRE_RERANK_POOL,
 ):
     return client.query_points(
@@ -67,7 +84,7 @@ def query_sparse(
         query=sparse_vec,
         using=SPARSE_VECTOR_NAME,
         limit=top_n,
-        query_filter=build_exclusion_filter(seen),
+        query_filter=build_query_filter(seen, sectors),
     )
 
 
@@ -77,9 +94,10 @@ def query_hybrid(
     dense_vec: list[float],
     sparse_vec: models.SparseVector,
     seen: set[str],
+    sectors: tuple[str, ...],
     top_n: int = PRE_RERANK_POOL,
 ):
-    exclusion = build_exclusion_filter(seen)
+    exclusion = build_query_filter(seen, sectors)
     return client.query_points(
         collection_name=collection,
         prefetch=[
@@ -104,16 +122,19 @@ def query_collection(
     sparse_vec: models.SparseVector | None,
     client: QdrantClient,
     seen: set[str],
+    sectors: tuple[str, ...],
     collection: str = COLLECTION,
     mode: str = RETRIEVAL_MODE,
 ):
     try:
         if mode == "dense" and dense_vec:
-            results = query_dense(client, collection, dense_vec, seen)
+            results = query_dense(client, collection, dense_vec, seen, sectors)
         elif mode == "sparse" and sparse_vec:
-            results = query_sparse(client, collection, sparse_vec, seen)
+            results = query_sparse(client, collection, sparse_vec, seen, sectors)
         elif mode == "hybrid" and dense_vec and sparse_vec:
-            results = query_hybrid(client, collection, dense_vec, sparse_vec, seen)
+            results = query_hybrid(
+                client, collection, dense_vec, sparse_vec, seen, sectors
+            )
         else:
             logger.critical("unknown retrieval mode [%s]", mode)
             raise ValueError(f"unknown retrieval mode: [{mode}]")
@@ -260,6 +281,7 @@ def get_chunks_with_definitions(
             ctx.deps.qdrant_client,
             mode=ctx.deps.mode,
             seen=ctx.deps.seen_chunk_ids,
+            sectors=ctx.deps.sectors,
         )
         chunks = return_payload(results)
     if USE_RERANKER:

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
-from fastembed.rerank.cross_encoder import TextCrossEncoder
+
 from fastembed import SparseTextEmbedding, TextEmbedding
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import QdrantClient
 
 
@@ -12,3 +13,4 @@ class AppDeps:
     reranker_model: TextCrossEncoder
     mode: str
     seen_chunk_ids: set[str] = field(default_factory=set)
+    sectors: tuple[str, ...] = ()
