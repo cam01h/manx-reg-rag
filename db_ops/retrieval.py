@@ -127,7 +127,7 @@ def query_collection(
 
 def return_payload(results) -> list[Payload]:
     chunks = [
-        Payload(**r.payload, score=r.score, rank=i + 1)
+        Payload.model_validate({**r.payload, "score": r.score, "rank": i + 1})
         for i, r in enumerate(results.points)
     ]
     if not USE_RERANKER:

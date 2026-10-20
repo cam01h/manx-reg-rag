@@ -13,6 +13,7 @@ class Payload(BaseModel):
     chunk_id: str
     document: str
     hierarchy: str
+    sectors: tuple[str, ...]
     headers: list[str]
     body: str
     terms_used: list[str] | None = None

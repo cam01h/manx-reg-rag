@@ -1,4 +1,5 @@
 from config import PROJECT_ROOT
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -11,6 +12,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     in_line,
     replace_from_dict,
     replace_section,
@@ -98,6 +100,7 @@ FinancialRestrictionsSplitters = ChunkSplitters(
 FinancialRestrictions = ToolBelt(
     document="Terrorism And Other Crime (Financial Restrictions) Act 2014",
     hierarchy="primary legislation",
+    sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2014/2014-0013/2014-0013_13.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/terror_financial_restrictions.pdf",
     use_ocr=True,

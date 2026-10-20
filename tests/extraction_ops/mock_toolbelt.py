@@ -1,20 +1,21 @@
 from config import PROJECT_ROOT
 from extraction_ops.models import (
-    DefinitionTools,
-    ToolBelt,
     ChunkSplitters,
+    DefinitionTools,
     SectionMarkers,
+    ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
     base_body_cleaner,
-    base_header_cleaner,
-    base_text_cleaner,
-    in_line,
-    split_on_bracketed_letter,
-    split_on_bracketed_num,
     base_def_line,
     base_double_def_line,
     base_false_double_def,
+    base_header_cleaner,
+    base_text_cleaner,
+    fixed_sectors,
+    in_line,
+    split_on_bracketed_letter,
+    split_on_bracketed_num,
     starts_with,
 )
 
@@ -54,6 +55,7 @@ TestSplitters = ChunkSplitters(
 TestToolBelt = ToolBelt(
     document="test model",
     hierarchy="placeholder",
+    sectors=fixed_sectors(tuple("test_sector")),
     input_url="https://fake.url",
     pdf_path=PROJECT_ROOT / "fake/path.txt",
     use_ocr=True,

@@ -108,6 +108,17 @@ def create_collection(
     except Exception:
         logger.exception("failed to create collection")
         raise
+    key = "sectors"
+    try:
+        client.create_payload_index(
+            collection_name=collection,
+            field_name=key,
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+        logger.info("indexed [%s] field", key)
+    except Exception:
+        logger.exception("failed to index [%s] field", key)
+        raise
 
 
 def embed_chunk(chunk: Chunk) -> models.PointStruct:
