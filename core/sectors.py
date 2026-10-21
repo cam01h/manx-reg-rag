@@ -1,3 +1,5 @@
+SECTORS_FIELD = "sectors"
+
 # --- licence classes (Regulated Activities Order 2011, Schedule 1) ---
 CLASS_1 = "class_1"  # Deposit taking
 CLASS_2 = "class_2"  # Investment business

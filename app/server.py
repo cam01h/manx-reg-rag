@@ -1,22 +1,29 @@
-# setup_logging and configure_logfire must run before importing
-# app.llm so the agents init log is caught by the handler
+import logging
+
 import logfire
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+
 from app.deps import AppDeps
 from app.lifespan import lifespan
 from app.models import ConversationStep, UserPrompt
 from app.observabilty import configure_logfire
-from app.sessions import CONVERSATIONS, to_message_history
+from app.sessions import (
+    CONVERSATIONS,
+    build_prompt_with_sectors,
+    to_message_history,
+)
 from config import (
     setup_logging,
 )
-from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
-import logging
+from core.sectors import SECTOR_LABELS
 
 setup_logging("app")
 configure_logfire()
 
-from app.llm import agent  # noqa: E402
+# setup_logging and configure_logfire must run before importing
+# app.llm so the agents init log is caught by the handler
+from app.llm import agent
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +49,13 @@ async def query(user_prompt: UserPrompt, request: Request):
         sparse_model=request.app.state.sparse_model,
         reranker_model=request.app.state.reranker_model,
         mode=request.app.state.mode,
+        sectors=user_prompt.sectors,
     )
     steps = CONVERSATIONS.get(key, [])
+    prompt = build_prompt_with_sectors(user_prompt)
     try:
         result = await agent.run(
-            user_prompt.prompt,
+            prompt,
             message_history=to_message_history(steps),
             deps=deps,
         )
@@ -55,7 +64,7 @@ async def query(user_prompt: UserPrompt, request: Request):
         raise
     CONVERSATIONS[key] = steps + [
         ConversationStep(
-            user_prompt=user_prompt.prompt,
+            user_prompt=prompt,
             agent_response=result.output.answer,
         )
     ]
@@ -70,6 +79,11 @@ async def reset(user_prompt: UserPrompt, request: Request):
     n = len(CONVERSATIONS.pop(key, []))
     logger.info("conversation reset [%s] deleting %d interactions", key, n)
     return {"status": "ok"}
+
+
+@app.get("/sectors")
+async def get_sectors() -> dict[str, str]:
+    return SECTOR_LABELS
 
 
 app.mount("/", StaticFiles(directory="web", html=True), name="web")

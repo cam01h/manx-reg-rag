@@ -14,6 +14,7 @@ from config import (
     SPARSE_MODEL_NAME,
     setup_logging,
 )
+from core.sectors import SECTORS_FIELD
 from extraction_ops.models import Chunk
 
 from .utils import (
@@ -108,16 +109,15 @@ def create_collection(
     except Exception:
         logger.exception("failed to create collection")
         raise
-    key = "sectors"
     try:
         client.create_payload_index(
             collection_name=collection,
-            field_name=key,
+            field_name=SECTORS_FIELD,
             field_schema=models.PayloadSchemaType.KEYWORD,
         )
-        logger.info("indexed [%s] field", key)
+        logger.info("indexed [%s] field", SECTORS_FIELD)
     except Exception:
-        logger.exception("failed to index [%s] field", key)
+        logger.exception("failed to index [%s] field", SECTORS_FIELD)
         raise
 
 

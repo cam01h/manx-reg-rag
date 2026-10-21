@@ -19,6 +19,7 @@ from config import (
     SPARSE_VECTOR_NAME,
     USE_RERANKER,
 )
+from core.sectors import SECTORS_FIELD
 
 from .models import DefinitionRecord, Payload, ServedPayload
 from .utils import (
@@ -41,7 +42,7 @@ def build_query_filter(
         logger.info("filtering to sectors [%s]", ", ".join(sectors))
         must.append(
             models.FieldCondition(
-                key="sectors", match=models.MatchAny(any=list(sectors))
+                key=SECTORS_FIELD, match=models.MatchAny(any=list(sectors))
             )
         )
     if seen_ids:
