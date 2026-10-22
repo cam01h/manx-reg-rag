@@ -333,3 +333,147 @@ button:active {
         padding: 0.75rem 1rem;
     }
 }
+
+
+/* 9. Sector picker
+   A native <details> element: the browser handles open/close on click,
+   app.js only adds closing on outside-click and Escape. The panel is
+   positioned against the header (not the picker) so it lines up with the
+   header's right edge at every width.
+   ========================================================================== */
+
+header {
+    position: relative;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#sector-summary {
+    list-style: none; /* hide the default disclosure triangle */
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--surface);
+    border-radius: var(--radius-sm);
+    /* matches #toggle-citations: same line-height as a <button>, and 1px
+       less padding to make up for the border it doesn't have */
+    padding: calc(0.5rem - 1px) calc(1rem - 1px);
+    line-height: normal;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+#sector-summary::-webkit-details-marker {
+    display: none; /* Safari's version of the triangle */
+}
+
+#sector-summary:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Something is ticked: show it at a glance, since it changes the answers. */
+#sector-picker.has-selection #sector-summary {
+    border-color: var(--blue);
+    color: var(--blue);
+}
+
+.sector-panel {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 2rem; /* matches the header's side padding */
+    z-index: 10;
+    width: min(24rem, calc(100vw - 2rem));
+    max-height: min(70vh, 34rem);
+    overflow-y: auto;
+    background: var(--mantle);
+    border: 1px solid var(--surface);
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+}
+
+.sector-hint {
+    margin: 0 0 0.75rem;
+    color: var(--subtext);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.sector-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    line-height: 1.35;
+    cursor: pointer;
+}
+
+.sector-option input {
+    flex-shrink: 0;
+    margin: 0.2rem 0 0;
+    accent-color: var(--blue);
+    cursor: pointer;
+}
+
+#sector-clear {
+    margin-top: 0.75rem;
+    background: transparent;
+    color: var(--subtext);
+    border: 1px solid var(--surface);
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+}
+
+@media (hover: hover) {
+    #sector-summary:hover {
+        background: var(--blue);
+        border-color: var(--blue);
+        color: var(--base);
+    }
+
+    .sector-option:hover {
+        background: var(--surface);
+    }
+
+    #sector-clear:hover {
+        background: var(--surface);
+        color: var(--text);
+    }
+}
+
+@media (max-width: 768px) {
+    /* Title and buttons share a row when they fit; on narrow phones the
+       buttons drop to a second row, right-aligned, instead of squashing. */
+    header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    header h1,
+    #sector-summary,
+    #toggle-citations {
+        white-space: nowrap;
+    }
+
+    .header-actions {
+        gap: 0.5rem;
+        margin-left: auto;
+    }
+
+    #sector-summary {
+        padding: calc(0.5rem - 1px) calc(0.75rem - 1px);
+    }
+
+    .sector-panel {
+        right: 1rem; /* the header's side padding on mobile */
+    }
+}

@@ -8,6 +8,10 @@ const citations = document.getElementById("citations");
 const sendButton = form.querySelector("button[type='submit']");
 const resetButton = document.getElementById("reset-button");
 const toggleButton = document.getElementById("toggle-citations");
+const sectorPicker = document.getElementById("sector-picker");
+const sectorSummary = document.getElementById("sector-summary");
+const sectorOptions = document.getElementById("sector-options");
+const sectorClear = document.getElementById("sector-clear");
 
 
 /* 2. State
@@ -153,13 +157,18 @@ form.addEventListener("submit", async (event) => {
 
     input.value = "";
     resetInputHeight();
+    sectorPicker.open = false;
     startPending(prompt);
 
     try {
         const reply = await fetch("/query", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt, session_id: sessionId })
+            body: JSON.stringify({
+                prompt,
+                session_id: sessionId,
+                sectors: selectedSectors()
+            })
         });
 
         if (!reply.ok) {
@@ -248,3 +257,108 @@ input.addEventListener("keydown", (event) => {
         form.requestSubmit();
     }
 });
+
+
+/* 9. Sector picker
+   The list comes from GET /sectors, so the server owns the vocabulary and the
+   labels; this only draws a checkbox per entry. Ticked values go out with each
+   query as `sectors`. Nothing ticked means no filter: search everything.
+   The selection is remembered in localStorage, like the session id.
+   ========================================================================== */
+
+const SECTORS_KEY = "sectors";
+
+function loadSavedSectors() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(SECTORS_KEY) || "[]");
+        return Array.isArray(saved) ? saved : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveSectors(values) {
+    try {
+        localStorage.setItem(SECTORS_KEY, JSON.stringify(values));
+    } catch {
+        // private browsing or blocked storage: the picker still works,
+        // it just won't be remembered next visit
+    }
+}
+
+// Read from the boxes on the page rather than from storage, so a saved value
+// the server no longer offers can never be sent (it would get a 422).
+function selectedSectors() {
+    return Array.from(
+        sectorOptions.querySelectorAll("input[type='checkbox']:checked"),
+        (box) => box.value
+    );
+}
+
+function updateSectorSummary() {
+    const count = selectedSectors().length;
+    sectorSummary.textContent = count === 0 ? "Sectors: all" : `Sectors: ${count} selected`;
+    sectorPicker.classList.toggle("has-selection", count > 0);
+}
+
+async function loadSectors() {
+    try {
+        const reply = await fetch("/sectors");
+        if (!reply.ok) {
+            throw new Error(`server responded with status ${reply.status}`);
+        }
+        const labels = await reply.json();
+        const saved = new Set(loadSavedSectors());
+
+        for (const [value, label] of Object.entries(labels)) {
+            const row = document.createElement("label");
+            row.className = "sector-option";
+
+            const box = document.createElement("input");
+            box.type = "checkbox";
+            box.value = value;
+            box.checked = saved.has(value);
+
+            const text = document.createElement("span");
+            text.textContent = label;
+
+            row.append(box, text);
+            sectorOptions.appendChild(row);
+        }
+    } catch (err) {
+        console.error("loading sectors failed:", err);
+        sectorOptions.textContent =
+            "Couldn't load the sector list. Questions will search everything.";
+        sectorClear.hidden = true;
+    }
+    updateSectorSummary();
+}
+
+sectorOptions.addEventListener("change", () => {
+    saveSectors(selectedSectors());
+    updateSectorSummary();
+});
+
+sectorClear.addEventListener("click", () => {
+    for (const box of sectorOptions.querySelectorAll("input[type='checkbox']")) {
+        box.checked = false;
+    }
+    saveSectors([]);
+    updateSectorSummary();
+});
+
+// Close the panel on a click anywhere else, or on Escape.
+document.addEventListener("click", (event) => {
+    if (sectorPicker.open && !sectorPicker.contains(event.target)) {
+        sectorPicker.open = false;
+    }
+});
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && sectorPicker.open) {
+        sectorPicker.open = false;
+        sectorSummary.focus();
+    }
+});
+
+loadSectors();

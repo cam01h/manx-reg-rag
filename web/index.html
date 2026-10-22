@@ -4,13 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>manx-reg-rag</title>
-    <link rel="stylesheet" href="/style.css?v=2">
+    <link rel="stylesheet" href="/style.css?v=3">
 </head>
 <body>
 
     <header>
         <h1>manx-reg-rag</h1>
-        <button type="button" id="toggle-citations">Hide citations</button>
+        <div class="header-actions">
+            <details id="sector-picker">
+                <summary id="sector-summary">Sectors: all</summary>
+                <div class="sector-panel">
+                    <p class="sector-hint">Tick the sectors you work in. Leave empty to search everything.</p>
+                    <div id="sector-options"></div>
+                    <button type="button" id="sector-clear">Clear</button>
+                </div>
+            </details>
+            <button type="button" id="toggle-citations">Hide citations</button>
+        </div>
     </header>
 
     <main>
@@ -30,6 +40,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/app.js?v=3"></script>
+    <script src="/app.js?v=4"></script>
 </body>
 </html>
