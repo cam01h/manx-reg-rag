@@ -15,7 +15,7 @@ _STAGE = "raw_md"
 
 def _operation(doc: str, input: Path) -> str:
     tools = TOOLBELT_REGISTRY[doc]
-    return pdf_to_md(input, doc, tools.use_ocr)
+    return pdf_to_md(input, doc, tools.use_ocr, tools.use_layout)
 
 
 RawMd = Stage(

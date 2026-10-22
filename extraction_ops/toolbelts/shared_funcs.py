@@ -138,6 +138,7 @@ def rejoin_page_breaks(text: str) -> str:
 
 # [1], **[1]** and _**[1]**_ styles
 def strip_footnote_markers(text: str) -> str:
+    text = re.sub(r"(?<=[A-Za-z.;:)])\*\*\d{1,2}\*\*", "", text)  # eg **1**
     return re.sub(r"\s*(?:_\*\* *\[\d+\] *\*\*_|\*\* *\[\d+\] *\*\*|\[\d+\])", "", text)
 
 
