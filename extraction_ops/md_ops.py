@@ -10,18 +10,26 @@ from extraction_ops.models import CleanOutPut, ToolBelt
 logger = logging.getLogger(__name__)
 
 
-def pdf_to_md(pdf_path: Path, doc: str, use_ocr: bool) -> str:
+def pdf_to_md(pdf_path: Path, doc: str, use_ocr: bool, use_layout: bool) -> str:
     logger.info("Loading [%s] to md", doc)
     try:
+        if not use_layout:
+            pymupdf4llm.use_layout(False)
         md = cast(
             str,
             pymupdf4llm.to_markdown(
-                pdf_path, header=False, footer=False, use_ocr=use_ocr
+                pdf_path,
+                header=False,
+                footer=False,
+                use_ocr=use_ocr,
+                ignor_images=not use_layout,
             ),
         )
     except Exception:
         logger.exception("failed pymupdf4llm conversion")
         raise
+    finally:
+        pymupdf4llm.use_layout(True)
     return md
 
 
@@ -162,6 +170,6 @@ def process_lines(md_lines: list[str], tools: ToolBelt) -> CleanOutPut:
 
 
 def pdf_to_output(tools: ToolBelt) -> CleanOutPut:
-    md = pdf_to_md(tools.pdf_path, tools.document, tools.use_ocr)
+    md = pdf_to_md(tools.pdf_path, tools.document, tools.use_ocr, tools.use_layout)
     clean_md_lines = clean_md_to_lines(tools.clean_text, md)
     return process_lines(clean_md_lines, tools)

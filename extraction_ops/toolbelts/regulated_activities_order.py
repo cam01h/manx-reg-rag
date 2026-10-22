@@ -346,6 +346,7 @@ Rao = ToolBelt(
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2011/2011-0884/2011-0884_8.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/regulated_activities_order.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=RaoTrimmer,
     header_matchers=[

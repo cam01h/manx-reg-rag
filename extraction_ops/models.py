@@ -76,6 +76,7 @@ class ToolBelt:
     input_url: str
     pdf_path: Path
     use_ocr: bool
+    use_layout: bool
     # TODO: pdf_handler chould be used to extract images that are then served to the agent via a Path in the chunk meta data
     pdf_handlers: list[Callable[[Path], None]] | None
     # split list of all lines using regex pattern, this is less brittle than hardcoded index and likely to survive update better

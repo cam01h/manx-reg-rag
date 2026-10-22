@@ -88,6 +88,7 @@ FiuAct = ToolBelt(
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2016/2016-0005/2016-0005_6.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/fiu_act.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=FiuMarkers,
     header_matchers=[

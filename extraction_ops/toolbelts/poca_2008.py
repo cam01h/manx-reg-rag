@@ -140,6 +140,7 @@ Poca = ToolBelt(
     hierarchy="primary legislation",
     sectors=fixed_sectors(ALL_SECTORS),
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     pdf_path=PROJECT_ROOT / "data/raw/custom/poca.pdf",
     trimmer=PocaMarkers,

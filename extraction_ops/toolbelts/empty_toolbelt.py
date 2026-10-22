@@ -1,4 +1,6 @@
 from pathlib import Path
+
+from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -12,11 +14,11 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
+    fixed_sectors,
     in_line,
     split_on_bracketed_num,
     starts_with,
 )
-
 
 TemplateMarkers = SectionMarkers(start=starts_with(["start"]), end=starts_with(["end"]))
 
@@ -34,9 +36,11 @@ TemplateSplitters = ChunkSplitters(
 Template = ToolBelt(
     document="",
     hierarchy="",
+    sectors=fixed_sectors(ALL_SECTORS),
     input_url="",
     pdf_path=Path("~/path/to.pdf"),
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=TemplateMarkers,
     header_matchers=[in_line(["header"])],

@@ -64,6 +64,7 @@ AmlCode = ToolBelt(
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0202/2019-0202_2.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/the_aml_code_2019.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=AmlCodeTrimmer,
     header_matchers=[

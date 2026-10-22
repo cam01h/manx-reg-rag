@@ -7,6 +7,7 @@ from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.fsa08 import Fsa08
 from extraction_ops.toolbelts.poca_2008 import Poca
 from extraction_ops.toolbelts.regulated_activities_order import Rao
+from extraction_ops.toolbelts.rule_book.rule_book import RuleBook
 from extraction_ops.toolbelts.sanctions_act import Sanctions
 from extraction_ops.toolbelts.supplemental_information_document import (
     SupplementalInformation,
@@ -27,6 +28,7 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     Dbroa,
     Sanctions,
     Fsa08,
+    RuleBook,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -42,4 +44,5 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "dbroa": Dbroa,
     "sanctions": Sanctions,
     "fsa": Fsa08,
+    "rule_book": RuleBook,
 }

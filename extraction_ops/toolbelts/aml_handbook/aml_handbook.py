@@ -134,6 +134,7 @@ AmlHandbook = ToolBelt(
     input_url="https://www.iomfsa.im/media/3650/handbook-august-2026-clean.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/aml_handbook_aug_2026.pdf",
     use_ocr=False,
+    use_layout=True,
     pdf_handlers=[
         handbook_remove_cover_and_dividers,
         handbook_redact_margin_citations,

@@ -87,6 +87,7 @@ Dbroa = ToolBelt(
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2015/2015-0009/2015-0009_13.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/dbroa.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=DbroaMarkers,
     header_matchers=[

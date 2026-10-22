@@ -83,6 +83,7 @@ Sanctions = ToolBelt(
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2024/2024-0002/2024-0002_1.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/sanctions.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=SanctionsTrimmer,
     header_matchers=[

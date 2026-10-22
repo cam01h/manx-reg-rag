@@ -142,6 +142,7 @@ Fsa08 = ToolBelt(
     input_url="https://www.iomfsa.im/media/2376/financialservicesact2008.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/fsa08.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=Fsa08Trimmer,
     header_matchers=[

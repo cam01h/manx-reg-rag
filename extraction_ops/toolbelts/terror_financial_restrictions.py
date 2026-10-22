@@ -104,6 +104,7 @@ FinancialRestrictions = ToolBelt(
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2014/2014-0013/2014-0013_13.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/terror_financial_restrictions.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=FinancialRestrictionsTrimmer,
     header_matchers=[

@@ -76,6 +76,7 @@ SupplementalInformation = ToolBelt(
     pdf_path=PROJECT_ROOT
     / "data/raw/custom/aml_cft_supplemental_information_document.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     definition_tools=None,
     clean_text=re_steps,

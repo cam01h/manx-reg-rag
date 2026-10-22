@@ -209,6 +209,7 @@ AntiTerror = ToolBelt(
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2003/2003-0006/2003-0006_15.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/anti_terror.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=AntiTerrorMarkers,
     header_matchers=[

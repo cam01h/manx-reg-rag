@@ -81,6 +81,7 @@ TerrorCivPen = ToolBelt(
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0201/2019-0201_1.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/terror_civ_pen.pdf",
     use_ocr=True,
+    use_layout=True,
     pdf_handlers=None,
     trimmer=TerrorCivPenMarkers,
     header_matchers=[
