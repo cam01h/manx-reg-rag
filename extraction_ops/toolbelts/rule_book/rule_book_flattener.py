@@ -654,3 +654,46 @@ def flatten_appendix_4_table_b(text: str) -> str:
             f"Table B expected rows {_TABLE_B_ROWS} with day bands, found {rows}, bands {bands}"
         )
     return "\n".join(out)
+
+
+PII_ONE_LINE = "- (3) A licenceholder must maintain the minimum level of cover specified in the Table below. Where a licenceholder carries on 2 or more regulated activities, in respect of which different minimum levels of cover are required, the higher minimum amount must be maintained. Subject to paragraph (1), a licenceholder is not required to maintain a level of cover higher than the regulatory maximum detailed in the tables, but the cover must always meet the level and scope specified for the class of regulated activity for which a licence is held. **Table** **Professional Indemnity Insurance Levels** **Class of** **regulated** **activity** **Minimum cover to be the** **greater of** **Regulatory** **maximum** **cover** Class 2(3) and 2(7) only, where there is a licence restriction limiting advice to regulated products £1 million in aggregate or 3 times the annual turnover (excluding dividends received) in the licenceholder's previous year ending on its annual reporting date £5 million in aggregate Other Class 2(3) and 2(7) only £1.5 million in aggregate or 3 times the annual turnover (excluding dividends received) in the licenceholder's previous year ending on its annual reporting date £5 million in aggregate Class 3(8) only or Class 3(13) only £1.5 million in aggregate or 3 times the annual turnover (excluding dividends received) in the licenceholder's previous year ending on its annual reporting date £5 million in aggregate Other Classes 2 or 3 £1.5 million in aggregate or 10% of assets under control, management, custody or similar arrangement as at the licenceholder's last annual reporting date £10 million in aggregate Class 4 £1.5 million in aggregate or 3 times the total fees/ commissions received from Class 4 activity in the licenceholder's previous year ending on its annual reporting date £10 million in aggregate Class 5 £2 million in aggregate or 3 times the total fees/ commissions received from Class 5 activity in the licenceholder's previous year ending on its annual reporting date £10 million in aggregate Class 8(2)(a) and 8(4) only £2 million in aggregate or 3 times the total fees/ commissions received from Class 8 activity in the licenceholder's previous year ending on its annual reporting date £10 million in aggregate **Professional Indemnity Insurance Scope** The policy must extend to - i the activities of any subsidiaries; ii breach of duty by reason of negligent act, error and omission; iii libel or slander (to include former employees); iv dishonest or fraudulent acts or omissions by current and former employees; v legal liability incurred by reason of loss of documents; vi liabilities which the licenceholder might incur in any jurisdiction in which it carries on business; vii (for Class 2 and Class 3 licenceholders only) awards made by a statutory ombudsman scheme; and viii (for Class 4 and Class 5 licenceholders only) liabilities of the licenceholder's staff who, in the course of their duties to the licenceholder, perform functions in their own names."
+
+PII_TABLE_FLAT = """
+
+**Table** - **Professional Indemnity Insurance Levels**
+
+Class of regulated activity: Class 2(3) and 2(7) only, where there is a licence restriction limiting advice to regulated products | Minimum cover to be the greater of: £1 million in aggregate or 3 times the annual turnover (excluding dividends received) in the licenceholder's previous year ending on its annual reporting date | Regulatory maximum cover: £5 million in aggregate
+
+Class of regulated activity: Other Class 2(3) and 2(7) only | Minimum cover to be the greater of: £1.5 million in aggregate or 3 times the annual turnover (excluding dividends received) in the licenceholder's previous year ending on its annual reporting date | Regulatory maximum cover: £5 million in aggregate
+
+Class of regulated activity: Class 3(8) only or Class 3(13) only | Minimum cover to be the greater of: £1.5 million in aggregate or 3 times the annual turnover (excluding dividends received) in the licenceholder's previous year ending on its annual reporting date | Regulatory maximum cover: £5 million in aggregate
+
+Class of regulated activity: Other Classes 2 or 3 | Minimum cover to be the greater of: £1.5 million in aggregate or 10% of assets under control, management, custody or similar arrangement as at the licenceholder's last annual reporting date | Regulatory maximum cover: £10 million in aggregate
+
+Class of regulated activity: Class 4 | Minimum cover to be the greater of: £1.5 million in aggregate or 3 times the total fees/commissions received from Class 4 activity in the licenceholder's previous year ending on its annual reporting date | Regulatory maximum cover: £10 million in aggregate
+
+Class of regulated activity: Class 5 | Minimum cover to be the greater of: £2 million in aggregate or 3 times the total fees/commissions received from Class 5 activity in the licenceholder's previous year ending on its annual reporting date | Regulatory maximum cover: £10 million in aggregate
+
+Class of regulated activity: Class 8(2)(a) and 8(4) only | Minimum cover to be the greater of: £2 million in aggregate or 3 times the total fees/commissions received from Class 8 activity in the licenceholder's previous year ending on its annual reporting date | Regulatory maximum cover: £10 million in aggregate
+
+**Professional Indemnity Insurance Scope** The policy must extend to -
+i the activities of any subsidiaries;
+ii breach of duty by reason of negligent act, error and omission;
+iii libel or slander (to include former employees);
+iv dishonest or fraudulent acts or omissions by current and former employees;
+v legal liability incurred by reason of loss of documents;
+vi liabilities which the licenceholder might incur in any jurisdiction in which it carries on business;
+vii (for Class 2 and Class 3 licenceholders only) awards made by a statutory ombudsman scheme; and
+viii (for Class 4 and Class 5 licenceholders only) liabilities of the licenceholder's staff who, in the course of their duties to the licenceholder, perform functions in their own names."""
+
+APPENDIX6_START = """**1.** **A licenceholder must ensure that the personal account notice identifies**
+**the Head of compliance or a specifically designated employee of the**
+**licenceholder to be responsible for receiving reports and granting**
+**permissions in respect of activities undertaken by its employees in**
+**accordance with the personal account notice** ."""
+
+APPENDIX6_START_FIXED = """1. A licenceholder must ensure that the personal account notice identifies
+the Head of compliance or a specifically designated employee of the
+licenceholder to be responsible for receiving reports and granting
+permissions in respect of activities undertaken by its employees in
+accordance with the personal account notice ."""
