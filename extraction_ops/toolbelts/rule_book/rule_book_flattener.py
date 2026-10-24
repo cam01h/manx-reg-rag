@@ -697,3 +697,9 @@ the Head of compliance or a specifically designated employee of the
 licenceholder to be responsible for receiving reports and granting
 permissions in respect of activities undertaken by its employees in
 accordance with the personal account notice ."""
+
+TRIPLE_DEF = '"**option**", "**future**" and "**contract for differences**" mean investments falling within paragraphs (g), (h) and (i) respectively of the definition of "**investment**" in Schedule 2 to the Order;'
+
+TRIPLE_DEF_SPLIT = """"**option**" mean investments falling within paragraphs (g) of the definition of "**investment**" in Schedule 2 to the Order;
+"**future**" mean investments falling within paragraphs (h) of the definition of "**investment**" in Schedule 2 to the Order;
+"**contract for differences**" mean investments falling within paragraphs (i) of the definition of "**investment**" in Schedule 2 to the Order;"""

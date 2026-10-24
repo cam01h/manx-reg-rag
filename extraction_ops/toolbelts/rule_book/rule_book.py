@@ -29,6 +29,8 @@ from .rule_book_flattener import (
     APPENDIX6_START_FIXED,
     PII_ONE_LINE,
     PII_TABLE_FLAT,
+    TRIPLE_DEF,
+    TRIPLE_DEF_SPLIT,
     fix_rule_3_24_table_order,
     flatten_appendix_2_table,
     flatten_appendix_3,
@@ -52,9 +54,6 @@ _RUNNING_HEAD = re.compile(
     re.MULTILINE,
 )
 
-_TRIPPLE_DEF = '"**option**", "**future**" and "**contract for differences**" mean investments falling within paragraphs (g), (h) and (i) respectively of the definition of "**investment**" in Schedule 2 to the Order; a client\'s "**required contribution**" is the greater of -'
-_TRIPPLE_DEF_FIXED = '\n"**future**" and "**contract for differences**" mean investments falling within paragraphs (g), (h) and (i) respectively of the definition of "**investment**" in Schedule 2 to the Order;\n "**option**" mean investments falling within paragraphs (g), (h) and (i) respectively of the definition of "**investment**" in Schedule 2 to the Order;\n "**required contribution**" a client\'s required contribution is the greater of -'
-
 
 _REPLACEMENT_DICT = {
     "thatperson": "that person",
@@ -75,16 +74,59 @@ _REPLACEMENT_DICT = {
     'in rule 3.9; "**subscription and/or redemption account**" means': 'in rule 3.9;\n "**subscription account" or "redemption account**" means',
     'in rule 3.9; "**trust bank': 'in rule 3.9;\n"**trust bank',
     'money of that trust; "**trust money': 'money of that trust;\n"**trust money',
+    'the position; "**option': 'the position;\n"**option',
+    "Order; a client's \"**required": "Order;\na client's \"**required",
     # 3.22
     'corresponding meaning; "**margined client': 'corresponding meaning;\n"**margined client',
-    _TRIPPLE_DEF: _TRIPPLE_DEF_FIXED,
     "payment transaction; and in rules": "payment transaction;\nand in rules",
     'country; "**investment': 'country;\n"**investment',
     'investment scheme; "**registrable': 'investment scheme;\n"**registrable',
     'in a register; "**safe-custody': 'in a register;\n"**safe-custody',
     'relationship); "**title document': 'relationship);\n"**title document',
+    'Part applies; "**specified': 'Part applies;\n"**specified',
+    'margined transaction; "**margined transaction': 'margined transaction;\n"**margined transaction',
+    "paragraph\n- (5) of Class": "paragraph (5) of Class",
+    "Financial Services and Markets Act 20006": "Financial Services and Markets Act 2000",
+    'a client\'s "**required contribution**"': '"**required contribution**" a client\'s required contribution',
+    '"**the** **regulatory requirements**"': 'the "**regulatory requirements**"',
+    '- **"trust service provider" ("TSP")**': '- **"trust service provider" or "TSP"**',
+    '- **"adjusted capital base" ("ACB")**': '- **"adjusted capital base" or "ACB"**',
+    '- **"corporate service provider" ("CSP")**': '- **"corporate service provider" or "CSP"**',
+    '- **"internal capital adequacy assessment process" ("ICAAP")**': '- **"internal capital adequacy assessment process" or "ICAAP"**',
+    '- **"large exposures capital base" ("LECB")**': '- **"large exposures capital base" or "LECB"**',
+    '- **"risk-asset ratio" ("RAR")**': '- **"risk-asset ratio" or "RAR"**',
+    "paragraph\n- (5) acting as": "paragraph (5) acting as",
+    '- **"electronic money"** has the same meaning as in the Order;\n- **"e-money"** has the same meaning as electronic money;': '- **"electronic money" or "e-money"** has the same meaning as in the Order;',
     PII_ONE_LINE: PII_TABLE_FLAT,
     APPENDIX6_START: APPENDIX6_START_FIXED,
+    TRIPLE_DEF: TRIPLE_DEF_SPLIT,
+    # duplicate definitions
+    '- **"the Act"** means the Financial Services Act 2008;': "",
+    '- **"the Order"** means the Regulated Activities Order 2011;': "",
+    '- **"specified client bank account"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"client free money account"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"client money"** has the meaning given by rule 3.2;': "",
+    '- **"client settlement account"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    "- **\"'client company' bank account\"** has the meaning given by rule 3.2 for the purposes of Part 3;": "",
+    '- **"contract for differences"** has the meaning given in rule 3.22(10);': "",
+    '- **"equity balance"** has the meaning given by rule 3.22(10);': "",
+    '- **"future"** has the meaning given in rule 3.22(10);': "",
+    '- **"general client bank account"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"margined client money"** has the meaning given in rule 3.22(10);': "",
+    '- **"margined transaction"** has the meaning given in rule 3.22(10);': "",
+    '- **"money"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"nominee bank account"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"option"** has the meaning given in rule 3.22(10);': "",
+    '- **"recognised bank"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"relevant agreement"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"relevant funds"** has the meaning given in rule 3.35;': "",
+    '- **"required contribution"** has the meaning given in rule 3.22(10);': "",
+    '- **"regulatory requirements"** has the meaning given in rule 8.1;': "",
+    '- **"subscription and/or redemption account"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"trust bank account"** has the same meaning as in the Order and has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"trust money"** has the meaning given by rule 3.2;': "",
+    '- **"client bank account"** has the meaning given by rule 3.2 for the purposes of Part 3;': "",
+    '- **"auditor"** has the meaning given in rule 5.1;': "",
 }
 
 
@@ -149,9 +191,7 @@ RuleBookR5p1 = SectionMarkers(
 )
 
 RuleBookR8p1 = SectionMarkers(
-    start=starts_with(
-        ['In rules 8.1 to 8.32, in relation to any licenceholder, "**the**']
-    ),
+    start=starts_with(["In rules 8.1 to 8.32, in relation to any licenceholder,"]),
     end=starts_with(["   - (ix) the Collective Investment Schemes"]),
 )
 
@@ -182,6 +222,9 @@ RuleBookDefTools = DefinitionTools(
             "- (1) In this Part",
             '- **"',
             ' "**',
+            "- (10) In this rule",
+            "In rules 8.1 to 8.32",
+            "and in rules 3.35 to 3.42",
         ]
     ),
     is_double_def_line=base_double_def_line,
