@@ -1,5 +1,16 @@
 from config import PROJECT_ROOT
-from core.sectors import LICENCE_CLASSES
+from core.sectors import (
+    CLASS_1,
+    CLASS_2,
+    CLASS_3,
+    CLASS_4,
+    CLASS_5,
+    CLASS_6,
+    CLASS_7,
+    CLASS_8,
+    CLASS_9,
+    LICENCE_CLASSES,
+)
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -12,7 +23,6 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
-    fixed_sectors,
     replace_from_dict,
     replace_section,
     split_on_bracketed_num,
@@ -292,6 +302,17 @@ PART_1_FLATENED_TABLE = (
     "(c) an instrument entitling the holder to, or to subscribe for, a government security.\n"
 )
 
+RAO_CLASS_DICT = {
+    "CLASS 1": CLASS_1,
+    "CLASS 2": CLASS_2,
+    "CLASS 3": CLASS_3,
+    "CLASS 4": CLASS_4,
+    "CLASS 5": CLASS_5,
+    "CLASS 6": CLASS_6,
+    "CLASS 7": CLASS_7,
+    "CLASS 8": CLASS_8,
+    "CLASS 9": CLASS_9,
+}
 
 RAO_REPLACEMENT_DICT = {
     "## **4** \n\n## **Regulated": "## **4 Regulated",
@@ -339,10 +360,18 @@ RaoSplitters = ChunkSplitters(
     primary=split_on_bracketed_num, fallback=split_on_paragraph
 )
 
+
+def rao_sectors_matcher(headers: tuple[str, ...]) -> tuple[str, ...]:
+    applicability: tuple[str, ...] = tuple(
+        v for h in headers for k, v in RAO_CLASS_DICT.items() if k in h
+    )
+    return applicability if applicability else LICENCE_CLASSES
+
+
 Rao = ToolBelt(
     document="The Regulated Activities Order 2011",
     hierarchy="secondary legislation",
-    sectors=fixed_sectors(LICENCE_CLASSES),
+    sectors=rao_sectors_matcher,
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2011/2011-0884/2011-0884_8.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/regulated_activities_order.pdf",
     use_ocr=True,
@@ -353,7 +382,7 @@ Rao = ToolBelt(
         lambda line: (
             line.startswith("## **SCHEDULE")
             or line.startswith("## **")
-            and line[5].isdigit()
+            and line[5:6].isdigit()
         ),
         starts_with(["## **CLASS"]),
         starts_with(["## **Regulated activities", "## **Exclusion", "## **PART"]),
