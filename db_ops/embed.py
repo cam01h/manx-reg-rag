@@ -10,6 +10,7 @@ from config import (
     CHUNKS_DIR,
     COLLECTION,
     DENSE_MODEL_NAME,
+    PAYLOAD_UPDATE_BATCH_SIZE,
     QDRANT_URL,
     SPARSE_MODEL_NAME,
     setup_logging,
@@ -167,31 +168,43 @@ def update_payloads(
     client: QdrantClient, chunks: list[Chunk], existing_ids: set[str]
 ) -> None:
     kept = [c for c in chunks if build_point_id(c.chunk_id) in existing_ids]
+    num_batches = 0
     if not kept:
         logger.info("no existing points to refresh")
         return
-    try:
-        client.batch_update_points(
-            collection_name=COLLECTION,
-            update_operations=[
-                models.OverwritePayloadOperation(
-                    overwrite_payload=models.SetPayload(
-                        payload=asdict(c),
-                        points=[build_point_id(c.chunk_id)],
+    for batch_start in range(0, len(kept), PAYLOAD_UPDATE_BATCH_SIZE):
+        batch = kept[batch_start : batch_start + PAYLOAD_UPDATE_BATCH_SIZE]
+        try:
+            client.batch_update_points(
+                collection_name=COLLECTION,
+                update_operations=[
+                    models.OverwritePayloadOperation(
+                        overwrite_payload=models.SetPayload(
+                            payload=asdict(c),
+                            points=[build_point_id(c.chunk_id)],
+                        )
                     )
-                )
-                for c in kept
-            ],
-        )
-    except Exception:
-        logger.exception("failed to refresh payloads")
-        raise
-    logger.info("refreshed payloads on [%d] existing points", len(kept))
+                    for c in batch
+                ],
+            )
+            num_batches += 1
+        except Exception:
+            logger.exception(
+                "failed to refresh payloads at batch starting [%d] of [%d]",
+                batch_start,
+                len(kept),
+            )
+            raise
+    logger.info(
+        "refreshed payloads on [%d] existing points over [%d] batches",
+        len(kept),
+        num_batches,
+    )
 
 
 def build_collection(chunk_dir: Path, collection: str, rebuild: bool = False) -> None:
     chunks: list[Chunk] = load_jsonl_dir(chunk_dir, Chunk)
-    client = QdrantClient(url=QDRANT_URL)
+    client = QdrantClient(url=QDRANT_URL, timeout=60)
     create_collection(client, collection, rebuild)
     existing_ids = get_existing_point_ids(client)
     new_chunks = [c for c in chunks if build_point_id(c.chunk_id) not in existing_ids]
