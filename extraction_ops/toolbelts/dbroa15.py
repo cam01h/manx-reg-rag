@@ -1,22 +1,17 @@
 import re
 
-from config import PROJECT_ROOT
 from core.sectors import DESIGNATED_BUSINESSES
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
-    SectionMarkers,
     ToolBelt,
 )
 from extraction_ops.toolbelts.custom_flatteners import flatten_dbroa_schedule_table
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     fixed_sectors,
-    in_line,
     rejoin_page_breaks,
     replace_from_dict,
     split_on_bracketed_letter,
@@ -24,7 +19,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     strip_footnote_markers,
 )
 
-DBROA_REPLACEMENT_DICT = {
+_REPLACEMENT_DICT = {
     # definition minipulation
     '## " **associate**': '- " **associate**',
     '\n## " **Commission** " [Repealed] \n': "",
@@ -38,7 +33,7 @@ DBROA_REPLACEMENT_DICT = {
 }
 
 
-def dbroa_text_cleaner(text: str) -> str:
+def _text_cleaner(text: str) -> str:
     text = base_text_cleaner(text)
     text = strip_footnote_markers(text)
     # fixes ## **2** \n\n ## **commencement** and similar
@@ -49,33 +44,28 @@ def dbroa_text_cleaner(text: str) -> str:
     )
     text = rejoin_page_breaks(text)
     text = flatten_dbroa_schedule_table(text)
-    text = replace_from_dict(text, DBROA_REPLACEMENT_DICT)
+    text = replace_from_dict(text, _REPLACEMENT_DICT)
     return text
 
 
-DbroaMarkers = SectionMarkers(
-    start=starts_with(["## **PART 1 - INTRODUCTORY**"]),
-    end=starts_with(["- (6) The factors set out"]),
+_DbroaMarkers = build_simple_markers(
+    "## **PART 1 - INTRODUCTORY**", "- (6) The factors set out"
 )
 
-DbroaSec3DefMarkers = SectionMarkers(
-    start=starts_with(['- " **applicant** "']),
-    end=in_line(["- (l) any legislation in any other country"]),
+_DbroaSec3DefMarkers = build_simple_markers(
+    '- " **applicant** "', "- (l) any legislation in any other country"
 )
 
-DbroaSchedule1DefMarkers = SectionMarkers(
-    start=starts_with(['- " **estate agent**']),
-    end=in_line(["- (e) participation in"]),
+_DbroaSchedule1DefMarkers = build_simple_markers(
+    '- " **estate agent**', "- (e) participation in"
 )
 
-DbroaDefTools = DefinitionTools(
-    section_markers=[DbroaSec3DefMarkers, DbroaSchedule1DefMarkers],
+_DbroaDefTools = DefinitionTools(
+    section_markers=[_DbroaSec3DefMarkers, _DbroaSchedule1DefMarkers],
     is_definition_line=starts_with(['- " **', '- (2) In this Act " **']),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-DbroaSplitters = ChunkSplitters(
+_DbroaSplitters = ChunkSplitters(
     primary=lambda text: re.split(r"\n+(?=\s*(?:- )?\d+\.\s)", text),
     fallback=split_on_bracketed_letter,
 )
@@ -85,21 +75,15 @@ Dbroa = ToolBelt(
     hierarchy="primary legislation",
     sectors=fixed_sectors(DESIGNATED_BUSINESSES),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2015/2015-0009/2015-0009_13.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/dbroa.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    trimmer=DbroaMarkers,
+    pdf_path=build_pdf_path("dbroa"),
+    trimmer=_DbroaMarkers,
     header_matchers=[
         starts_with(["## **SCHEDULE"]),
         starts_with(["## **PART"]),
         starts_with(["## DIVISION"]),
         lambda line: line.startswith("## **") and line[5].isdigit(),
     ],
-    definition_tools=DbroaDefTools,
-    clean_text=dbroa_text_cleaner,
-    re_pack_splitters=DbroaSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    definition_tools=_DbroaDefTools,
+    clean_text=_text_cleaner,
+    re_pack_splitters=_DbroaSplitters,
 )

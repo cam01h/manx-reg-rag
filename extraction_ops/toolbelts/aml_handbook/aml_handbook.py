@@ -1,7 +1,6 @@
 import logging
 import re
 
-from config import PROJECT_ROOT
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
@@ -15,11 +14,8 @@ from extraction_ops.toolbelts.aml_handbook.pdf_handler import (
     handbook_remove_cover_and_dividers,
 )
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
     fixed_sectors,
     in_line,
     redact_md_tables,
@@ -66,7 +62,7 @@ REPLACEMENTS = {
 }
 
 
-def re_steps(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     # strips chapter level contents tables
     text = re.sub(
@@ -91,38 +87,36 @@ def re_steps(text: str) -> str:
     return text
 
 
-HandbookRiskDefMarker221 = SectionMarkers(
+_HandbookRiskDefMarker221 = SectionMarkers(
     start=in_line(['"Risk" means:']),
     end=in_line(['"Mitigation" means implementing controls']),
 )
 
-HandbookRiskDefMarker32 = SectionMarkers(
+_HandbookRiskDefMarker32 = SectionMarkers(
     start=in_line(['- "Customer due diligence"']),
     end=in_line(["Guidance on enhanced ongoing monitoring is at section 3.4.7"]),
 )
 
-HandbookRiskDefMarker431 = SectionMarkers(
+_HandbookRiskDefMarker431 = SectionMarkers(
     start=in_line(['- "receiving regulated person" -']),
     end=in_line(['- "underlying client" - the allowed']),
 )
 
-HandbookDefs = DefinitionTools(
+_DefTools = DefinitionTools(
     section_markers=[
-        HandbookRiskDefMarker221,
-        HandbookRiskDefMarker32,
-        HandbookRiskDefMarker431,
+        _HandbookRiskDefMarker221,
+        _HandbookRiskDefMarker32,
+        _HandbookRiskDefMarker431,
     ],
     is_definition_line=starts_with(['"', '## - "', '- "']),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-HandbookTrimmer = SectionMarkers(
+_Trimmer = SectionMarkers(
     start=lambda text: text.startswith("## **1. Introductory*"),
     end=lambda text: text.startswith("Guidance on fictitious, anonymous and"),
 )
 
-HandbookSplitters = ChunkSplitters(
+_Splitters = ChunkSplitters(
     primary=lambda text: text.split("\n\n"),
     fallback=split_on_new_sentence,
 )
@@ -132,18 +126,17 @@ AmlHandbook = ToolBelt(
     hierarchy="guidance",
     sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://www.iomfsa.im/media/3650/handbook-august-2026-clean.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/aml_handbook_aug_2026.pdf",
+    pdf_path=build_pdf_path("handbook"),
     use_ocr=False,
-    use_layout=True,
     pdf_handlers=[
         handbook_remove_cover_and_dividers,
         handbook_redact_margin_citations,
         handbook_redact_legislation_quoted,
     ],
-    definition_tools=HandbookDefs,
-    clean_text=re_steps,
-    trimmer=HandbookTrimmer,
-    re_pack_splitters=HandbookSplitters,
+    definition_tools=_DefTools,
+    clean_text=_clean_text,
+    trimmer=_Trimmer,
+    re_pack_splitters=_Splitters,
     header_matchers=[
         lambda line: bool(re.match(r"^## \*\*\d+\.\s", line)),
         lambda line: bool(re.match(r"^(?:## |- )?\*\*\d+\.\d+\s", line)),
@@ -151,7 +144,4 @@ AmlHandbook = ToolBelt(
         lambda line: bool(re.match(r"^(?:## |- )?(?:\*\*|_)\d+(?:\.\d+){3,}\s", line)),
         starts_with(["## _", "_"]),
     ],
-    clean_header=base_header_cleaner,
-    clean_body=base_body_cleaner,
-    min_body_len=40,
 )

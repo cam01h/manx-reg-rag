@@ -9,10 +9,6 @@ from extraction_ops.models import (
     ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
     fixed_sectors,
     in_line,
@@ -98,7 +94,7 @@ ANTI_TERROR_REPLACEMENT_DICT = {
 }
 
 
-def anti_terror_text_cleaner(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     text = strip_footnote_markers(text)
     text = strip_footnote_bullets(text)
@@ -118,86 +114,84 @@ def anti_terror_text_cleaner(text: str) -> str:
     return text
 
 
-AntiTerrorMarkers = SectionMarkers(
+_Trimmer = SectionMarkers(
     start=starts_with(["## **PART I - INTRODUCTORY"]),
     end=in_line(["- (c) make supplemental, incidental"]),
 )
 
-AntiTerrorSec3Defs1 = SectionMarkers(
+_AntiTerrorSec3Defs1 = SectionMarkers(
     start=starts_with(['- (1) In this Act " **terrorism']),
     end=starts_with(["- (3) The use or threat"]),
 )
 
-AntiTerrorSec3Defs2 = SectionMarkers(
+_AntiTerrorSec3Defs2 = SectionMarkers(
     start=starts_with(['- (4) In subsection (2) "proscribed"']),
     end=in_line(["- (i) the Northern Ireland (Emergency"]),
 )
 
-AntiTerrorSec6Defs = SectionMarkers(
+_AntiTerrorSec6Defs = SectionMarkers(
     start=starts_with(['- (1) In this Act " **terrorist']),
     end=in_line(["- (b) the reference to an organisation's"]),
 )
 
-AntiTerrorSec18VDefs = SectionMarkers(
+_AntiTerrorSec18VDefs = SectionMarkers(
     start=starts_with(['- " **country** "']),
     end=starts_with(['- " **release** "']),
 )
 
-AntiTerrorSec19Defs = SectionMarkers(
+_AntiTerrorSec19Defs = SectionMarkers(
     start=starts_with(['In this Act " **terrorist investigation']),
     end=starts_with(["- (d) the commission, preparation"]),
 )
 
-AntiTerrorSec29Defs = SectionMarkers(
+_AntiTerrorSec29Defs = SectionMarkers(
     start=starts_with(['- (1) In this Part, " **terrorist']),
     end=starts_with(["- (2) The reference in"]),
 )
 
-AntiTerrorSec43Defs = SectionMarkers(
+_AntiTerrorSec43Defs = SectionMarkers(
     start=starts_with(['- "biological weapon" means']),
     end=starts_with(['- "radioactive material"']),
 )
 
-AntiTerrorSec75Defs = SectionMarkers(
+_AntiTerrorSec75Defs = SectionMarkers(
     start=starts_with(['- " **act** " and']),
     end=starts_with(["   - (b) except in construing"]),
 )
 
-AntiTerrorSch2Defs = SectionMarkers(
+_AntiTerrorSch2Defs = SectionMarkers(
     start=starts_with(['- " **charging order** "']),
     end=starts_with(['- " **restraint order** "']),
 )
 
-AntiTerrorSch4Defs = SectionMarkers(
+_AntiTerrorSch4Defs = SectionMarkers(
     start=in_line(['- " **the court** "']),
     end=in_line(["- (2) The Treasury may by order"]),
 )
 
-AntiTerrorSch12Defs = SectionMarkers(
+_AntiTerrorSch12Defs = SectionMarkers(
     start=in_line(['- " **dangerous substance*']),
     end=in_line(['- " **relevant premises**']),
 )
 
-AntiTerrorDefTools = DefinitionTools(
+_DefTools = DefinitionTools(
     section_markers=[
-        AntiTerrorSec3Defs1,
-        AntiTerrorSec3Defs2,
-        AntiTerrorSec6Defs,
-        AntiTerrorSec18VDefs,
-        AntiTerrorSec19Defs,
-        AntiTerrorSec29Defs,
-        AntiTerrorSec43Defs,
-        AntiTerrorSec75Defs,
-        AntiTerrorSch2Defs,
-        AntiTerrorSch4Defs,
-        AntiTerrorSch12Defs,
+        _AntiTerrorSec3Defs1,
+        _AntiTerrorSec3Defs2,
+        _AntiTerrorSec6Defs,
+        _AntiTerrorSec18VDefs,
+        _AntiTerrorSec19Defs,
+        _AntiTerrorSec29Defs,
+        _AntiTerrorSec43Defs,
+        _AntiTerrorSec75Defs,
+        _AntiTerrorSch2Defs,
+        _AntiTerrorSch4Defs,
+        _AntiTerrorSch12Defs,
     ],
     is_definition_line=lambda line: len(line.split('"')) == 3,
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-AntiTerrorSplitters = ChunkSplitters(
+_Splitters = ChunkSplitters(
     primary=lambda text: re.split(r"\n+(?=\s*(?:- )?\d+\.\s)", text),
     fallback=lambda text: re.split(r"\n+(?=\s*(?:- )?\(\d+\))", text),
 )
@@ -208,10 +202,7 @@ AntiTerror = ToolBelt(
     sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2003/2003-0006/2003-0006_15.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/anti_terror.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    trimmer=AntiTerrorMarkers,
+    trimmer=_Trimmer,
     header_matchers=[
         starts_with(["## **SCHEDULE"]),
         starts_with(["## **PART"]),
@@ -221,10 +212,7 @@ AntiTerror = ToolBelt(
             or bool(re.match(r"\s*\d+\.\s*$", line))
         ),
     ],
-    definition_tools=AntiTerrorDefTools,
-    clean_text=anti_terror_text_cleaner,
-    re_pack_splitters=AntiTerrorSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    definition_tools=_DefTools,
+    clean_text=_clean_text,
+    re_pack_splitters=_Splitters,
 )

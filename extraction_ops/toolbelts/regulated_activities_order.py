@@ -1,4 +1,3 @@
-from config import PROJECT_ROOT
 from core.sectors import (
     CLASS_1,
     CLASS_2,
@@ -14,15 +13,12 @@ from core.sectors import (
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
-    SectionMarkers,
     ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     replace_from_dict,
     replace_section,
     split_on_bracketed_num,
@@ -327,7 +323,7 @@ RAO_REPLACEMENT_DICT = {
 }
 
 
-def rao_text_text_cleaner(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     text = strip_footnote_markers(text)
     text = replace_section(
@@ -340,29 +336,21 @@ def rao_text_text_cleaner(text: str) -> str:
     return text
 
 
-RaoTrimmer = SectionMarkers(
-    start=starts_with(["## **3 Interpretation"]),
-    end=starts_with(["- (4) In determining for the"]),
+_Trimmer = build_simple_markers("## **3 Interpretation", "- (4) In determining for the")
+
+_RaoDefMarkers = build_simple_markers(
+    '"accommodation address facilities" means', "(c) an instrument entitling"
 )
 
-RaoDefMarkers = SectionMarkers(
-    start=starts_with(['"accommodation address facilities" means']),
-    end=starts_with(["(c) an instrument entitling"]),
-)
-
-RaoDefTools = DefinitionTools(
-    section_markers=[RaoDefMarkers],
+_DefTools = DefinitionTools(
+    section_markers=[_RaoDefMarkers],
     is_definition_line=starts_with(['"']),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-RaoSplitters = ChunkSplitters(
-    primary=split_on_bracketed_num, fallback=split_on_paragraph
-)
+_Splitters = ChunkSplitters(primary=split_on_bracketed_num, fallback=split_on_paragraph)
 
 
-def rao_sectors_matcher(headers: tuple[str, ...]) -> tuple[str, ...]:
+def _rao_sectors_matcher(headers: tuple[str, ...]) -> tuple[str, ...]:
     applicability: tuple[str, ...] = tuple(
         v for h in headers for k, v in RAO_CLASS_DICT.items() if k in h
     )
@@ -372,13 +360,10 @@ def rao_sectors_matcher(headers: tuple[str, ...]) -> tuple[str, ...]:
 Rao = ToolBelt(
     document="The Regulated Activities Order 2011",
     hierarchy="secondary legislation",
-    sectors=rao_sectors_matcher,
+    sectors=_rao_sectors_matcher,
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2011/2011-0884/2011-0884_8.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/regulated_activities_order.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    trimmer=RaoTrimmer,
+    pdf_path=build_pdf_path("rao"),
+    trimmer=_Trimmer,
     header_matchers=[
         lambda line: (
             line.startswith("## **SCHEDULE")
@@ -389,10 +374,7 @@ Rao = ToolBelt(
         starts_with(["## **Regulated activities", "## **Exclusion", "## **PART"]),
         starts_with(["## _", "_"]),
     ],
-    definition_tools=RaoDefTools,
-    clean_text=rao_text_text_cleaner,
-    re_pack_splitters=RaoSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    definition_tools=_DefTools,
+    clean_text=_clean_text,
+    re_pack_splitters=_Splitters,
 )

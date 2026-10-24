@@ -1,21 +1,19 @@
 import re
 
-from config import PROJECT_ROOT
 from core.sectors import ALL_SECTORS
-from extraction_ops.models import ChunkSplitters, SectionMarkers, ToolBelt
+from extraction_ops.models import ChunkSplitters, ToolBelt
 from extraction_ops.toolbelts.custom_flatteners import (
     flatten_supplemental_information_tables,
 )
 
 from .shared_funcs import (
-    base_body_cleaner,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     fixed_sectors,
     replace_from_dict,
     split_on_new_sentence,
     split_on_paragraph,
-    starts_with,
     strip_footnote_markers,
 )
 
@@ -26,7 +24,7 @@ REPLACEMENT_DICT = {
 }
 
 
-def re_steps(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     text = flatten_supplemental_information_tables(text)
     # cleans pictures
@@ -59,34 +57,23 @@ def re_steps(text: str) -> str:
     return text
 
 
-SupplementalTrimmer = SectionMarkers(
-    start=starts_with(["## **1. Introductory**"]),
-    end=starts_with(["This list is not exhaustive or limited"]),
+_Trimmer = build_simple_markers(
+    "## **1. Introductory**", "This list is not exhaustive or limited"
 )
 
-SupplementalSplitter = ChunkSplitters(
-    primary=split_on_paragraph, fallback=split_on_new_sentence
-)
+_Splitter = ChunkSplitters(primary=split_on_paragraph, fallback=split_on_new_sentence)
 
 SupplementalInformation = ToolBelt(
     document="AML/CFT Supplemental Information Document (July 2021)",
     hierarchy="supplemental",
     sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://www.iomfsa.im/media/2913/supplemental-information-document-july-2021-published-version.pdf",
-    pdf_path=PROJECT_ROOT
-    / "data/raw/custom/aml_cft_supplemental_information_document.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    definition_tools=None,
-    clean_text=re_steps,
-    trimmer=SupplementalTrimmer,
-    re_pack_splitters=SupplementalSplitter,
+    pdf_path=build_pdf_path("supplemental"),
+    clean_text=_clean_text,
+    trimmer=_Trimmer,
+    re_pack_splitters=_Splitter,
     header_matchers=[
         lambda line: bool(re.match(r"^## \*\*\d+\.\s", line)),
         lambda line: bool(re.match(r"^## \*\*\d+\.\d", line)),
     ],
-    clean_header=base_header_cleaner,
-    clean_body=base_body_cleaner,
-    min_body_len=40,
 )

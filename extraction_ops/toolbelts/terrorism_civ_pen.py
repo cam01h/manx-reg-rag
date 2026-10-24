@@ -1,17 +1,13 @@
-from config import PROJECT_ROOT
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
-    SectionMarkers,
     ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     fixed_sectors,
     rejoin_page_breaks_with_marker,
     replace_from_dict,
@@ -44,7 +40,7 @@ TERROR_CIV_PEN_REPLACEMENT_DICT = {
 }
 
 
-def terror_civ_pen_text_cleaner(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     text = rejoin_page_breaks_with_marker(text)
     text = strip_footnote_bullets(text)
@@ -53,24 +49,16 @@ def terror_civ_pen_text_cleaner(text: str) -> str:
     return text
 
 
-TerrorCivPenMarkers = SectionMarkers(
-    start=starts_with(["## **3 Interpretation"]),
-    end=starts_with(["Level 2 - A penalty may"]),
-)
+_Trimmer = build_simple_markers("## **3 Interpretation", "Level 2 - A penalty may")
 
-TerrorCivPenDefMarkers = SectionMarkers(
-    start=starts_with(['- " **accounting year']),
-    end=starts_with(['- " **senior management']),
-)
+_DefMarkers = build_simple_markers('- " **accounting year', '- " **senior management')
 
-TerrorCivPenDefTools = DefinitionTools(
-    section_markers=[TerrorCivPenDefMarkers],
+_DefTools = DefinitionTools(
+    section_markers=[_DefMarkers],
     is_definition_line=starts_with(['- " **']),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-TerrorCivPenSplitters = ChunkSplitters(
+_Splitters = ChunkSplitters(
     primary=split_on_bracketed_num, fallback=split_on_bracketed_num
 )
 
@@ -79,11 +67,8 @@ TerrorCivPen = ToolBelt(
     hierarchy="secondary legislation",
     sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0201/2019-0201_1.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/terror_civ_pen.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    trimmer=TerrorCivPenMarkers,
+    pdf_path=build_pdf_path("tcivpen"),
+    trimmer=_Trimmer,
     header_matchers=[
         lambda line: (
             line.startswith("## **")
@@ -91,10 +76,7 @@ TerrorCivPen = ToolBelt(
             or line.startswith("## **SCHEDULE")
         ),
     ],
-    definition_tools=TerrorCivPenDefTools,
-    clean_text=terror_civ_pen_text_cleaner,
-    re_pack_splitters=TerrorCivPenSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    definition_tools=_DefTools,
+    clean_text=_clean_text,
+    re_pack_splitters=_Splitters,
 )

@@ -1,19 +1,15 @@
 import re
 
-from config import PROJECT_ROOT
 from core.sectors import FSA08_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
-    SectionMarkers,
     ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     fixed_sectors,
     rejoin_page_breaks,
     replace_from_dict,
@@ -105,32 +101,27 @@ def _clean_text(text: str) -> str:
     return text
 
 
-Fsa08p48DefMarkers = SectionMarkers(
-    start=starts_with(['- " **advertisement** " includes every form of advertising']),
-    end=starts_with(['- "equity share capital"']),
-    # this line is edited in the dict on line 61
+_Fsa08p48DefMarkers = build_simple_markers(
+    '- " **advertisement** " includes every form of advertising',
+    '- "equity share capital"',
+)  # this line is edited in the dict on line 61
+
+
+_Fsa08S02DefMarkers = build_simple_markers(
+    '   - " **functions** " means functions conferred', "within the meaning of the"
 )
 
-
-Fsa08S02DefMarkers = SectionMarkers(
-    start=starts_with(['   - " **functions** " means functions conferred']),
-    end=starts_with(["within the meaning of the"]),
-)
-
-
-Fsa08Defs = DefinitionTools(
-    section_markers=[Fsa08p48DefMarkers, Fsa08S02DefMarkers],
+_Fsa08Defs = DefinitionTools(
+    section_markers=[_Fsa08p48DefMarkers, _Fsa08S02DefMarkers],
     is_definition_line=starts_with(['- " **', '- "', '   - " **']),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-Fsa08Trimmer = SectionMarkers(
-    start=starts_with(["## **PART 1 - THE REGULATOR AND"]),
-    end=starts_with(["(3) This paragraph is without prejudice to the generality"]),
+_Fsa08Trimmer = build_simple_markers(
+    "## **PART 1 - THE REGULATOR AND",
+    "(3) This paragraph is without prejudice to the generality",
 )
 
-Fsa08Splitters = ChunkSplitters(
+_Fsa08Splitters = ChunkSplitters(
     primary=split_on_bracketed_num,
     fallback=split_on_bracketed_letter,
 )
@@ -140,21 +131,15 @@ Fsa08 = ToolBelt(
     hierarchy="primary legislation",
     sectors=fixed_sectors(FSA08_SECTORS),
     input_url="https://www.iomfsa.im/media/2376/financialservicesact2008.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/fsa08.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    trimmer=Fsa08Trimmer,
+    pdf_path=build_pdf_path("fsa"),
+    trimmer=_Fsa08Trimmer,
     header_matchers=[
         starts_with(["## **PART", "## **Schedule", "## **SCHEDULE"]),
         starts_with(["## CHAPTER"]),
         starts_with(["## _"]),
         lambda line: line.startswith("## **") and line[5].isdigit(),
     ],
-    definition_tools=Fsa08Defs,
+    definition_tools=_Fsa08Defs,
     clean_text=_clean_text,
-    re_pack_splitters=Fsa08Splitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    re_pack_splitters=_Fsa08Splitters,
 )

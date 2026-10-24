@@ -2,6 +2,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from extraction_ops.toolbelts.defaults import (
+    base_body_cleaner,
+    base_double_def_line,
+    base_false_double_def,
+    base_header_cleaner,
+)
+
 # TODO: lists within a frozen dataclass creates false imutability and hashing will cause a TypeError. Consider replacing with tuples
 
 
@@ -53,9 +60,9 @@ class DefinitionTools:
     section_markers: list[SectionMarkers]
     is_definition_line: Callable[[str], bool]
     # used for 'the terms "x" and "Y" should be taken to mean...'
-    is_double_def_line: Callable[[list[str]], bool]
+    is_double_def_line: Callable[[list[str]], bool] = base_double_def_line
     # looks like a double definition line but is not
-    is_false_dub_def: Callable[[list[str]], bool]
+    is_false_dub_def: Callable[[list[str]], bool] = base_false_double_def
 
 
 # primary can just split chunk.body but fallback can carry intro to second chunk for lists that require the intro eg. "(3) the following are exempt:"
@@ -75,19 +82,19 @@ class ToolBelt:
     # input is None as it will used variables defined in the same file
     input_url: str
     pdf_path: Path
-    use_ocr: bool
-    use_layout: bool
     # TODO: pdf_handler chould be used to extract images that are then served to the agent via a Path in the chunk meta data
-    pdf_handlers: list[Callable[[Path], None]] | None
     # split list of all lines using regex pattern, this is less brittle than hardcoded index and likely to survive update better
     trimmer: SectionMarkers
     header_matchers: list[Callable[[str], bool]]
-    definition_tools: DefinitionTools | None
     clean_text: Callable[[str], str]
     re_pack_splitters: ChunkSplitters
-    clean_body: Callable[[str], str]
-    clean_header: Callable[[str], str]
-    min_body_len: int
+    use_ocr: bool = True
+    use_layout: bool = True
+    pdf_handlers: list[Callable[[Path], None]] | None = None
+    definition_tools: DefinitionTools | None = None
+    clean_body: Callable[[str], str] = base_body_cleaner
+    clean_header: Callable[[str], str] = base_header_cleaner
+    min_body_len: int = 40
 
 
 @dataclass(frozen=True)

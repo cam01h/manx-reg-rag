@@ -1,25 +1,19 @@
 from config import PROJECT_ROOT
 from core.sectors import LICENCE_CLASSES
 from extraction_ops.models import (
-    ChunkSplitters,
     DefinitionTools,
-    SectionMarkers,
     ToolBelt,
 )
+from extraction_ops.toolbelts.defaults import DefaultSplitter
 from extraction_ops.toolbelts.exemptions.exemptions_flattener import (
     S3_SWITCHED,
     S3_WRONG,
     flatten_exemptions_table,
 )
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_simple_markers,
     replace_from_dict,
-    split_on_bracketed_letter,
-    split_on_bracketed_num,
     starts_with,
     strip_footnote_markers,
 )
@@ -38,7 +32,7 @@ _REPLACEMENT_DICT = {
 }
 
 
-def exemptions_text_cleaner(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     text = strip_footnote_markers(text)
     text = flatten_exemptions_table(text)
@@ -46,41 +40,30 @@ def exemptions_text_cleaner(text: str) -> str:
     return text
 
 
-ExemptionsTrimmer = SectionMarkers(
-    start=starts_with(["## **1 Title"]),
-    end=starts_with(['- "trustee in bankruptcy"']),
+_Trimmer = build_simple_markers("## **1 Title", '- "trustee in bankruptcy"')
+
+
+_ExemptionsPara3Defs = build_simple_markers(
+    '- "the Act" means the Financial', '- "class" References in these Regulations'
 )
 
-
-ExemptionsPara3Defs = SectionMarkers(
-    start=starts_with(['- "the Act" means the Financial']),
-    end=starts_with(['- "class" References in these Regulations']),
+_ExemptionsClass4Defs = build_simple_markers(
+    'For the purpose of this Class "company" includes', "- (d) a foundation established"
 )
 
-ExemptionsClass4Defs = SectionMarkers(
-    start=starts_with(['For the purpose of this Class "company" includes']),
-    end=starts_with(["- (d) a foundation established"]),
+_ExemptionsSchedule3Defs = build_simple_markers(
+    '- "the Authority" means', '- "trustee in bankruptcy"'
 )
 
-ExemptionsSchedule3Defs = SectionMarkers(
-    start=starts_with(['- "the Authority" means']),
-    end=starts_with(['- "trustee in bankruptcy"']),
-)
-
-ExemptionsDefTools = DefinitionTools(
+_DefTools = DefinitionTools(
     section_markers=[
-        ExemptionsPara3Defs,
-        ExemptionsClass4Defs,
-        ExemptionsSchedule3Defs,
+        _ExemptionsPara3Defs,
+        _ExemptionsClass4Defs,
+        _ExemptionsSchedule3Defs,
     ],
     is_definition_line=starts_with(['- "', "For the purpose of this"]),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-ExemptionsSplitters = ChunkSplitters(
-    primary=split_on_bracketed_num, fallback=split_on_bracketed_letter
-)
 
 EXEMPTIONS_SECTOR_DECT = {}
 
@@ -101,7 +84,7 @@ Exemptions = ToolBelt(
     use_ocr=True,
     use_layout=True,
     pdf_handlers=None,
-    trimmer=ExemptionsTrimmer,
+    trimmer=_Trimmer,
     header_matchers=[
         lambda line: (
             line.startswith("## **SCHEDULE")
@@ -111,10 +94,7 @@ Exemptions = ToolBelt(
         starts_with(["## **CLASS"]),
         starts_with(["## _"]),
     ],
-    definition_tools=ExemptionsDefTools,
-    clean_text=exemptions_text_cleaner,
-    re_pack_splitters=ExemptionsSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    definition_tools=_DefTools,
+    clean_text=_clean_text,
+    re_pack_splitters=DefaultSplitter,
 )

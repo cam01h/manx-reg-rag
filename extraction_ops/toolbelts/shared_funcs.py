@@ -1,8 +1,17 @@
 import logging
 import re
 from collections.abc import Callable
+from pathlib import Path
+
+from config import PROJECT_ROOT
+from extraction_ops.models import SectionMarkers
 
 logger = logging.getLogger(__name__)
+
+
+# paths
+def build_pdf_path(short_name: str) -> Path:
+    return PROJECT_ROOT / f"data/raw/{short_name}.pdf"
 
 
 # helpers
@@ -31,31 +40,6 @@ def starts_with(strings: list[str]) -> Callable[[str], bool]:
         return any(line.startswith(s) for s in strings)
 
     return inner
-
-
-# text cleaners
-def base_header_cleaner(header: str) -> str:
-    header = (
-        header.replace("- ##", "")
-        .replace("- **", "")
-        .replace("#", "")
-        .replace("*", "")
-        .replace("_", "")
-        .strip()
-    )
-    # lstrip added for handbook, extract to custom if it affects other docs
-    return header.lstrip("- ")
-
-
-def base_body_cleaner(line: str) -> str:
-    line = (
-        line.replace("## **", "")
-        .replace("##", "")
-        .replace("**", "")
-        .replace("_", "")
-        .strip()
-    )
-    return line
 
 
 # used in testing, if changed, test_cleaners.py must be updated too
@@ -189,14 +173,6 @@ def base_def_line(line: str) -> bool:
     return any(line.startswith(p) for p in prefixes)
 
 
-def base_double_def_line(segs: list[str]) -> bool:
-    return len(segs) == 5 and segs[2].strip() in ("or", "and")
-
-
-def base_false_double_def(segs: list[str]) -> bool:
-    return len(segs) == 5 and segs[2].strip() != "or"
-
-
 def fixed_sectors(
     sectors: tuple[str, ...],
 ) -> Callable[[tuple[str, ...]], tuple[str, ...]]:
@@ -204,3 +180,8 @@ def fixed_sectors(
         return sectors
 
     return inner
+
+
+# Building simple classes
+def build_simple_markers(start: str, end: str) -> SectionMarkers:
+    return SectionMarkers(start=starts_with([start]), end=starts_with([end]))

@@ -1,19 +1,14 @@
-from config import PROJECT_ROOT
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
-    SectionMarkers,
     ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     fixed_sectors,
-    in_line,
     replace_from_dict,
     replace_section,
     split_on_bracketed_amended_num,
@@ -51,7 +46,7 @@ FINANCIAL_RESTRICTIONS_REPLACEMENT_DICT = {
 }
 
 
-def terror_financial_restrictions_text_cleaner(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     text = strip_footnote_markers(text)
     text = strip_footnote_bullets(text)
@@ -62,38 +57,32 @@ def terror_financial_restrictions_text_cleaner(text: str) -> str:
     return text
 
 
-FinancialRestrictionsTrimmer = SectionMarkers(
-    start=starts_with(["## **PART 1 -"]),
-    end=starts_with(["- (3) This paragraph does not apply if"]),
+_Trimmer = build_simple_markers(
+    "## **PART 1 -", "- (3) This paragraph does not apply if"
 )
 
-FinancialRestrictionsDefMarkersSec3 = SectionMarkers(
-    start=starts_with(['- " **action** "']),
-    end=starts_with(["- (b) any tangible property (other"]),
+_DefMarkersSec3 = build_simple_markers(
+    '- " **action** "', "- (b) any tangible property (other"
 )
 
-FinancialRestrictionsDefMarkersSchedule1A = SectionMarkers(
-    start=starts_with(['"Arrangement" includes']),
-    end=starts_with(["- (b) any convention, custom"]),
+_DefMarkersSchedule1A = build_simple_markers(
+    '"Arrangement" includes', "- (b) any convention, custom"
 )
 
-FinancialRestrictionsDefMarkersSchedule1 = SectionMarkers(
-    start=starts_with(['- " **business relationship']),
-    end=in_line(["- (iii) proliferation or"]),
+_DefMarkersSchedule1 = build_simple_markers(
+    '- " **business relationship', "- (iii) proliferation or"
 )
 
-FinancialRestrictionsDefTools = DefinitionTools(
+_DefTools = DefinitionTools(
     section_markers=[
-        FinancialRestrictionsDefMarkersSec3,
-        FinancialRestrictionsDefMarkersSchedule1A,
-        FinancialRestrictionsDefMarkersSchedule1,
+        _DefMarkersSec3,
+        _DefMarkersSchedule1A,
+        _DefMarkersSchedule1,
     ],
     is_definition_line=starts_with(['- " **', '- (1) In this Act " **', '- "', '"']),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-FinancialRestrictionsSplitters = ChunkSplitters(
+_Splitters = ChunkSplitters(
     primary=split_on_bracketed_amended_num, fallback=split_on_paragraph
 )
 
@@ -102,21 +91,15 @@ FinancialRestrictions = ToolBelt(
     hierarchy="primary legislation",
     sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2014/2014-0013/2014-0013_13.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/terror_financial_restrictions.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    trimmer=FinancialRestrictionsTrimmer,
+    pdf_path=build_pdf_path("terrorfr"),
+    trimmer=_Trimmer,
     header_matchers=[
         starts_with(["## **PART", "## **SCHEDULE"]),
         starts_with(["## DIVISION"]),
         starts_with(["## SUB-DIVISION"]),
         lambda line: line.startswith("## **") and line[5].isdigit(),
     ],
-    definition_tools=FinancialRestrictionsDefTools,
-    clean_text=terror_financial_restrictions_text_cleaner,
-    re_pack_splitters=FinancialRestrictionsSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    definition_tools=_DefTools,
+    clean_text=_clean_text,
+    re_pack_splitters=_Splitters,
 )

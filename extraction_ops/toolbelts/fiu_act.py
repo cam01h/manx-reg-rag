@@ -1,33 +1,28 @@
 import re
 
-from config import PROJECT_ROOT
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
-    ChunkSplitters,
     DefinitionTools,
     SectionMarkers,
     ToolBelt,
 )
+from extraction_ops.toolbelts.defaults import DefaultSplitter
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     fixed_sectors,
     in_line,
     rejoin_page_breaks,
     replace_from_dict,
-    split_on_bracketed_letter,
-    split_on_bracketed_num,
     starts_with,
     strip_footnote_markers,
 )
 
-FIU_REPLACEMENT_DICT = {'## " **initial provider**': '- " **initial provider**'}
+_REPLACEMENT_DICT = {'## " **initial provider**': '- " **initial provider**'}
 
 
-def fiu_text_cleaner(text: str) -> str:
+def _text_cleaner(text: str) -> str:
     text = base_text_cleaner(text)
     # citation trailing a header
     text = re.sub(r" +P\d{4}/\d+/\d+(?:\(\d+\))?\s*$", "", text, flags=re.MULTILINE)
@@ -43,54 +38,44 @@ def fiu_text_cleaner(text: str) -> str:
     )
     text = strip_footnote_markers(text)
     text = rejoin_page_breaks(text)
-    text = replace_from_dict(text, FIU_REPLACEMENT_DICT)
+    text = replace_from_dict(text, _REPLACEMENT_DICT)
     return text
 
 
-FiuMarkers = SectionMarkers(
+_FiuTrimmer = SectionMarkers(
     start=in_line(["## **PART 1 - INTRODUCTORY"]),
     end=starts_with(["- (4) In this paragraph references"]),
 )
 
-FiuDefinitionSec3Markers = SectionMarkers(
-    start=starts_with(['- " **Board**']), end=starts_with(['- " **the police force**'])
+_FiuDefinitionSec3Markers = build_simple_markers(
+    '- " **Board**', '- " **the police force**'
 )
 
-FiuDefinitionSec10Markers = SectionMarkers(
-    start=starts_with(['- " **assigned matters']),
-    end=starts_with(["   - (b) the Income Tax"]),
+_FiuDefinitionSec10Markers = build_simple_markers(
+    '- " **assigned matters', "   - (b) the Income Tax"
 )
 
-FiuDefinitionSec21Markers = SectionMarkers(
-    start=starts_with(['- " **AML/CFT']),
-    end=starts_with(["- (f) a person representing"]),
+_FiuDefinitionSec21Markers = build_simple_markers(
+    '- " **AML/CFT', "- (f) a person representing"
 )
 
-FiuDefinitionTools = DefinitionTools(
+_FiuDefinitionTools = DefinitionTools(
     section_markers=[
-        FiuDefinitionSec3Markers,
-        FiuDefinitionSec10Markers,
-        FiuDefinitionSec21Markers,
+        _FiuDefinitionSec3Markers,
+        _FiuDefinitionSec10Markers,
+        _FiuDefinitionSec21Markers,
     ],
     is_definition_line=starts_with(['- " **']),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-FiuSplitters = ChunkSplitters(
-    primary=split_on_bracketed_num, fallback=split_on_bracketed_letter
-)
 
 FiuAct = ToolBelt(
     document="The Financial Intelligence Unit Act 2016",
     hierarchy="primary legislation",
     sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2016/2016-0005/2016-0005_6.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/fiu_act.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    trimmer=FiuMarkers,
+    pdf_path=build_pdf_path("fiu"),
+    trimmer=_FiuTrimmer,
     header_matchers=[
         starts_with(["## **SCHEDULE"]),
         starts_with(["## **PART"]),
@@ -98,15 +83,7 @@ FiuAct = ToolBelt(
             line.startswith("## **") and line[5].isdigit() or line.startswith("- **")
         ),
     ],
-    definition_tools=FiuDefinitionTools,
-    clean_text=fiu_text_cleaner,
-    re_pack_splitters=FiuSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    definition_tools=_FiuDefinitionTools,
+    clean_text=_text_cleaner,
+    re_pack_splitters=DefaultSplitter,
 )
-
-# is_definition_line=lambda line: bool('- " **' in line),
-# is_double_def_line=lambda segs: len(segs) == 5 and segs[2].strip() in ("or", "and"),
-# is_false_dub_def=lambda segs: len(segs) == 5 and segs[2].strip() != "or",
-# re_pack_splitter=lambda text: re.split( r"\n(?=- \(\d+\)|\d+[A-Z]?\.\s*\(\d+\)|\(\d+\)\s|\d+[A-Z]?\.\s)", text),

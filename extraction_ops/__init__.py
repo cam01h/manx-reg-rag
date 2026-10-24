@@ -2,6 +2,7 @@ from extraction_ops.models import ToolBelt
 from extraction_ops.toolbelts.aml_code import AmlCode
 from extraction_ops.toolbelts.aml_handbook.aml_handbook import AmlHandbook
 from extraction_ops.toolbelts.anti_terrorism import AntiTerror
+from extraction_ops.toolbelts.conflicts import Conflicts
 from extraction_ops.toolbelts.dbroa15 import Dbroa
 from extraction_ops.toolbelts.exemptions.exemptions import Exemptions
 from extraction_ops.toolbelts.fiu_act import FiuAct
@@ -31,21 +32,27 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     Fsa08,
     RuleBook,
     Exemptions,
+    Conflicts,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
-    "code": AmlCode,
-    "handbook": AmlHandbook,
-    "supplemental": SupplementalInformation,
+    # AML/CFT Legislation
     "poca": Poca,
     "fiu": FiuAct,
-    "tcivpen": TerrorCivPen,
+    "code": AmlCode,
     "antiterror": AntiTerror,
-    "rao": Rao,
     "terrorfr": FinancialRestrictions,
-    "dbroa": Dbroa,
+    "tcivpen": TerrorCivPen,
     "sanctions": Sanctions,
+    # AML/CFT Guidance
+    "handbook": AmlHandbook,
+    "supplemental": SupplementalInformation,
+    # FSA08 Legislation
+    "rao": Rao,
+    "exemptions": Exemptions,
+    "dbroa": Dbroa,
     "fsa": Fsa08,
     "rule_book": RuleBook,
-    "exemptions": Exemptions,
+    # FSA08 Guidnace
+    "conflicts": Conflicts,
 }

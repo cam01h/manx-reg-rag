@@ -1,6 +1,5 @@
 import re
 
-from config import PROJECT_ROOT
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
@@ -9,11 +8,9 @@ from extraction_ops.models import (
     ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     fixed_sectors,
     in_line,
     replace_from_dict,
@@ -40,7 +37,7 @@ POCA_REPLACEMENT_DICT = {
 }
 
 
-def re_steps(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     # ammendment markers
     text = re.sub(r" *\[(?:P\d{4}|\d{4})/[^\]]*\]", "", text)
@@ -53,69 +50,54 @@ def re_steps(text: str) -> str:
     return text
 
 
-PocaMarkers = SectionMarkers(
-    start=starts_with(["## **PART 1 - CIVIL RECOVERY"]),
-    end=starts_with(["   - (w) the Law Society of Scotland"]),
+_Trimmer = build_simple_markers(
+    "## **PART 1 - CIVIL RECOVERY", "   - (w) the Law Society of Scotland"
 )
 
-PocaIntroDefs = SectionMarkers(
-    start=starts_with(['## **2 "Unlawful']),
-    end=starts_with(["   - (b) it is not necessary to"]),
+_PocaIntroDefs = build_simple_markers(
+    '## **2 "Unlawful', "   - (b) it is not necessary to"
 )
 
-PocaChap2Defs = SectionMarkers(
+_PocaChap2Defs = SectionMarkers(
     start=starts_with(['## **5 "Associated property']),
     end=in_line(["- (3) No property is to be treated"]),
 )
 
-PocaSec65Defs = SectionMarkers(
-    start=starts_with(['- " **the Attorney General']),
-    end=starts_with(['- " **value**']),
+_PocaSec65Defs = build_simple_markers('- " **the Attorney General', '- " **value**')
+
+_PocaSec149Defs = build_simple_markers('- (3) "disclosure"', "- (4A) In those sections")
+
+_PocaSec158P1Defs = build_simple_markers(
+    '- (2) "Criminal conduct', "   - (b) the alleged"
 )
 
-PocaSec149Defs = SectionMarkers(
-    start=starts_with(['- (3) "disclosure"']),
-    end=starts_with(["- (4A) In those sections"]),
+_PocaSec158P2Defs = build_simple_markers(
+    '- (9) "Property"', '- (15) " **the data protection'
 )
 
-PocaSec158P1Defs = SectionMarkers(
-    start=starts_with(['- (2) "Criminal conduct']),
-    end=starts_with(["   - (b) the alleged"]),
-)
+_PocaSec222ADefs = build_simple_markers('- "FATF" means', '- "relevant international')
 
-PocaSec158P2Defs = SectionMarkers(
-    start=starts_with(['- (9) "Property"']),
-    end=starts_with(['- (15) " **the data protection']),
-)
-
-PocaSec222ADefs = SectionMarkers(
-    start=starts_with(['- "FATF" means']),
-    end=starts_with(['- "relevant international']),
-)
-
-PocaSched4Defs = SectionMarkers(
-    start=starts_with(['- the " **AML/CFT Code']),
-    end=in_line(["- (e) participation in"]),
+_PocaSched4Defs = build_simple_markers(
+    '- the " **AML/CFT Code', "- (e) participation in"
 )
 
 POCA_DEF_MARKERS = [
-    PocaIntroDefs,
-    PocaChap2Defs,
-    PocaSec65Defs,
-    PocaSec149Defs,
-    PocaSec158P1Defs,
-    PocaSec158P2Defs,
-    PocaSec222ADefs,
-    PocaSched4Defs,
+    _PocaIntroDefs,
+    _PocaChap2Defs,
+    _PocaSec65Defs,
+    _PocaSec149Defs,
+    _PocaSec158P1Defs,
+    _PocaSec158P2Defs,
+    _PocaSec222ADefs,
+    _PocaSched4Defs,
 ]
 
-PocaSplitters = ChunkSplitters(
-    # primary=lambda text: re.split(r"\n(?=- )", text), fallback=split_on_paragraph
+_Splitters = ChunkSplitters(
     primary=split_on_bracketed_letter,
     fallback=split_on_bracketed_num,
 )
 
-PocaDefinitionTools = DefinitionTools(
+_DefinitionTools = DefinitionTools(
     section_markers=POCA_DEF_MARKERS,
     is_definition_line=in_line(
         [
@@ -129,8 +111,6 @@ PocaDefinitionTools = DefinitionTools(
             'definition " **',
         ]
     ),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
 
@@ -139,28 +119,15 @@ Poca = ToolBelt(
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2008/2008-0013/2008-0013_28.pdf",
     hierarchy="primary legislation",
     sectors=fixed_sectors(ALL_SECTORS),
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    pdf_path=PROJECT_ROOT / "data/raw/custom/poca.pdf",
-    trimmer=PocaMarkers,
-    definition_tools=PocaDefinitionTools,
+    pdf_path=build_pdf_path("poca"),
+    trimmer=_Trimmer,
+    definition_tools=_DefinitionTools,
     header_matchers=[
         starts_with(["## **PART", "## **SCHEDULE"]),
         starts_with(["## CHAPTER"]),
         starts_with(["## _"]),
         lambda line: line.startswith("## **") and line[5].isdigit(),
     ],
-    re_pack_splitters=PocaSplitters,
-    clean_text=re_steps,
-    clean_header=base_header_cleaner,
-    clean_body=base_body_cleaner,
-    min_body_len=40,
+    re_pack_splitters=_Splitters,
+    clean_text=_clean_text,
 )
-"""
-    is_definition_line=lambda line: (
-        '- **"' in line or '## **"' in line or line.startswith('**"')
-    ),
-    is_double_def_line=lambda segs: len(segs) == 5 and segs[2].strip() in ("or", "and"),
-    is_false_dub_def=lambda segs: len(segs) == 5 and segs[2].strip() != "or",
-"""

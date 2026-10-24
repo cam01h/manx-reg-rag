@@ -1,28 +1,22 @@
 import re
 
-from config import PROJECT_ROOT
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
-    ChunkSplitters,
     DefinitionTools,
-    SectionMarkers,
     ToolBelt,
 )
+from extraction_ops.toolbelts.defaults import DefaultSplitter
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
     base_def_line,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     fixed_sectors,
-    split_on_bracketed_letter,
-    split_on_bracketed_num,
     starts_with,
 )
 
 
-def clean_text(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     text = re.sub(r"\[\d+\]", "", text)  # inline footnote references
     text = re.sub(
@@ -34,47 +28,33 @@ def clean_text(text: str) -> str:
     return text
 
 
-AmlCodeDefMarkers = SectionMarkers(
-    start=starts_with(['- **"acceptable applicant']),
-    end=starts_with(["   - (c) the relevant person becomes aware"]),
+_AmlCodeDefMarkers = build_simple_markers(
+    '- **"acceptable applicant', "   - (c) the relevant person becomes aware"
 )
 
 
-AmlCodeDefs = DefinitionTools(
-    section_markers=[AmlCodeDefMarkers],
+_AmlCodeDefs = DefinitionTools(
+    section_markers=[_AmlCodeDefMarkers],
     is_definition_line=base_def_line,
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-AmlCodeTrimmer = SectionMarkers(
-    start=starts_with(["## **PART 1 - INTRODUCTORY**"]),
-    end=starts_with(["a partner in the partnership"]),
+_Trimmer = build_simple_markers(
+    "## **PART 1 - INTRODUCTORY**", "a partner in the partnership"
 )
 
-AmlCodeSplitters = ChunkSplitters(
-    primary=split_on_bracketed_num,
-    fallback=split_on_bracketed_letter,
-)
 
 AmlCode = ToolBelt(
     document="The AML/CFT Code 2019",
     hierarchy="secondary legislation",
     sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/SUBORDINATE/2019/2019-0202/2019-0202_2.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/the_aml_code_2019.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    trimmer=AmlCodeTrimmer,
+    pdf_path=build_pdf_path("code"),
+    trimmer=_Trimmer,
     header_matchers=[
         starts_with(["## **PART"]),
         lambda line: line.startswith("## **") and line[5].isdigit(),
     ],
-    definition_tools=AmlCodeDefs,
-    clean_text=clean_text,
-    re_pack_splitters=AmlCodeSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    definition_tools=_AmlCodeDefs,
+    clean_text=_clean_text,
+    re_pack_splitters=DefaultSplitter,
 )

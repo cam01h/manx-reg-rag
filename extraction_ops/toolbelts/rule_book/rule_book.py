@@ -1,7 +1,7 @@
 import re
 from collections.abc import Callable
 
-from config import MAX_CHUNK_CHAR, PROJECT_ROOT
+from config import MAX_CHUNK_CHAR
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -9,11 +9,8 @@ from extraction_ops.models import (
     ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
     replace_from_dict,
     split_on_bracketed_amended_num,
     split_on_bracketed_letter,
@@ -129,11 +126,11 @@ _REPLACEMENT_DICT = {
 }
 
 
-def fix_italics_spacing(text: str) -> str:
+def _fix_italics_spacing(text: str) -> str:
     return re.sub(r"([A-Za-z])_(?=[A-Z])", r"\1 _", text)
 
 
-def typo_fix_on_icaap(text: str) -> str:
+def _typo_fix_on_icaap(text: str) -> str:
     return text.replace(
         '"internal capital adequacy assessment" process"',
         '"internal capital adequacy assessment process"',
@@ -142,7 +139,7 @@ def typo_fix_on_icaap(text: str) -> str:
 
 def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
-    text = fix_italics_spacing(text)
+    text = _fix_italics_spacing(text)
     text = flatten_rule_book_tables(text)
     text = fix_rule_3_24_table_order(text)
     text = flatten_definitions_table(text)
@@ -150,67 +147,67 @@ def _clean_text(text: str) -> str:
     text = flatten_appendix_3(text)
     text = flatten_appendix_4_table_b(text)
     text = strip_appendix_page_heads(text)
-    text = typo_fix_on_icaap(text)  # typo in orgional
+    text = _typo_fix_on_icaap(text)  # typo in orgional
     text = _RUNNING_HEAD.sub("", text)
     text = strip_footnote_markers(text)
     text = replace_from_dict(text, _REPLACEMENT_DICT)
     return text
 
 
-RuleBookS4Defs = SectionMarkers(
+_RuleBookS4Defs = SectionMarkers(
     start=starts_with(['" **the Act** " means the']),
     end=starts_with(['" **the Order** " means the Regulated']),
 )
 
-RuleBookR3p2 = SectionMarkers(
+_RuleBookR3p2 = SectionMarkers(
     start=starts_with(['In this Part - "**client']),
     end=starts_with(['"**trust money**" means money']),
 )
 
-RuleBookR3p22 = SectionMarkers(
+_RuleBookR3p22 = SectionMarkers(
     start=starts_with(["- (10) In this rule - a client's \"**equity"]),
     end=starts_with(["   - (b) the aggregate of the client"]),
 )
 
-RuleBookR3p35 = SectionMarkers(
+_RuleBookR3p35 = SectionMarkers(
     start=starts_with(['In this Rule Book, "**relevant']),
     end=starts_with(['and in rules 3.35 to 3.42 - "**recognised']),
 )
 
 
-RuleBookR4p2 = SectionMarkers(
+_RuleBookR4p2 = SectionMarkers(
     start=starts_with(['- (1) In this Part - "**eligible custodian']),
     end=starts_with(["   - (b) acts only in accordance with the"]),
 )
 
 
-RuleBookR5p1 = SectionMarkers(
+_RuleBookR5p1 = SectionMarkers(
     start=starts_with(['In this Rule Book, "**auditor']),
     end=starts_with(["   - (b) has been excepted"]),
 )
 
-RuleBookR8p1 = SectionMarkers(
+_RuleBookR8p1 = SectionMarkers(
     start=starts_with(["In rules 8.1 to 8.32, in relation to any licenceholder,"]),
     end=starts_with(["   - (ix) the Collective Investment Schemes"]),
 )
 
 
-RuleBookR9p37 = SectionMarkers(
+_RuleBookR9p37 = SectionMarkers(
     start=starts_with(['- **"accommodation address']),
     end=starts_with(['- **"warrant"** has the same meaning as in the Order']),
 )
 
 
-RuleBookDefTools = DefinitionTools(
+_DefTools = DefinitionTools(
     section_markers=[
-        RuleBookS4Defs,
-        RuleBookR3p2,
-        RuleBookR3p22,
-        RuleBookR3p35,
-        RuleBookR4p2,
-        RuleBookR5p1,
-        RuleBookR8p1,
-        RuleBookR9p37,
+        _RuleBookS4Defs,
+        _RuleBookR3p2,
+        _RuleBookR3p22,
+        _RuleBookR3p35,
+        _RuleBookR4p2,
+        _RuleBookR5p1,
+        _RuleBookR8p1,
+        _RuleBookR9p37,
     ],
     is_definition_line=starts_with(
         [
@@ -226,55 +223,55 @@ RuleBookDefTools = DefinitionTools(
             "and in rules 3.35 to 3.42",
         ]
     ),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-FsaTrimmer = SectionMarkers(
+_Trimmer = SectionMarkers(
     start=starts_with(["**1** **Title**"]),
     end=starts_with(["not exercised by the licenceholder."]),
 )
 
 
-def split_on_list_item(text: str) -> list[str]:
+def _split_on_list_item(text: str) -> list[str]:
     return re.split(r"\n(?=- )", text)
 
 
-def cascade(*splitters: Callable[[str], list[str]]) -> Callable[[str], list[str]]:
+def _cascade(*splitters: Callable[[str], list[str]]) -> Callable[[str], list[str]]:
     def inner(text: str) -> list[str]:
         if len(text) <= MAX_CHUNK_CHAR or not splitters:
             return [text]
-        first, rest = splitters[0], cascade(*splitters[1:])
+        first, rest = splitters[0], _cascade(*splitters[1:])
         return [piece for part in first(text) for piece in rest(part)]
 
     return inner
 
 
-TemplateSplitters = ChunkSplitters(
+_Splitters = ChunkSplitters(
     primary=split_on_bracketed_amended_num,
-    fallback=cascade(split_on_bracketed_letter, split_on_paragraph, split_on_list_item),
+    fallback=_cascade(
+        split_on_bracketed_letter, split_on_paragraph, _split_on_list_item
+    ),
 )
 
 
-def is_top(line: str) -> bool:
+def _is_top(line: str) -> bool:
     return line.startswith(("**SCHEDULE", "**Appendix "))
 
 
-def is_part(line: str) -> bool:
+def _is_part(line: str) -> bool:
     return line.startswith(("#### **PART", "**APPENDIX "))
 
 
 _FRONT_MATTER = re.compile(r"^\*\*\d\*\* \*\*")  # "**1** **Title**"
 
 
-def is_rule(line: str) -> bool:
+def _is_rule(line: str) -> bool:
     return line.startswith("## **") or bool(_FRONT_MATTER.match(line))
 
 
 _RULE_NO = re.compile(r"^(\d+\.\d+[A-Z]?)\b")
 
 
-def rule_book_sectors(headers: tuple[str, ...]) -> tuple[str, ...]:
+def _rule_book_sectors(headers: tuple[str, ...]) -> tuple[str, ...]:
     for header in headers:
         match = _RULE_NO.match(header)
         if match:
@@ -285,18 +282,14 @@ def rule_book_sectors(headers: tuple[str, ...]) -> tuple[str, ...]:
 RuleBook = ToolBelt(
     document="Financial Services Rule Book 2016",
     hierarchy="secondary legislation",
-    sectors=rule_book_sectors,
+    sectors=_rule_book_sectors,
     input_url="https://www.iomfsa.im/media/1470/financialservicesrulebook20131.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/rule_book.pdf",
-    use_ocr=True,
+    pdf_path=build_pdf_path("rule_book"),
     use_layout=False,
     pdf_handlers=[rule_book_unbox_single_row_note_tables],
-    trimmer=FsaTrimmer,
-    header_matchers=[is_top, is_part, is_rule, starts_with(["Application:"])],
-    definition_tools=RuleBookDefTools,
+    trimmer=_Trimmer,
+    header_matchers=[_is_top, _is_part, _is_rule, starts_with(["Application:"])],
+    definition_tools=_DefTools,
     clean_text=_clean_text,
-    re_pack_splitters=TemplateSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    re_pack_splitters=_Splitters,
 )

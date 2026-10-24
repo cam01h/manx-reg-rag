@@ -1,23 +1,18 @@
 import re
 
-from config import PROJECT_ROOT
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
-    ChunkSplitters,
     DefinitionTools,
-    SectionMarkers,
     ToolBelt,
 )
+from extraction_ops.toolbelts.defaults import DefaultSplitter
 from extraction_ops.toolbelts.shared_funcs import (
-    base_body_cleaner,
-    base_double_def_line,
-    base_false_double_def,
-    base_header_cleaner,
     base_text_cleaner,
+    build_pdf_path,
+    build_simple_markers,
     fixed_sectors,
     replace_from_dict,
     replace_section,
-    split_on_bracketed_num,
     starts_with,
     strip_footnote_bullets,
     strip_footnote_markers,
@@ -28,7 +23,7 @@ SANCTIONS_REPLACEMNENT_DICT = {
 }
 
 
-def sanctions_text_cleaner(text: str) -> str:
+def _clean_text(text: str) -> str:
     text = base_text_cleaner(text)
     text = re.sub(
         # fixes ## **2** \n\n ## **commencement** and similar
@@ -55,45 +50,32 @@ def sanctions_text_cleaner(text: str) -> str:
     return text
 
 
-SanctionsTrimmer = SectionMarkers(
-    start=starts_with(["## _Introductory_"]),
-    end=starts_with(['- (4) In this section "the Crown"']),
+_Trimmer = build_simple_markers(
+    "## _Introductory_", '- (4) In this section "the Crown"'
 )
 
-SactionsSec3Markers = SectionMarkers(
-    start=starts_with(['- " **Guernsey** " means']),
-    end=starts_with(['- " **UK sanctions provision** "']),
+_SactionsSec3Markers = build_simple_markers(
+    '- " **Guernsey** " means', '- " **UK sanctions provision** "'
 )
 
 SanctionsDefTools = DefinitionTools(
-    section_markers=[SactionsSec3Markers],
+    section_markers=[_SactionsSec3Markers],
     is_definition_line=starts_with(['- " **']),
-    is_double_def_line=base_double_def_line,
-    is_false_dub_def=base_false_double_def,
 )
 
-SanctionsSplitters = ChunkSplitters(
-    primary=split_on_bracketed_num, fallback=split_on_bracketed_num
-)
 
 Sanctions = ToolBelt(
     document="Sanctions Act 2024",
     hierarchy="primary legislation",
     sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2024/2024-0002/2024-0002_1.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/sanctions.pdf",
-    use_ocr=True,
-    use_layout=True,
-    pdf_handlers=None,
-    trimmer=SanctionsTrimmer,
+    pdf_path=build_pdf_path("sanctions"),
+    trimmer=_Trimmer,
     header_matchers=[
         starts_with(["## _"]),
         lambda line: line.startswith("## **") and line[5].isdigit(),
     ],
     definition_tools=SanctionsDefTools,
-    clean_text=sanctions_text_cleaner,
-    re_pack_splitters=SanctionsSplitters,
-    clean_body=base_body_cleaner,
-    clean_header=base_header_cleaner,
-    min_body_len=40,
+    clean_text=_clean_text,
+    re_pack_splitters=DefaultSplitter,
 )
