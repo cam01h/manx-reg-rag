@@ -2,10 +2,10 @@ import re
 
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
+    DefaultSplitter,
     DefinitionTools,
     ToolBelt,
 )
-from extraction_ops.toolbelts.defaults import DefaultSplitter
 from extraction_ops.toolbelts.shared_funcs import (
     base_def_line,
     base_text_cleaner,

@@ -1,6 +1,5 @@
 # definition line matchers
-from extraction_ops.models import ChunkSplitters
-from extraction_ops.toolbelts.shared_funcs import split_on_bracketed_num
+import re
 
 
 def base_double_def_line(segs: list[str]) -> bool:
@@ -36,6 +35,9 @@ def base_body_cleaner(line: str) -> str:
     return line
 
 
-DefaultSplitter = ChunkSplitters(
-    primary=split_on_bracketed_num, fallback=split_on_bracketed_num
-)
+def default_primary_split(text: str) -> list[str]:
+    return re.split(r"\n(?=[ \t]*(?:- )?\(\d+[A-Z]*\))", text)
+
+
+def default_secondary_split(text: str) -> list[str]:
+    return re.split(r"\n(?=[ \t]*(?:- )?\([a-z]+\))", text)

@@ -7,6 +7,8 @@ from extraction_ops.toolbelts.defaults import (
     base_double_def_line,
     base_false_double_def,
     base_header_cleaner,
+    default_primary_split,
+    default_secondary_split,
 )
 
 # TODO: lists within a frozen dataclass creates false imutability and hashing will cause a TypeError. Consider replacing with tuples
@@ -70,6 +72,11 @@ class DefinitionTools:
 class ChunkSplitters:
     primary: Callable[[str], list[str]]
     fallback: Callable[[str], list[str]]
+
+
+DefaultSplitter = ChunkSplitters(
+    primary=default_primary_split, fallback=default_secondary_split
+)
 
 
 # tools and variables used for ingestion pipeline

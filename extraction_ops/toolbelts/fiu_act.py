@@ -2,11 +2,11 @@ import re
 
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
+    DefaultSplitter,
     DefinitionTools,
     SectionMarkers,
     ToolBelt,
 )
-from extraction_ops.toolbelts.defaults import DefaultSplitter
 from extraction_ops.toolbelts.shared_funcs import (
     base_text_cleaner,
     build_pdf_path,

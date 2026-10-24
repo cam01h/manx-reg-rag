@@ -1,10 +1,20 @@
-from config import PROJECT_ROOT
-from core.sectors import LICENCE_CLASSES
+from core.sectors import (
+    CLASS_1,
+    CLASS_2,
+    CLASS_3,
+    CLASS_4,
+    CLASS_5,
+    CLASS_6,
+    CLASS_7,
+    CLASS_8,
+    CLASS_9,
+    LICENCE_CLASSES,
+)
 from extraction_ops.models import (
+    DefaultSplitter,
     DefinitionTools,
     ToolBelt,
 )
-from extraction_ops.toolbelts.defaults import DefaultSplitter
 from extraction_ops.toolbelts.exemptions.exemptions_flattener import (
     S3_SWITCHED,
     S3_WRONG,
@@ -12,6 +22,7 @@ from extraction_ops.toolbelts.exemptions.exemptions_flattener import (
 )
 from extraction_ops.toolbelts.shared_funcs import (
     base_text_cleaner,
+    build_pdf_path,
     build_simple_markers,
     replace_from_dict,
     starts_with,
@@ -65,12 +76,22 @@ _DefTools = DefinitionTools(
 )
 
 
-EXEMPTIONS_SECTOR_DECT = {}
+EXEMPTIONS_SECTOR_DICT = {
+    "CLASS 1": CLASS_1,
+    "CLASS 2": CLASS_2,
+    "CLASS 3": CLASS_3,
+    "CLASS 4": CLASS_4,
+    "CLASS 5": CLASS_5,
+    "CLASS 6": CLASS_6,
+    "CLASS 7": CLASS_7,
+    "CLASS 8": CLASS_8,
+    "CLASS 9": CLASS_9,
+}
 
 
 def exemptions_sector_matcher(headers: tuple[str, ...]) -> tuple[str, ...]:
     applicability: tuple[str, ...] = tuple(
-        v for h in headers for k, v in EXEMPTIONS_SECTOR_DECT.items() if k in h
+        v for h in headers for k, v in EXEMPTIONS_SECTOR_DICT.items() if k in h
     )
     return applicability if applicability else LICENCE_CLASSES
 
@@ -80,7 +101,7 @@ Exemptions = ToolBelt(
     hierarchy="secondary legislation",
     sectors=exemptions_sector_matcher,
     input_url="https://www.iomfsa.im/media/1466/financialservicesexemptionsregs2011.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/exemptions.pdf",
+    pdf_path=build_pdf_path("exemptions"),
     use_ocr=True,
     use_layout=True,
     pdf_handlers=None,
