@@ -7,6 +7,8 @@ from extraction_ops.models import (
     ToolBelt,
 )
 from extraction_ops.toolbelts.exemptions.exemptions_flattener import (
+    S3_SWITCHED,
+    S3_WRONG,
     flatten_exemptions_table,
 )
 from extraction_ops.toolbelts.shared_funcs import (
@@ -16,15 +18,15 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_header_cleaner,
     base_text_cleaner,
     replace_from_dict,
-    split_on_bracketed_amended_num,
     split_on_bracketed_letter,
+    split_on_bracketed_num,
     starts_with,
     strip_footnote_markers,
 )
 
 _REPLACEMENT_DICT = {
     "## **2** \n\n## **Commencement": "## **2 Commencement",
-    "- (2) References in these Regulations": '- "class" References in these Regulations',
+    S3_WRONG: S3_SWITCHED,
     "## **SCHEDULE l** \n\nRegulation 4. \n\n## **EXEMPTIONS FROM LICENSING**": "## **SCHEDULE 1 - EXEMPTIONS FROM LICENSING**",
     "## **SCHEDULE 2** \n\nRegulation 5. \n\n## **USE OF EQUIPMENT ON THE ISLAND**": "## **SCHEDULE 2 - USE OF EQUIPMENT ON THE ISLAND**",
     "## **SCHEDULE 3** \n\nRegulation 3. \n\n## **INTERPRETATION**": "## **SCHEDULE 3 - INTERPRETATION**",
@@ -77,7 +79,7 @@ ExemptionsDefTools = DefinitionTools(
 )
 
 ExemptionsSplitters = ChunkSplitters(
-    primary=split_on_bracketed_amended_num, fallback=split_on_bracketed_letter
+    primary=split_on_bracketed_num, fallback=split_on_bracketed_letter
 )
 
 EXEMPTIONS_SECTOR_DECT = {}

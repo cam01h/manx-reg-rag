@@ -41,6 +41,8 @@ Right now the tool only knows AML/CFT-related material. Eleven documents are loa
 - Terrorism And Other Crime (Financial Restrictions) Act 2014
 - Designated Businesses (Registration and Oversight) Act 2015
 - Sanctions Act 2024
+- The Financial Services Rule Book 2016
+- The Financial Services (Exemptions) Order 2011
 
 More areas of Isle of Man financial services regulation are planned. For now, if your question falls outside AML/CFT, the tool doesn't have the material to answer it well — and it's built to tell you that rather than guess.
 

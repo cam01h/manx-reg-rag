@@ -71,3 +71,18 @@ EXEMPTIONS_DEFINITION_TABLE_FLAT = """
 
 def flatten_exemptions_table(text: str) -> str:
     return text.replace(EXEMPTIONS_DEFINITION_TABLE, EXEMPTIONS_DEFINITION_TABLE_FLAT)
+
+
+S3_WRONG = """   - (a) References in these Regulations to activities of Class 3 which are defined in the Collective Investment Schemes Act 2008 have the same meanings as in that Act; 
+
+   - (b) other expressions have the meanings given by Schedule 3. 
+
+- (2) References in these Regulations to a numbered class or to a numbered paragraph of such a class, are to the class of regulated activities so numbered in Schedule 1 to the Order or to the paragraph so numbered of that class as the case may be. """
+
+S3_SWITCHED = """- "class" References in these Regulations to a numbered class or to a numbered paragraph of such a class, are to the class of regulated activities so numbered in Schedule 1 to the Order or to the paragraph so numbered of that class as the case may be. 
+
+- (a) References in these Regulations to activities of Class 3 which are defined in the Collective Investment Schemes Act 2008 have the same meanings as in that Act; 
+
+- (b) other expressions have the meanings given by Schedule 3. 
+
+  """
