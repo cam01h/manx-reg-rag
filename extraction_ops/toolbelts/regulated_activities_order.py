@@ -323,6 +323,7 @@ RAO_REPLACEMENT_DICT = {
     # header minipulation
     "## **SCHEDULE 1** ": "## **SCHEDULE 1 - REGULATED ACTIVITIES**",
     "## **REGULATED ACTIVITIES** ": "",
+    "is carried on by a specific person": "is carried on by a specified person",
 }
 
 
