@@ -1388,6 +1388,7 @@ dependencies = [
     { name = "pymupdf4llm" },
     { name = "python-dotenv" },
     { name = "qdrant-client" },
+    { name = "tqdm" },
     { name = "uvicorn" },
 ]
 
@@ -1412,6 +1413,7 @@ requires-dist = [
     { name = "pymupdf4llm", specifier = ">=1.27.2.3" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "qdrant-client", specifier = ">=1.18.0" },
+    { name = "tqdm", specifier = ">=4.67.3" },
     { name = "uvicorn", specifier = ">=0.49.0" },
 ]
 

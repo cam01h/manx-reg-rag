@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastembed import SparseTextEmbedding, TextEmbedding
 from qdrant_client import QdrantClient, models
+from tqdm import tqdm
 
 from config import (
     CHUNKS_DIR,
@@ -209,7 +210,7 @@ def build_collection(chunk_dir: Path, collection: str, rebuild: bool = False) ->
     existing_ids = get_existing_point_ids(client)
     new_chunks = [c for c in chunks if build_point_id(c.chunk_id) not in existing_ids]
     logger.info("embedding [%d] new chunks", len(new_chunks))
-    points = [embed_chunk(c) for c in new_chunks]
+    points = [embed_chunk(c) for c in tqdm(new_chunks, desc="embedding")]
     upload_collection(client, collection, points)
     delete_stale_points(client, chunks, existing_ids)
     update_payloads(client, chunks, existing_ids)
