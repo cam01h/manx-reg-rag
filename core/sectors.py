@@ -90,7 +90,6 @@ FSA08_SECTORS: tuple[str, ...] = (
     CLASS_7,
     CLASS_8,
 )
-RB_ALL: tuple[str, ...] = ()
 NON_BANK: tuple[str, ...] = (CLASS_2, CLASS_3, CLASS_4, CLASS_5, CLASS_8)
 TCSP: tuple[str, ...] = (CLASS_4, CLASS_5)
 

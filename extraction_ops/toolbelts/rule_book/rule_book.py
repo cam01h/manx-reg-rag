@@ -2,7 +2,6 @@ import re
 from collections.abc import Callable
 
 from config import MAX_CHUNK_CHAR, PROJECT_ROOT
-from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
@@ -15,7 +14,6 @@ from extraction_ops.toolbelts.shared_funcs import (
     base_false_double_def,
     base_header_cleaner,
     base_text_cleaner,
-    fixed_sectors,
     replace_from_dict,
     split_on_bracketed_amended_num,
     split_on_bracketed_letter,
@@ -42,6 +40,7 @@ from .rule_book_flattener import (
 from .rule_book_handler import (
     rule_book_unbox_single_row_note_tables,
 )
+from .rule_book_sectors import RB_ALL, RULE_BOOK_SECTORS
 
 _RUNNING_HEAD = re.compile(
     r"^(?:"
@@ -272,17 +271,28 @@ def is_rule(line: str) -> bool:
     return line.startswith("## **") or bool(_FRONT_MATTER.match(line))
 
 
+_RULE_NO = re.compile(r"^(\d+\.\d+[A-Z]?)\b")
+
+
+def rule_book_sectors(headers: tuple[str, ...]) -> tuple[str, ...]:
+    for header in headers:
+        match = _RULE_NO.match(header)
+        if match:
+            return RULE_BOOK_SECTORS[match.group(1)]
+    return RB_ALL
+
+
 RuleBook = ToolBelt(
     document="Financial Services Rule Book 2016",
     hierarchy="secondary legislation",
-    sectors=fixed_sectors(ALL_SECTORS),
+    sectors=rule_book_sectors,
     input_url="https://www.iomfsa.im/media/1470/financialservicesrulebook20131.pdf",
     pdf_path=PROJECT_ROOT / "data/raw/custom/rule_book.pdf",
     use_ocr=True,
     use_layout=False,
     pdf_handlers=[rule_book_unbox_single_row_note_tables],
     trimmer=FsaTrimmer,
-    header_matchers=[is_top, is_part, is_rule],
+    header_matchers=[is_top, is_part, is_rule, starts_with(["Application:"])],
     definition_tools=RuleBookDefTools,
     clean_text=_clean_text,
     re_pack_splitters=TemplateSplitters,
