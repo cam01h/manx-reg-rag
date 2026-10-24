@@ -3,7 +3,7 @@ from extraction_ops.toolbelts.aml_code import AmlCode
 from extraction_ops.toolbelts.aml_handbook.aml_handbook import AmlHandbook
 from extraction_ops.toolbelts.anti_terrorism import AntiTerror
 from extraction_ops.toolbelts.dbroa15 import Dbroa
-from extraction_ops.toolbelts.exemptions import Exemptions
+from extraction_ops.toolbelts.exemptions.exemptions import Exemptions
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.fsa08 import Fsa08
 from extraction_ops.toolbelts.poca_2008 import Poca
