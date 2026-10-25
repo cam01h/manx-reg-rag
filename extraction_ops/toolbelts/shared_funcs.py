@@ -150,6 +150,11 @@ def split_on_bracketed_num(text: str) -> list[str]:
     return re.split(r"\n(?=[ \t]*(?:- )?\(\d+[A-Z]*\))", text)
 
 
+# eg "1."
+def split_on_numbered_dot(text: str) -> list[str]:
+    return re.split(r"\n(?=[ \t]*(?:- )?(?:\*\*)?\d+\.\s)", text)
+
+
 # eg (2A) or (3ZB)
 def split_on_bracketed_amended_num(text: str) -> list[str]:
     return re.split(r"\n(?=\s*- \(\d+[A-Z]*\))", text)
