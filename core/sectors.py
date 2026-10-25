@@ -1,6 +1,6 @@
 SECTORS_FIELD = "sectors"
 
-# --- licence classes (Regulated Activities Order 2011, Schedule 1) ---
+# --- FSA08 licence classes (Regulated Activities Order 2011, Schedule 1) ---
 CLASS_1 = "class_1"  # Deposit taking
 CLASS_2 = "class_2"  # Investment business
 CLASS_3 = "class_3"  # Services to collective investment schemes
@@ -11,7 +11,7 @@ CLASS_7 = "class_7"  # Management or administration services
 CLASS_8 = "class_8"  # Money transmission services
 CLASS_9 = "class_9"  # Credit unions
 
-LICENCE_CLASSES: tuple[str, ...] = (
+RAO_CLASSES: tuple[str, ...] = (
     CLASS_1,
     CLASS_2,
     CLASS_3,
@@ -23,7 +23,7 @@ LICENCE_CLASSES: tuple[str, ...] = (
     CLASS_9,
 )
 
-# --- designated businesses (DBROA 2015, Schedule 1 Part 1, items 1-13) ---
+# --- DBROA designated businesses (DBROA 2015, Schedule 1 Part 1, items 1-13) ---
 LEGAL_PROFESSIONAL = "legal_professional"
 EXTERNAL_ACCOUNTANT = "external_accountant"
 TAX_ADVISER = "tax_adviser"
@@ -52,6 +52,21 @@ DESIGNATED_BUSINESSES: tuple[str, ...] = (
     MONEY_ADMINISTRATION,
 )
 
+# --- IA08 insurance roles (POCA 2008, Schedule 4 para 6(c)-(e)) ---
+# insurer split by class group (Insurance Regulations, reg 3(3)):
+# life = classes 1, 2, 10; non-life = classes 3-9, 11, 12 (incl. captives, PCC/ICC cells, SPVs)
+LIFE_CO = "insurer_life"
+NON_LIFE_CO = "insurer_non_life"
+INSURANCE_MANAGER = "insurance_manager"
+INSURANCE_INTERMEDIARY = "insurance_intermediary"
+
+IA08_FIRMS: tuple[str, ...] = (
+    LIFE_CO,
+    NON_LIFE_CO,
+    INSURANCE_MANAGER,
+    INSURANCE_INTERMEDIARY,
+)
+
 SECTOR_LABELS: dict[str, str] = {
     # licence classes
     CLASS_1: "Class 1 – Deposit taking",
@@ -76,11 +91,16 @@ SECTOR_LABELS: dict[str, str] = {
     SAFE_CUSTODY: "Safe custody and secure storage",
     VASP: "Virtual asset service provider",
     MONEY_ADMINISTRATION: "Administering or managing money for others",
+    # insurance
+    LIFE_CO: "Life insurer (insurance classes 1, 2 & 10)",
+    NON_LIFE_CO: "Non-life insurer incl. captives (insurance classes 3–9, 11 & 12)",
+    INSURANCE_MANAGER: "Insurance manager",
+    INSURANCE_INTERMEDIARY: "Insurance intermediary",
 }
 
 
 # --- Sector groupings ---
-ALL_SECTORS: tuple[str, ...] = LICENCE_CLASSES + DESIGNATED_BUSINESSES
+ALL_SECTORS: tuple[str, ...] = RAO_CLASSES + DESIGNATED_BUSINESSES + IA08_FIRMS
 FSA08_SECTORS: tuple[str, ...] = (
     CLASS_1,
     CLASS_2,
@@ -92,5 +112,6 @@ FSA08_SECTORS: tuple[str, ...] = (
 )
 NON_BANK: tuple[str, ...] = (CLASS_2, CLASS_3, CLASS_4, CLASS_5, CLASS_8)
 TCSP: tuple[str, ...] = (CLASS_4, CLASS_5)
+INSURERS: tuple[str, ...] = (LIFE_CO, NON_LIFE_CO)
 
-# NOTE: Gaming/Gambling and SNPOs not included for now
+# NOTE: Gaming/Gambling, SNPOs and retirement benefits schemes not included for now
