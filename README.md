@@ -28,7 +28,7 @@ Every answer is built from the actual text of Isle of Man legislation and guidan
 
 ## What it covers right now
 
-Right now the tool only limited material relating to AML/CFT and The Financial Services Act 2008. Fourteen documents are loaded:
+Right now the tool only limited material relating to AML/CFT and The Financial Services Act 2008. Fifteen documents are loaded:
 
 - The AML/CFT Code 2019
 - The AML Handbook (April 2026)
@@ -44,6 +44,7 @@ Right now the tool only limited material relating to AML/CFT and The Financial S
 - The Financial Services Rule Book 2016
 - The Financial Services (Exemptions) Order 2011
 - Conflicts of Interest Policy - Guidance Note - Rule 8.9
+- Business Plan Guidance
 
 More areas of Isle of Man financial services regulation are planned. For now, if your question falls outside AML/CFT, the tool doesn't have the material to answer it well — and it's built to tell you that rather than guess.
 
