@@ -168,6 +168,12 @@ def split_on_paragraph(text: str) -> list[str]:
     return re.split(r"\n\s*\n", text)
 
 
+# blank line, unless the next line is a list item ("- ..." or "1. ..."), so an intro such as
+# "the board should:" stays with the items that follow it
+def split_on_paragraph_not_list(text: str) -> list[str]:
+    return re.split(r"\n[ \t]*\n(?![ \t]*(?:- |\d+\. ))", text)
+
+
 def split_on_new_sentence(text: str) -> list[str]:
     return re.split(r"(?<=[.!?])\s+(?=[A-Z])", text)
 

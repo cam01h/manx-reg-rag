@@ -3,11 +3,14 @@ from extraction_ops.toolbelts.aml_code import AmlCode
 from extraction_ops.toolbelts.aml_handbook.aml_handbook import AmlHandbook
 from extraction_ops.toolbelts.anti_terrorism import AntiTerror
 from extraction_ops.toolbelts.business_plan.business_plan import BusinessPlan
+from extraction_ops.toolbelts.change_ownership import ChangeOwnership
 from extraction_ops.toolbelts.conflicts import Conflicts
 from extraction_ops.toolbelts.dbroa15 import Dbroa
 from extraction_ops.toolbelts.exemptions.exemptions import Exemptions
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.fsa08 import Fsa08
+from extraction_ops.toolbelts.inspections_guidance import InspectionsGuidance
+from extraction_ops.toolbelts.nb_governance.nb_governance import NbGovernance
 from extraction_ops.toolbelts.poca_2008 import Poca
 from extraction_ops.toolbelts.rbook_guidance.rbook_guidance import RbookGuidance
 from extraction_ops.toolbelts.regulated_activities_order import Rao
@@ -37,6 +40,9 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     Conflicts,
     BusinessPlan,
     RbookGuidance,
+    ChangeOwnership,
+    InspectionsGuidance,
+    NbGovernance,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -61,4 +67,8 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "conflicts": Conflicts,
     "business_plan": BusinessPlan,
     "rbook_guidance": RbookGuidance,
+    "change_ownership": ChangeOwnership,
+    "nb_governance": NbGovernance,
+    # Supervision
+    "inspections_guidance": InspectionsGuidance,
 }
