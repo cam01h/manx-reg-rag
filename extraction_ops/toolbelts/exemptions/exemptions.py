@@ -8,7 +8,7 @@ from core.sectors import (
     CLASS_7,
     CLASS_8,
     CLASS_9,
-    LICENCE_CLASSES,
+    RAO_CLASSES,
 )
 from extraction_ops.models import (
     DefaultSplitter,
@@ -93,7 +93,7 @@ def exemptions_sector_matcher(headers: tuple[str, ...]) -> tuple[str, ...]:
     applicability: tuple[str, ...] = tuple(
         v for h in headers for k, v in EXEMPTIONS_SECTOR_DICT.items() if k in h
     )
-    return applicability if applicability else LICENCE_CLASSES
+    return applicability if applicability else RAO_CLASSES
 
 
 Exemptions = ToolBelt(

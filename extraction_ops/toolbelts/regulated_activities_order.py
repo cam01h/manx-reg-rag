@@ -8,7 +8,7 @@ from core.sectors import (
     CLASS_7,
     CLASS_8,
     CLASS_9,
-    LICENCE_CLASSES,
+    RAO_CLASSES,
 )
 from extraction_ops.models import (
     ChunkSplitters,
@@ -354,7 +354,7 @@ def _rao_sectors_matcher(headers: tuple[str, ...]) -> tuple[str, ...]:
     applicability: tuple[str, ...] = tuple(
         v for h in headers for k, v in RAO_CLASS_DICT.items() if k in h
     )
-    return applicability if applicability else LICENCE_CLASSES
+    return applicability if applicability else RAO_CLASSES
 
 
 Rao = ToolBelt(
