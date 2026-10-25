@@ -9,6 +9,7 @@ from extraction_ops.toolbelts.exemptions.exemptions import Exemptions
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.fsa08 import Fsa08
 from extraction_ops.toolbelts.poca_2008 import Poca
+from extraction_ops.toolbelts.rbook_guidance.rbook_guidance import RbookGuidance
 from extraction_ops.toolbelts.regulated_activities_order import Rao
 from extraction_ops.toolbelts.rule_book.rule_book import RuleBook
 from extraction_ops.toolbelts.sanctions_act import Sanctions
@@ -35,6 +36,7 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     Exemptions,
     Conflicts,
     BusinessPlan,
+    RbookGuidance,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -58,4 +60,5 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     # FSA08 Guidnace
     "conflicts": Conflicts,
     "business_plan": BusinessPlan,
+    "rbook_guidance": RbookGuidance,
 }
