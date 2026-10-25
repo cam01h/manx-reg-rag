@@ -2,7 +2,7 @@ from extraction_ops.models import ToolBelt
 from extraction_ops.toolbelts.aml_code import AmlCode
 from extraction_ops.toolbelts.aml_handbook.aml_handbook import AmlHandbook
 from extraction_ops.toolbelts.anti_terrorism import AntiTerror
-from extraction_ops.toolbelts.business_plan import BusinessPlan
+from extraction_ops.toolbelts.business_plan.business_plan import BusinessPlan
 from extraction_ops.toolbelts.conflicts import Conflicts
 from extraction_ops.toolbelts.dbroa15 import Dbroa
 from extraction_ops.toolbelts.exemptions.exemptions import Exemptions

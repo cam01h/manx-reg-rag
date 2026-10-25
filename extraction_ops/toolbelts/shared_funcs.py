@@ -190,3 +190,20 @@ def fixed_sectors(
 # Building simple classes
 def build_simple_markers(start: str, end: str) -> SectionMarkers:
     return SectionMarkers(start=starts_with([start]), end=starts_with([end]))
+
+
+# sector matchers
+def header_sectors(
+    lookup: dict[str, tuple[str, ...]], fallback: tuple[str, ...]
+) -> Callable[[tuple[str, ...]], tuple[str, ...]]:
+    def inner(headers: tuple[str, ...]) -> tuple[str, ...]:
+        sectors: set[str] = set()
+        for header in headers:
+            for pattern, matched in lookup.items():
+                if pattern in header:
+                    sectors.update(matched)
+        if not sectors:
+            return fallback
+        return tuple(sorted(sectors))
+
+    return inner

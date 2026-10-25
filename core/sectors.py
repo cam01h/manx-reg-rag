@@ -101,6 +101,7 @@ SECTOR_LABELS: dict[str, str] = {
 
 # --- Sector groupings ---
 ALL_SECTORS: tuple[str, ...] = RAO_CLASSES + DESIGNATED_BUSINESSES + IA08_FIRMS
+FI_SECTORS: tuple[str, ...] = RAO_CLASSES + IA08_FIRMS
 FSA08_SECTORS: tuple[str, ...] = (
     CLASS_1,
     CLASS_2,
