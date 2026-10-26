@@ -28,7 +28,7 @@ Every answer is built from the actual text of Isle of Man legislation and guidan
 
 ## What it covers right now
 
-Right now the tool only has limited material relating to AML/CFT and the Financial Services Act 2008. Twenty-six documents are loaded:
+Right now the tool only has limited material relating to AML/CFT and the Financial Services Act 2008. Twenty-nine documents are loaded:
 
 | Document | Hierarchy | Date | Tynwald | Made / issued under |
 |---|---|---|---|---|
@@ -58,6 +58,9 @@ Right now the tool only has limited material relating to AML/CFT and the Financi
 | Discretionary Civil Penalties under the FSA08 and IA08 - Guidance Note | Guidance | First issued 1 August 2015 (by the FSC); last updated 20 December 2022 | No | Not stated* |
 | Guidelines on Expected Practice for Trust Service Providers | Guidance | February 2017 | No | Not stated* |
 | Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements | Guidance | September 2019 | No | Not stated* |
+| Guidance on Rule 8.16 - Outsourcing and Delegation of Functions | Guidance | Version 2, November 2024 | No | Not stated* |
+| Regulatory Guidance - Fitness and Propriety | Guidance | 11 December 2025 | No | Authority, under s.6 and s.12 Financial Services Act 2008, s.34 Insurance Act 2008 and s.42 Retirement Benefits Schemes Act 2000 |
+| Guidance on Rule 2.30 and Appendix 3 (Note 4) - Qualifying Subordinated Loans | Guidance | May 2017, updated August 2018 | No | Not stated* |
 
 Dates for legislation are when it was enacted or made. The versions loaded are consolidated, so they include later amendments.
 

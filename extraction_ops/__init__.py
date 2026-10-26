@@ -11,16 +11,19 @@ from extraction_ops.toolbelts.cyber_security.cyber_security import CyberSecurity
 from extraction_ops.toolbelts.dbroa15 import Dbroa
 from extraction_ops.toolbelts.directors_trustees import DirectorsTrustees
 from extraction_ops.toolbelts.exemptions.exemptions import Exemptions
+from extraction_ops.toolbelts.f_and_p.f_and_p import FAndP
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.fsa08 import Fsa08
 from extraction_ops.toolbelts.inspections_guidance import InspectionsGuidance
 from extraction_ops.toolbelts.nb_governance.nb_governance import NbGovernance
+from extraction_ops.toolbelts.outsourcing import Outsourcing
 from extraction_ops.toolbelts.poca_2008 import Poca
 from extraction_ops.toolbelts.rbook_guidance.rbook_guidance import RbookGuidance
 from extraction_ops.toolbelts.rbreach_guidance import RbreachGuidance
 from extraction_ops.toolbelts.regulated_activities_order import Rao
 from extraction_ops.toolbelts.rule_book.rule_book import RuleBook
 from extraction_ops.toolbelts.sanctions_act import Sanctions
+from extraction_ops.toolbelts.subordinated_loans import SubordinatedLoans
 from extraction_ops.toolbelts.supplemental_information_document import (
     SupplementalInformation,
 )
@@ -55,6 +58,9 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     CivPenRegs,
     TspGuidance,
     RbreachGuidance,
+    Outsourcing,
+    FAndP,
+    SubordinatedLoans,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -86,6 +92,9 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "directors_trustees": DirectorsTrustees,
     "tsp_guidance": TspGuidance,
     "rbreach_guidance": RbreachGuidance,
+    "outsourcing": Outsourcing,
+    "f_and_p": FAndP,
+    "subordinated_loans": SubordinatedLoans,
     # Supervision
     "inspections_guidance": InspectionsGuidance,
     "cp_guidance": CpGuidance,
