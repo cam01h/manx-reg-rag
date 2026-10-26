@@ -28,26 +28,37 @@ Every answer is built from the actual text of Isle of Man legislation and guidan
 
 ## What it covers right now
 
-Right now the tool only limited material relating to AML/CFT and The Financial Services Act 2008. Sixteen documents are loaded:
+Right now the tool only has limited material relating to AML/CFT and the Financial Services Act 2008. Twenty-three documents are loaded:
 
-- The AML/CFT Code 2019
-- The AML Handbook (April 2026)
-- The AML/CFT Supplemental Information Document
-- The Proceeds of Crime Act 2008
-- The Financial Intelligence Unit Act 2016
-- Anti-Money Laundering And Countering The Financing Of Terrorism (Civil Penalties) Regulations 2019
-- The Anti-Terrorism and Crime Act 2003
-- The Regulated Activities Order 2011
-- Terrorism And Other Crime (Financial Restrictions) Act 2014
-- Designated Businesses (Registration and Oversight) Act 2015
-- Sanctions Act 2024
-- The Financial Services Rule Book 2016
-- The Financial Services Rule Book Guidance
-- The Financial Services (Exemptions) Order 2011
-- Conflicts of Interest Policy - Guidance Note - Rule 8.9
-- Business Plan Guidance
+| Document | Hierarchy | Date | Tynwald | Made / issued under |
+|---|---|---|---|---|
+| The AML/CFT Code 2019 (SD 2019/0202) | Secondary legislation | Made 2 May 2019; in operation 1 June 2019 | Laid before Tynwald 21 May 2019 (annulled only if Tynwald resolves) | Department of Home Affairs, under s.157 Proceeds of Crime Act 2008 and s.68 Terrorism and Other Crime (Financial Restrictions) Act 2014 |
+| The AML/CFT Handbook (August 2026) | Guidance | August 2026 | No | Authority, under s.12 Financial Services Act 2008 and s.32 Designated Businesses (Registration and Oversight) Act 2015 |
+| The AML/CFT Supplemental Information Document | Supplemental | Version 01, July 2021 | No | None. States it does not have the status of guidance |
+| The Proceeds of Crime Act 2008 (AT 13 of 2008) | Primary legislation | Royal Assent 21 October 2008 | Yes, Act of Tynwald | – |
+| The Financial Intelligence Unit Act 2016 (AT 5 of 2016) | Primary legislation | Royal Assent 19 April 2016 | Yes, Act of Tynwald | – |
+| AML/CFT (Civil Penalties) Regulations 2019 (SD 2019/0201) | Secondary legislation | Made 18 June 2019 | Approved by Tynwald 18 June 2019 | Authority, under s.157 Proceeds of Crime Act 2008 and s.68 Terrorism and Other Crime (Financial Restrictions) Act 2014 |
+| The Anti-Terrorism and Crime Act 2003 (AT 6 of 2003) | Primary legislation | Royal Assent 20 May 2003 | Yes, Act of Tynwald | – |
+| The Regulated Activities Order 2011 (SD 2011/0884) | Secondary legislation | Made 26 October 2011; in operation 1 January 2012 | Approved by Tynwald 13 December 2011 | Treasury, under s.3 Financial Services Act 2008 |
+| Terrorism and Other Crime (Financial Restrictions) Act 2014 (AT 13 of 2014) | Primary legislation | Royal Assent 18 November 2014 | Yes, Act of Tynwald | – |
+| Designated Businesses (Registration and Oversight) Act 2015 (AT 9 of 2015) | Primary legislation | Royal Assent 16 June 2015 | Yes, Act of Tynwald | – |
+| Sanctions Act 2024 (AT 2 of 2024) | Primary legislation | Royal Assent 16 April 2024 | Yes, Act of Tynwald | – |
+| The Financial Services Act 2008 (AT 8 of 2008) | Primary legislation | Royal Assent 17 June 2008; commenced 1 August 2008 | Yes, Act of Tynwald | – |
+| The Financial Services Rule Book 2016 (SD 2016/0264) | Secondary legislation | Made 7 September 2016; in operation 1 January 2017 | Approved by Tynwald 15 November 2016 | Authority, under s.18 and Schedule 3 Financial Services Act 2008 |
+| The Financial Services (Exemptions) Regulations 2011 (SD 2011/0885) | Secondary legislation | Made 4 November 2011; in operation 1 January 2012 | Approved by Tynwald 13 December 2011 | Financial Supervision Commission, under s.44(2) and (3) Financial Services Act 2008 |
+| Guidance on the Financial Services Rule Book 2016 | Guidance | Last updated January 2024 | No | Not stated* |
+| Conflicts of Interest Policy - Guidance Note - Rule 8.9 | Guidance | January 2017 | No | Not stated* |
+| Business Plan Guidance | Guidance | Version 2, issued 12 September 2025 | No | Authority, under s.12 Financial Services Act 2008 and s.34 Insurance Act 2008 |
+| Guidance on Rules 7.3 to 7.8 - Changes in Ownership and Structure | Guidance | August 2018 | No | Not stated* |
+| Inspections Guidance for Firms | Guidance | October 2021 | No | Not stated* |
+| Guidance on Corporate Governance (all licenceholders except Deposit Takers and Professional Officers) | Guidance | March 2017 | No | Not stated* |
+| Regulatory Guidance - Cyber Security | Guidance | First issued 12 December 2016; V.03 issued 27 June 2023 | No | Authority, under s.12 Financial Services Act 2008, s.34 Insurance Act 2008 and s.42 Retirement Benefits Schemes Act 2000 |
+| Guidance on Directorships, Trusteeships and similar Responsibilities | Guidance | August 2018 | No | Not stated* |
+| Discretionary Civil Penalties under the FSA08 and IA08 - Guidance Note | Guidance | First issued 1 August 2015 (by the FSC); last updated 20 December 2022 | No | Not stated* |
 
-More areas of Isle of Man financial services regulation are planned. For now, if your question falls outside AML/CFT, the tool doesn't have the material to answer it well — and it's built to tell you that rather than guess.
+Dates for legislation are when it was enacted or made. The versions loaded are consolidated, so they include later amendments.
+
+More more documents are planned but its a work in progress. For now, you'll find the docs heavily weighted towards FSA08 and associated guidance as well as AML/CFT documents. To note: it's built to tell you if it doesn't have the right docs that rather than guess.
 
 ## See it in action
 
