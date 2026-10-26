@@ -4,6 +4,7 @@ from extraction_ops.toolbelts.aml_handbook.aml_handbook import AmlHandbook
 from extraction_ops.toolbelts.anti_terrorism import AntiTerror
 from extraction_ops.toolbelts.business_plan.business_plan import BusinessPlan
 from extraction_ops.toolbelts.change_ownership import ChangeOwnership
+from extraction_ops.toolbelts.civ_pen_regs import CivPenRegs
 from extraction_ops.toolbelts.conflicts import Conflicts
 from extraction_ops.toolbelts.cp_guidance.cp_guidance import CpGuidance
 from extraction_ops.toolbelts.cyber_security.cyber_security import CyberSecurity
@@ -16,6 +17,7 @@ from extraction_ops.toolbelts.inspections_guidance import InspectionsGuidance
 from extraction_ops.toolbelts.nb_governance.nb_governance import NbGovernance
 from extraction_ops.toolbelts.poca_2008 import Poca
 from extraction_ops.toolbelts.rbook_guidance.rbook_guidance import RbookGuidance
+from extraction_ops.toolbelts.rbreach_guidance import RbreachGuidance
 from extraction_ops.toolbelts.regulated_activities_order import Rao
 from extraction_ops.toolbelts.rule_book.rule_book import RuleBook
 from extraction_ops.toolbelts.sanctions_act import Sanctions
@@ -24,6 +26,7 @@ from extraction_ops.toolbelts.supplemental_information_document import (
 )
 from extraction_ops.toolbelts.terror_financial_restrictions import FinancialRestrictions
 from extraction_ops.toolbelts.terrorism_civ_pen import TerrorCivPen
+from extraction_ops.toolbelts.tsp_guidance import TspGuidance
 
 ALL_TOOLBELTS: list[ToolBelt] = [
     AmlCode,
@@ -49,6 +52,9 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     CyberSecurity,
     DirectorsTrustees,
     CpGuidance,
+    CivPenRegs,
+    TspGuidance,
+    RbreachGuidance,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -69,6 +75,7 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "dbroa": Dbroa,
     "fsa": Fsa08,
     "rule_book": RuleBook,
+    "civ_pen_regs": CivPenRegs,
     # FSA08 Guidnace
     "conflicts": Conflicts,
     "business_plan": BusinessPlan,
@@ -77,6 +84,8 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "nb_governance": NbGovernance,
     "cyber_security": CyberSecurity,
     "directors_trustees": DirectorsTrustees,
+    "tsp_guidance": TspGuidance,
+    "rbreach_guidance": RbreachGuidance,
     # Supervision
     "inspections_guidance": InspectionsGuidance,
     "cp_guidance": CpGuidance,

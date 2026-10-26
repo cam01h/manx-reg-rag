@@ -28,7 +28,7 @@ Every answer is built from the actual text of Isle of Man legislation and guidan
 
 ## What it covers right now
 
-Right now the tool only has limited material relating to AML/CFT and the Financial Services Act 2008. Twenty-three documents are loaded:
+Right now the tool only has limited material relating to AML/CFT and the Financial Services Act 2008. Twenty-six documents are loaded:
 
 | Document | Hierarchy | Date | Tynwald | Made / issued under |
 |---|---|---|---|---|
@@ -46,6 +46,7 @@ Right now the tool only has limited material relating to AML/CFT and the Financi
 | The Financial Services Act 2008 (AT 8 of 2008) | Primary legislation | Royal Assent 17 June 2008; commenced 1 August 2008 | Yes, Act of Tynwald | – |
 | The Financial Services Rule Book 2016 (SD 2016/0264) | Secondary legislation | Made 7 September 2016; in operation 1 January 2017 | Approved by Tynwald 15 November 2016 | Authority, under s.18 and Schedule 3 Financial Services Act 2008 |
 | The Financial Services (Exemptions) Regulations 2011 (SD 2011/0885) | Secondary legislation | Made 4 November 2011; in operation 1 January 2012 | Approved by Tynwald 13 December 2011 | Financial Supervision Commission, under s.44(2) and (3) Financial Services Act 2008 |
+| The Financial Services (Civil Penalties) Regulations 2015 (SD 2015/0243) | Secondary legislation | Made 23 June 2015; in operation 1 August 2015 | Approved by Tynwald 22 July 2015 | Financial Supervision Commission, under s.16(5) Financial Services Act 2008 |
 | Guidance on the Financial Services Rule Book 2016 | Guidance | Last updated January 2024 | No | Not stated* |
 | Conflicts of Interest Policy - Guidance Note - Rule 8.9 | Guidance | January 2017 | No | Not stated* |
 | Business Plan Guidance | Guidance | Version 2, issued 12 September 2025 | No | Authority, under s.12 Financial Services Act 2008 and s.34 Insurance Act 2008 |
@@ -55,6 +56,8 @@ Right now the tool only has limited material relating to AML/CFT and the Financi
 | Regulatory Guidance - Cyber Security | Guidance | First issued 12 December 2016; V.03 issued 27 June 2023 | No | Authority, under s.12 Financial Services Act 2008, s.34 Insurance Act 2008 and s.42 Retirement Benefits Schemes Act 2000 |
 | Guidance on Directorships, Trusteeships and similar Responsibilities | Guidance | August 2018 | No | Not stated* |
 | Discretionary Civil Penalties under the FSA08 and IA08 - Guidance Note | Guidance | First issued 1 August 2015 (by the FSC); last updated 20 December 2022 | No | Not stated* |
+| Guidelines on Expected Practice for Trust Service Providers | Guidance | February 2017 | No | Not stated* |
+| Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements | Guidance | September 2019 | No | Not stated* |
 
 Dates for legislation are when it was enacted or made. The versions loaded are consolidated, so they include later amendments.
 
