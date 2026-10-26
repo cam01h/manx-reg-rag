@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import time
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -8,6 +9,7 @@ from pathlib import Path
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import QdrantClient
+from tqdm import tqdm
 
 from config import (
     COLLECTION,
@@ -19,7 +21,6 @@ from config import (
     SPARSE_MODEL_NAME,
     setup_logging,
 )
-from core.sectors import ALL_SECTORS
 from db_ops.retrieval import (
     query_collection,
     rerank_chunks,
@@ -37,6 +38,8 @@ CURRENT_CONFIGURATION = (
 RESULTS_DIR = PROJECT_ROOT / "tests/db_ops/query_metrics/data"
 TEST_MODES = ("dense", "sparse", "hybrid")
 
+SUMMARY_TOP_NS = [5, 10, 20, 50]
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,9 +50,10 @@ class MatchedTestChunk:
     expected_string: str
     chunk_id: str
     rank: int
+    time: float
 
 
-def build_config(top_n: int, mode: str) -> dict:
+def build_config(top_n: int, mode: str) -> dict[str, str | int]:
     return {
         "label": f"{CURRENT_CONFIGURATION}-{mode}",
         "dense_model": DENSE_MODEL_NAME,
@@ -57,6 +61,10 @@ def build_config(top_n: int, mode: str) -> dict:
         "collection": COLLECTION,
         "reranked": RERANK_IN_TESTS,
         "reranking model": RERANKING_MODEL_NAME,
+        "total test searches": len(QUERY_TEST_DATA),
+        "total expected strings": sum(
+            len(test.expected_strings) for test in QUERY_TEST_DATA
+        ),
         "retrieval_mode": mode,
         "top_n": top_n,
     }
@@ -67,20 +75,25 @@ def run_test_query(
     client: QdrantClient,
     dense_model: TextEmbedding,
     sparse_model: SparseTextEmbedding,
-    reranking_model: TextCrossEncoder,
+    reranking_model: TextCrossEncoder | None,
     top_n: int = TEST_TOP_N_RESULTS,
     mode: str = RETRIEVAL_MODE,
 ) -> list[MatchedTestChunk]:
     matches: list[MatchedTestChunk] = []
 
+    start = time.perf_counter()
+
     dense_vector = build_dense_vector(test.search_term, dense_model)
     sparse_vector = build_sparse_vector(test.search_term, sparse_model)
     results = query_collection(
-        dense_vector, sparse_vector, client, mode=mode, seen=set(), sectors=ALL_SECTORS
+        dense_vector, sparse_vector, client, mode=mode, seen=set(), sectors=()
     )
+
     chunks = return_payload(results)
-    if RERANK_IN_TESTS:
+    if reranking_model:
         chunks = rerank_chunks(test.search_term, chunks, reranking_model)
+
+    elapsed = time.perf_counter() - start
 
     for doc, anchor_string in test.expected_strings:
         match_id = ""
@@ -98,6 +111,7 @@ def run_test_query(
                 expected_string=anchor_string,
                 chunk_id=match_id,
                 rank=match_rank,
+                time=elapsed,
             )
         )
     found = sum(m.rank > 0 for m in matches)
@@ -129,17 +143,81 @@ def parse_args():
     return parser.parse_args()
 
 
+def build_summary(matches: list[MatchedTestChunk]) -> dict:
+    total = len(matches)
+    failures = [m for m in matches if m.rank == 0]
+    for m in failures:
+        logger.warning(
+            "failed retrieval: [%s] did not find [%s] in [%s]",
+            m.search_term[:60],
+            m.expected_string[:60],
+            m.document,
+        )
+
+    in_top: dict[int, int] = {}
+    for top_n in SUMMARY_TOP_NS:
+        in_top[top_n] = sum(0 < m.rank <= top_n for m in matches)
+        logger.info(
+            "expected strings in top [%d]: [%d/%d] [%.1f%%]",
+            top_n,
+            in_top[top_n],
+            total,
+            in_top[top_n] / total * 100,
+        )
+
+    times = list({m.search_term: m.time for m in matches}.values())
+    avg_time = sum(times) / len(times) if times else 0.0
+    max_time = max(times, default=0.0)
+    fastest_time = min(times, default=0.0)
+
+    return {
+        "total_tests": len(QUERY_TEST_DATA),
+        "total_expected_strings": total,
+        "times": {
+            "fastest": fastest_time,
+            "max time": max_time,
+            "average time": avg_time,
+        },
+        "in_top": in_top,
+        "failures": [
+            {
+                "search_term": m.search_term,
+                "document": m.document,
+                "expected_string": m.expected_string,
+            }
+            for m in failures
+        ],
+    }
+
+
+def write_summary(config, matches: list[MatchedTestChunk]) -> None:
+    payload = {
+        "run_at": datetime.now(UTC).isoformat(),
+        "config": config,
+        "summary": build_summary(matches),
+    }
+
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    path = (
+        RESULTS_DIR
+        / f"{datetime.now(UTC):%Y-%m-%d_%H-%M}_{config['label']}_summary.json"
+    )
+    path.write_text(json.dumps(payload, indent=2))
+
+
 def main(mode: str = RETRIEVAL_MODE):
     client = QdrantClient(url=QDRANT_URL)
     dense_model = TextEmbedding(DENSE_MODEL_NAME)
     sparse_model = SparseTextEmbedding(SPARSE_MODEL_NAME)
-    reranking_model = TextCrossEncoder(RERANKING_MODEL_NAME)
+    reranking_model = (
+        TextCrossEncoder(RERANKING_MODEL_NAME) if RERANK_IN_TESTS else None
+    )
 
     logger.info("starting query metrics test [%s]", mode)
     config = build_config(TEST_TOP_N_RESULTS, mode)
     matches = [
         m
-        for test in QUERY_TEST_DATA
+        for test in tqdm(QUERY_TEST_DATA, desc=f"querying [{mode}]")
         for m in run_test_query(
             test,
             client,
@@ -151,6 +229,7 @@ def main(mode: str = RETRIEVAL_MODE):
         )
     ]
     path = write_results(matches, config)
+    write_summary(config, matches)
     logger.info(
         f"[{mode}] {len(matches)} targets, "
         f"{sum(m.rank > 0 for m in matches)} found -> {path}"

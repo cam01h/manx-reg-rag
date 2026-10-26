@@ -73,6 +73,15 @@ embed)
 diag)
   run_python -m tests.extraction_ops.diagnostics.cli "$@"
   ;;
+qm)
+  docker compose up -d qdrant
+  [[ $# -eq 0 ]] && set -- --dense --sparse --hybrid
+  for mode in "$@"; do
+    mode="${mode#--}"
+    echo "query metrics [${mode}] (${MRR_PYTHON})..."
+    run_python -m tests.db_ops.query_metrics.query_test --mode "$mode"
+  done
+  ;;
 help | -h | --help)
   usage
   ;;
