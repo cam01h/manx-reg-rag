@@ -174,6 +174,12 @@ def split_on_paragraph_not_list(text: str) -> list[str]:
     return re.split(r"\n[ \t]*\n(?![ \t]*(?:- |\d+\. ))", text)
 
 
+# blank line, or before a top-level "- " item. For long lists with no blank lines between
+# the items (flattened tables); the packer keeps the intro with the first items
+def split_on_paragraph_or_list_item(text: str) -> list[str]:
+    return re.split(r"\n\s*\n|\n(?=- )", text)
+
+
 def split_on_new_sentence(text: str) -> list[str]:
     return re.split(r"(?<=[.!?])\s+(?=[A-Z])", text)
 

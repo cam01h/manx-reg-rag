@@ -5,7 +5,10 @@ from extraction_ops.toolbelts.anti_terrorism import AntiTerror
 from extraction_ops.toolbelts.business_plan.business_plan import BusinessPlan
 from extraction_ops.toolbelts.change_ownership import ChangeOwnership
 from extraction_ops.toolbelts.conflicts import Conflicts
+from extraction_ops.toolbelts.cp_guidance.cp_guidance import CpGuidance
+from extraction_ops.toolbelts.cyber_security.cyber_security import CyberSecurity
 from extraction_ops.toolbelts.dbroa15 import Dbroa
+from extraction_ops.toolbelts.directors_trustees import DirectorsTrustees
 from extraction_ops.toolbelts.exemptions.exemptions import Exemptions
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.fsa08 import Fsa08
@@ -43,6 +46,9 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     ChangeOwnership,
     InspectionsGuidance,
     NbGovernance,
+    CyberSecurity,
+    DirectorsTrustees,
+    CpGuidance,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -69,6 +75,9 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "rbook_guidance": RbookGuidance,
     "change_ownership": ChangeOwnership,
     "nb_governance": NbGovernance,
+    "cyber_security": CyberSecurity,
+    "directors_trustees": DirectorsTrustees,
     # Supervision
     "inspections_guidance": InspectionsGuidance,
+    "cp_guidance": CpGuidance,
 }
