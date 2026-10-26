@@ -15,6 +15,9 @@ from extraction_ops.toolbelts.f_and_p.f_and_p import FAndP
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.fsa08 import Fsa08
 from extraction_ops.toolbelts.inspections_guidance import InspectionsGuidance
+from extraction_ops.toolbelts.insurance import Insurance
+from extraction_ops.toolbelts.insurance_civ_pen_regs import InsuranceCivPenRegs
+from extraction_ops.toolbelts.insurance_regs import InsuranceRegs
 from extraction_ops.toolbelts.nb_governance.nb_governance import NbGovernance
 from extraction_ops.toolbelts.outsourcing import Outsourcing
 from extraction_ops.toolbelts.poca_2008 import Poca
@@ -69,6 +72,9 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     ConsentNotify,
     Registers,
     Policies,
+    InsuranceCivPenRegs,
+    InsuranceRegs,
+    Insurance,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -107,6 +113,9 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "consent_notify": ConsentNotify,
     "registers": Registers,
     "policies": Policies,
+    "insurance_civ_pen_regs": InsuranceCivPenRegs,
+    "insurance_regs": InsuranceRegs,
+    "insurance": Insurance,
     # Supervision
     "inspections_guidance": InspectionsGuidance,
     "cp_guidance": CpGuidance,
