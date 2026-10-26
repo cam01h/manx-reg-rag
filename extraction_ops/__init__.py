@@ -22,6 +22,10 @@ from extraction_ops.toolbelts.rbook_guidance.rbook_guidance import RbookGuidance
 from extraction_ops.toolbelts.rbreach_guidance import RbreachGuidance
 from extraction_ops.toolbelts.regulated_activities_order import Rao
 from extraction_ops.toolbelts.rule_book.rule_book import RuleBook
+from extraction_ops.toolbelts.rule_summaries.consent_notify import ConsentNotify
+from extraction_ops.toolbelts.rule_summaries.policies import Policies
+from extraction_ops.toolbelts.rule_summaries.record_keeping import RecordKeeping
+from extraction_ops.toolbelts.rule_summaries.registers import Registers
 from extraction_ops.toolbelts.sanctions_act import Sanctions
 from extraction_ops.toolbelts.subordinated_loans import SubordinatedLoans
 from extraction_ops.toolbelts.supplemental_information_document import (
@@ -61,6 +65,10 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     Outsourcing,
     FAndP,
     SubordinatedLoans,
+    RecordKeeping,
+    ConsentNotify,
+    Registers,
+    Policies,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -95,6 +103,10 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "outsourcing": Outsourcing,
     "f_and_p": FAndP,
     "subordinated_loans": SubordinatedLoans,
+    "record_keeping": RecordKeeping,
+    "consent_notify": ConsentNotify,
+    "registers": Registers,
+    "policies": Policies,
     # Supervision
     "inspections_guidance": InspectionsGuidance,
     "cp_guidance": CpGuidance,
