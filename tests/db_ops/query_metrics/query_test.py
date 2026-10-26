@@ -1,8 +1,8 @@
 import argparse
 import json
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
 import logging
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastembed import SparseTextEmbedding, TextEmbedding
@@ -19,13 +19,13 @@ from config import (
     SPARSE_MODEL_NAME,
     setup_logging,
 )
+from core.sectors import ALL_SECTORS
 from db_ops.retrieval import (
-    embed_query_dense,
-    embed_query_sparse,
     query_collection,
     rerank_chunks,
     return_payload,
 )
+from db_ops.utils import build_dense_vector, build_sparse_vector
 from tests.db_ops.query_metrics.query_data import QUERY_TEST_DATA, RetrievalTest
 
 TEST_TOP_N_RESULTS = 50
@@ -73,10 +73,10 @@ def run_test_query(
 ) -> list[MatchedTestChunk]:
     matches: list[MatchedTestChunk] = []
 
-    dense_vector = embed_query_dense(test.search_term, dense_model)
-    sparse_vector = embed_query_sparse(test.search_term, sparse_model)
+    dense_vector = build_dense_vector(test.search_term, dense_model)
+    sparse_vector = build_sparse_vector(test.search_term, sparse_model)
     results = query_collection(
-        dense_vector, sparse_vector, client, mode=mode, seen=set()
+        dense_vector, sparse_vector, client, mode=mode, seen=set(), sectors=ALL_SECTORS
     )
     chunks = return_payload(results)
     if RERANK_IN_TESTS:
@@ -107,16 +107,13 @@ def run_test_query(
 
 def write_results(matches: list[MatchedTestChunk], config: dict) -> Path:
     payload = {
-        "run_at": datetime.now(timezone.utc).isoformat(),
+        "run_at": datetime.now(UTC).isoformat(),
         "config": config,
         "results": [asdict(m) for m in matches],
     }
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    path = (
-        RESULTS_DIR
-        / f"{datetime.now(timezone.utc):%Y-%m-%d_%H-%M}_{config['label']}.json"
-    )
+    path = RESULTS_DIR / f"{datetime.now(UTC):%Y-%m-%d_%H-%M}_{config['label']}.json"
     path.write_text(json.dumps(payload, indent=2))
     return path
 
