@@ -34,7 +34,7 @@ QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 # =========
 # DB ops
 # =========
-RETRIEVAL_MODE = "dense"  # "dense" | "sparse" | "hybrid"
+RETRIEVAL_MODE = "hybrid"  # "dense" | "sparse" | "hybrid"
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "bm25"
 DENSE_MODEL_NAME = "BAAI/bge-large-en-v1.5"  # "BAAI/bge-small-en-v1.5"
