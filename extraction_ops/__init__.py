@@ -12,6 +12,13 @@ from extraction_ops.toolbelts.dbroa15 import Dbroa
 from extraction_ops.toolbelts.directors_trustees import DirectorsTrustees
 from extraction_ops.toolbelts.exemptions.exemptions import Exemptions
 from extraction_ops.toolbelts.f_and_p.f_and_p import FAndP
+from extraction_ops.toolbelts.fiu.consent_faqs import ConsentFaqs
+from extraction_ops.toolbelts.fiu.env_typologies import EnvTypologies
+from extraction_ops.toolbelts.fiu.ms_typologies import MsTypologies
+from extraction_ops.toolbelts.fiu.pf_typologies import PfTypologies
+from extraction_ops.toolbelts.fiu.sanctions_reporting import SanctionsReporting
+from extraction_ops.toolbelts.fiu.sar_guidance import SarGuidance
+from extraction_ops.toolbelts.fiu.tf_typologies import TfTypologies
 from extraction_ops.toolbelts.fiu_act import FiuAct
 from extraction_ops.toolbelts.fsa08 import Fsa08
 from extraction_ops.toolbelts.inspections_guidance import InspectionsGuidance
@@ -89,6 +96,13 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     LpaNra,
     TcspNra,
     VaspNra,
+    SarGuidance,
+    ConsentFaqs,
+    SanctionsReporting,
+    TfTypologies,
+    PfTypologies,
+    MsTypologies,
+    EnvTypologies,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -141,4 +155,12 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     "lpa_nra": LpaNra,
     "tcsp_nra": TcspNra,
     "vasp_nra": VaspNra,
+    # FIU guidance and typologies
+    "fiu_sar_guidance": SarGuidance,
+    "fiu_consent_faqs": ConsentFaqs,
+    "fiu_sanctions_reporting": SanctionsReporting,
+    "fiu_tf_typologies": TfTypologies,
+    "fiu_pf_typologies": PfTypologies,
+    "fiu_ms_typologies": MsTypologies,
+    "fiu_env_typologies": EnvTypologies,
 }

@@ -48,6 +48,15 @@ CONSENT_NOTIFY = (
 )
 REGISTERS = "Financial Services Rule Book 2016 - Obligations to keep registers"
 POLICIES = "Financial Services Rule Book 2016 - Rules relating to policies"
+FIU_SAR = "FIU Guidance for Making Suspicious Activity Reports (and Other Disclosures) (August 2026)"
+FIU_CONSENT = "FIU Consent Request Frequently Asked Questions (January 2026)"
+FIU_SANCTIONS = "FIU Guidance: Financial Sanctions Reporting (August 2026)"
+FIU_TF = "FIU Terrorist Financing Typologies and Red Flags (May 2026)"
+FIU_PF = "FIU Proliferation Financing Typologies and Red Flags (August 2026)"
+FIU_MS = (
+    "FIU Human Trafficking and Modern Day Slavery Typologies and Red Flags (June 2026)"
+)
+FIU_ENV = "FIU Environmental Crime Typologies and Red Flags (December 2025)"
 
 
 """ test 1 - bare acronym, collides with PEP """
@@ -637,6 +646,82 @@ QueryTest47 = RetrievalTest(
     expected_strings=((INSURANCE_CIVIL_PENALTIES, expected_47_a),),
 )
 
+""" test 48 - FIU SAR guidance, implied consent (the consent FAQs cover the same ground) """
+query48 = (
+    "if the FIU doesn't respond to my consent request when do I have implied consent"
+)
+# 3.3.1 - Notice Period
+expected_48_a = "If the FIU neither grants nor refuses consent within the Notice Period, the reporter has implied consent at the end of the 7 working days"
+
+QueryTest48 = RetrievalTest(
+    search_term=query48,
+    expected_strings=((FIU_SAR, expected_48_a),),
+)
+
+""" test 49 - FIU consent FAQs, a question heading built from a table row """
+query49 = (
+    "can the FIU give consent retrospectively for a payment that has already been made"
+)
+# FAQ - Will the FIU grant retrospective consent?
+expected_49_a = "there is no facility within the Proceeds of Crime Act 2008 for the FIU to grant retrospective consent in any circumstances"
+
+QueryTest49 = RetrievalTest(
+    search_term=query49,
+    expected_strings=((FIU_CONSENT, expected_49_a),),
+)
+
+""" test 50 - FIU sanctions reporting, frozen assets """
+query50 = "what information do I need to include when I report frozen assets to the FIU"
+# Reporting Frozen Assets
+expected_50_a = "When reporting frozen assets to the FIU, the following information must be included"
+
+QueryTest50 = RetrievalTest(
+    search_term=query50,
+    expected_strings=((FIU_SANCTIONS, expected_50_a),),
+)
+
+""" test 51 - TF typologies, a typology box read from picture text """
+query51 = "red flags for terrorist financing through online poker accounts"
+# Typology 8 - Use of Online Gambling to Transfer TF Funds
+expected_51_a = "with one deliberately losing high-value games to the other"
+
+QueryTest51 = RetrievalTest(
+    search_term=query51,
+    expected_strings=((FIU_TF, expected_51_a),),
+)
+
+""" test 52 - PF typologies, the stages diagram (transcribed from an image) """
+query52 = "what are the stages of proliferation financing"
+# Background - PF Stages
+expected_52_a = "Program fundraising: A proliferating country raises financial resources for in-country costs."
+
+QueryTest52 = RetrievalTest(
+    search_term=query52,
+    expected_strings=((FIU_PF, expected_52_a),),
+)
+
+""" test 53 - modern slavery typologies, the higher risk industries (transcribed from an image) """
+query53 = "which industries are higher risk for modern slavery and labour exploitation"
+# Higher risk industries
+expected_53_a = "Temporary Employment Agency Services"
+
+QueryTest53 = RetrievalTest(
+    search_term=query53,
+    expected_strings=((FIU_MS, expected_53_a),),
+)
+
+""" test 54 - environmental crime typologies, the sector boxes (transcribed from an image) """
+query54 = "why is the online gaming sector exposed to environmental crime"
+# Environmental Crime and the Isle of Man - sector boxes
+expected_54_a = (
+    "Previous identified links between gaming sector and transnational organised crime"
+)
+
+QueryTest54 = RetrievalTest(
+    search_term=query54,
+    expected_strings=((FIU_ENV, expected_54_a),),
+)
+
 
 QUERY_TEST_DATA = [
     QueryTest1,
@@ -686,4 +771,11 @@ QUERY_TEST_DATA = [
     QueryTest45,
     QueryTest46,
     QueryTest47,
+    QueryTest48,
+    QueryTest49,
+    QueryTest50,
+    QueryTest51,
+    QueryTest52,
+    QueryTest53,
+    QueryTest54,
 ]

@@ -1,0 +1,1400 @@
+diff --git a/README.md b/README.md
+index 7c6c4c9..d63309b 100644
+--- a/README.md
++++ b/README.md
+@@ -28,7 +28,7 @@ Every answer is built from the actual text of Isle of Man legislation and guidan
+ 
+ ## What it covers right now
+ 
+-Right now the tool only has limited material relating to AML/CFT and the Financial Services Act 2008. Thirty-six documents are loaded:
++Right now the tool only has limited material relating to AML/CFT and the Financial Services Act 2008. Forty-three documents are loaded:
+ 
+ | Document | Hierarchy | Date | Tynwald | Made / issued under |
+ |---|---|---|---|---|
+@@ -68,6 +68,13 @@ Right now the tool only has limited material relating to AML/CFT and the Financi
+ | Financial Services Rule Book 2016 - Consent and Information Summary Table | Guidance | August 2018 | No | Not stated* |
+ | Financial Services Rule Book 2016 - Obligations to keep registers | Guidance | January 2017 | No | Not stated* |
+ | Financial Services Rule Book 2016 - Rules relating to policies | Guidance | January 2017 | No | Not stated* |
++| FIU Guidance for Making Suspicious Activity Reports (and Other Disclosures) | Guidance | August 2026 | No | Not stated* |
++| FIU Consent Request Frequently Asked Questions | Guidance | January 2026 | No | Not stated* |
++| FIU Guidance: Financial Sanctions Reporting | Guidance | August 2026 | No | Not stated* |
++| FIU Terrorist Financing Typologies and Red Flags | Supplemental | May 2026 | No | Not stated* |
++| FIU Proliferation Financing Typologies and Red Flags | Supplemental | August 2026 | No | Not stated* |
++| FIU Human Trafficking and Modern Day Slavery Typologies and Red Flags | Supplemental | June 2026 | No | Not stated* |
++| FIU Environmental Crime Typologies and Red Flags | Supplemental | December 2025 | No | Not stated* |
+ 
+ Dates for legislation are when it was enacted or made. The versions loaded are consolidated, so they include later amendments.
+ 
+diff --git a/extraction_ops/__init__.py b/extraction_ops/__init__.py
+index c63e5c5..0bfed9c 100644
+--- a/extraction_ops/__init__.py
++++ b/extraction_ops/__init__.py
+@@ -12,6 +12,13 @@ from extraction_ops.toolbelts.dbroa15 import Dbroa
+ from extraction_ops.toolbelts.directors_trustees import DirectorsTrustees
+ from extraction_ops.toolbelts.exemptions.exemptions import Exemptions
+ from extraction_ops.toolbelts.f_and_p.f_and_p import FAndP
++from extraction_ops.toolbelts.fiu.consent_faqs import ConsentFaqs
++from extraction_ops.toolbelts.fiu.env_typologies import EnvTypologies
++from extraction_ops.toolbelts.fiu.ms_typologies import MsTypologies
++from extraction_ops.toolbelts.fiu.pf_typologies import PfTypologies
++from extraction_ops.toolbelts.fiu.sanctions_reporting import SanctionsReporting
++from extraction_ops.toolbelts.fiu.sar_guidance import SarGuidance
++from extraction_ops.toolbelts.fiu.tf_typologies import TfTypologies
+ from extraction_ops.toolbelts.fiu_act import FiuAct
+ from extraction_ops.toolbelts.fsa08 import Fsa08
+ from extraction_ops.toolbelts.inspections_guidance import InspectionsGuidance
+@@ -89,6 +96,13 @@ ALL_TOOLBELTS: list[ToolBelt] = [
+     LpaNra,
+     TcspNra,
+     VaspNra,
++    SarGuidance,
++    ConsentFaqs,
++    SanctionsReporting,
++    TfTypologies,
++    PfTypologies,
++    MsTypologies,
++    EnvTypologies,
+ ]
+ 
+ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
+@@ -141,4 +155,12 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
+     "lpa_nra": LpaNra,
+     "tcsp_nra": TcspNra,
+     "vasp_nra": VaspNra,
++    # FIU guidance and typologies
++    "fiu_sar_guidance": SarGuidance,
++    "fiu_consent_faqs": ConsentFaqs,
++    "fiu_sanctions_reporting": SanctionsReporting,
++    "fiu_tf_typologies": TfTypologies,
++    "fiu_pf_typologies": PfTypologies,
++    "fiu_ms_typologies": MsTypologies,
++    "fiu_env_typologies": EnvTypologies,
+ }
+diff --git a/extraction_ops/toolbelts/fiu/__init__.py b/extraction_ops/toolbelts/fiu/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/extraction_ops/toolbelts/fiu/consent_faqs.py b/extraction_ops/toolbelts/fiu/consent_faqs.py
+new file mode 100644
+index 0000000..754435e
+--- /dev/null
++++ b/extraction_ops/toolbelts/fiu/consent_faqs.py
+@@ -0,0 +1,141 @@
++import logging
++import re
++
++from core.sectors import ALL_SECTORS
++from extraction_ops.models import ChunkSplitters, ToolBelt
++from extraction_ops.toolbelts.fiu.fiu_shared import (
++    FIU_GUIDANCE,
++    FIU_LANDING_PAGE,
++    drop_picture_markers,
++)
++from extraction_ops.toolbelts.shared_funcs import (
++    base_text_cleaner,
++    build_pdf_path,
++    build_simple_markers,
++    fixed_sectors,
++    replace_from_dict,
++    split_on_paragraph_not_list,
++    split_on_paragraph_or_list_item,
++    starts_with,
++)
++
++logger = logging.getLogger(__name__)
++
++"""<=== QUESTION AND ANSWER TABLES ===>"""
++
++# Every FAQ is a row of a two column table (Question | Response) that runs over six pages.
++# Each row becomes a "### **question**" heading with the response as its body, so every
++# question is its own chunk.
++
++_TABLE_ROW = re.compile(r"^\|.*\|[ \t]*$", re.MULTILINE)
++_SEPARATOR_CELL = re.compile(r"^:?-{3,}:?$")
++_TITLE_CELLS = {"Question", "Response", "Consent Request Frequently Asked Questions"}
++# a line ending a sentence or an introduction starts a new paragraph
++_ENDS_PARAGRAPH = re.compile(r"[.:?!)]$")
++
++_EXPECTED_QUESTIONS = 18
++
++
++def _cells(row: str) -> list[str]:
++    cells = [c.strip() for c in row.strip().strip("|").split("|")]
++    return [c for c in cells if c and not _SEPARATOR_CELL.match(c)]
++
++
++def _plain(cell: str) -> str:
++    # "A**Protected Disclosure**as per Section 153" - bold run into the words around it
++    cell = re.sub(r"(?<=\w)\*\*(?=\w)", " ", cell)
++    return cell.replace("**", "").strip()
++
++
++def _reflow(cell: str) -> str:
++    """Cell lines are the column's line wraps, not paragraphs. Lines are joined back up,
++    with a new paragraph after a sentence ends and a list item for each bullet."""
++    paragraphs: list[str] = []
++    for line in (_plain(part) for part in cell.split("<br>")):
++        if not line:
++            continue
++        bullet = line.startswith("•")
++        if bullet:
++            line = "- " + line.lstrip("• ").strip()
++        if (
++            not paragraphs
++            or bullet
++            or line == "Example"
++            or _ENDS_PARAGRAPH.search(paragraphs[-1])
++            or paragraphs[-1] == "Example"
++        ):
++            paragraphs.append(line)
++        else:
++            paragraphs[-1] = f"{paragraphs[-1]} {line}"
++    return "\n\n".join(paragraphs)
++
++
++def faq_tables_to_sections(text: str) -> str:
++    def repl(match: re.Match) -> str:
++        out = []
++        for row in _TABLE_ROW.findall(match.group()):
++            cells = [c for c in _cells(row) if _plain(c) not in _TITLE_CELLS]
++            if not cells:
++                continue
++            question = _plain(cells[0].replace("<br>", " "))
++            answer = "\n\n".join(_reflow(c) for c in cells[1:])
++            out.append(f"### **{question}**\n\n{answer}")
++        return "\n\n".join(out) + "\n\n"
++
++    text = re.sub(r"(?:^\|.*\|[ \t]*\n?)+", repl, text, flags=re.MULTILINE)
++    found = len(re.findall(r"^### \*\*", text, flags=re.MULTILINE))
++    if found != _EXPECTED_QUESTIONS:
++        # any other count means a row was split or the document has changed
++        logger.error("expected [%d] questions, found [%d]", _EXPECTED_QUESTIONS, found)
++        raise ValueError(f"expected {_EXPECTED_QUESTIONS} questions, found {found}")
++    return text
++
++
++"""<=== CLEANER ===>"""
++
++_REPLACEMENT_DICT = {
++    # spaces left inside brackets by the bold markers
++    "( **FIU** )": "(**FIU**)",
++    '(" **FAQs** ")': '("**FAQs**")',
++    '(" **IOMFCP** ")': '("**IOMFCP**")',
++    # link labels left in the middle of a response
++    "updated in June 2024:\n\nFIU SAR Guidance Please ensure": "updated in June 2024 (FIU SAR Guidance).\n\nPlease ensure",
++    "for more information on suspicion:\n\nFIU Suspicion Guidance": "for more information on suspicion (FIU Suspicion Guidance).",
++    '("IOM C&I").\n\nIOM C&I Sanctions Licences The consent regime': '("IOM C&I") (IOM C&I Sanctions Licences).\n\nThe consent regime',
++    # typos in the source
++    "the requestor in in possession": "the requestor is in possession",
++    "create a table or matrix or the transactions": "create a table or matrix of the transactions",
++}
++
++
++def _text_cleaner(text: str) -> str:
++    text = base_text_cleaner(text)
++    text = drop_picture_markers(text)
++    # page footer
++    text = re.sub(r"^Official[ \t]*$\n?", "", text, flags=re.MULTILINE)
++    text = faq_tables_to_sections(text)
++    text = replace_from_dict(text, _REPLACEMENT_DICT)
++    return text
++
++
++_Trimmer = build_simple_markers(
++    "## **Introduction",
++    "Sharing a consent request/response without a clear legal basis",
++)
++
++_Splitters = ChunkSplitters(
++    primary=split_on_paragraph_not_list, fallback=split_on_paragraph_or_list_item
++)
++
++ConsentFaqs = ToolBelt(
++    document="FIU Consent Request Frequently Asked Questions (January 2026)",
++    hierarchy=FIU_GUIDANCE,
++    sectors=fixed_sectors(ALL_SECTORS),
++    input_url=FIU_LANDING_PAGE,
++    pdf_path=build_pdf_path("fiu_consent_faqs"),
++    use_ocr=False,
++    trimmer=_Trimmer,
++    header_matchers=[starts_with(["## **"]), starts_with(["### **"])],
++    clean_text=_text_cleaner,
++    re_pack_splitters=_Splitters,
++)
+diff --git a/extraction_ops/toolbelts/fiu/env_typologies.py b/extraction_ops/toolbelts/fiu/env_typologies.py
+new file mode 100644
+index 0000000..399b099
+--- /dev/null
++++ b/extraction_ops/toolbelts/fiu/env_typologies.py
+@@ -0,0 +1,74 @@
++import re
++
++from core.sectors import ALL_SECTORS
++from extraction_ops.models import SectionMarkers, ToolBelt
++from extraction_ops.toolbelts.fiu.fiu_shared import FIU_LANDING_PAGE, FIU_SUPPLEMENTAL
++from extraction_ops.toolbelts.fiu.fiu_typologies import (
++    TYPOLOGY_SPLITTERS,
++    build_typology_cleaner,
++    is_introduction,
++)
++from extraction_ops.toolbelts.shared_funcs import (
++    build_pdf_path,
++    fixed_sectors,
++    replace_section,
++    starts_with,
++)
++
++# the four sector boxes on page 5 - read from the image, which has no text layer
++_SECTOR_BOXES = """conduit for environmental crime proceeds.
++
++[Editors note: the below is transcribed from an image]
++
++- Trust and Corporate Services Providers: International nature of business; Potential misuse of complex structures to obscure ownership and underlying activity of structure.
++- Life Insurance/ Assurance: International nature of business; Activity in jurisdictions with higher EWC risk; Use of intermediaries.
++- Banking Sector: International client base; Activity in jurisdictions with higher EWC risk; Provision of services to international legal persons and arrangements.
++- Online Gaming Sector: Customers are often located internationally; Previous identified links between gaming sector and transnational organised crime in jurisdictions that are higher risk for EWC.
++"""
++
++_REPLACEMENTS = {
++    # the legend of the bar chart beside it is read into the paragraph
++    "When asked how well they felt they **Banking █** and their colleagues     understand the **DNFPB █** different types of EWC, the majority of **Gaming █** respondents (97) said somewhat. More **Insurance █** respondents said they understood   a **Other Financial Services █** little (69) or not at all (9) than said **TCSP █** they understood quite well (44) or very well (8).": "When asked how well they felt they and their colleagues understand the different types of EWC, the majority of respondents (97) said somewhat. More respondents said they understood a little (69) or not at all (9) than said they understood quite well (44) or very well (8).",
++    # the end of typology 1's red flags repeated in the source after typology 3's last one
++    "understanding across                                 different": "understanding across different",
++    "regulatory sanctions and reported earnings, adverse media": "regulatory sanctions",
++    "conduit for environmental crime proceeds.": _SECTOR_BOXES,
++    # "Agricultural Non compliance - covering ..." heading read with its hyphens as list markers
++    "## **- - Agricultural Non compliance covering": "**Agricultural Non-compliance - covering",
++}
++
++
++def _contact_labels(text: str) -> str:
++    # the key contacts' headings are labels for a phone number each - kept together in one
++    # section rather than a chunk per number
++    head, _, contacts = text.partition("# Key Contacts")
++    contacts = re.sub(r"^## (.+?)[ \t]*$", r"**\1:**", contacts, flags=re.MULTILINE)
++    return f"{head}# Key Contacts{contacts}"
++
++
++def _extra_cleaner(text: str) -> str:
++    # a list of links, between Project Anton and the key contacts
++    text = replace_section(text, "# Resources and Links", "# Key Contacts")
++    return _contact_labels(text)
++
++
++_Trimmer = SectionMarkers(
++    start=is_introduction,
++    end=starts_with(["DEFA Forestry:"]),
++)
++
++_PDF_PATH = build_pdf_path("fiu_enviromental_typologies")
++
++EnvTypologies = ToolBelt(
++    document="FIU Environmental Crime Typologies and Red Flags (December 2025)",
++    hierarchy=FIU_SUPPLEMENTAL,
++    # the typologies cover every sector - a case set in a bank still teaches a TCSP
++    sectors=fixed_sectors(ALL_SECTORS),
++    input_url=FIU_LANDING_PAGE,
++    pdf_path=_PDF_PATH,
++    use_ocr=False,
++    trimmer=_Trimmer,
++    header_matchers=[starts_with(["# "]), starts_with(["## "])],
++    clean_text=build_typology_cleaner(_PDF_PATH, _REPLACEMENTS, _extra_cleaner),
++    re_pack_splitters=TYPOLOGY_SPLITTERS,
++)
+diff --git a/extraction_ops/toolbelts/fiu/fiu_shared.py b/extraction_ops/toolbelts/fiu/fiu_shared.py
+new file mode 100644
+index 0000000..7114c93
+--- /dev/null
++++ b/extraction_ops/toolbelts/fiu/fiu_shared.py
+@@ -0,0 +1,70 @@
++import re
++from collections.abc import Callable
++
++"""<=== SHARED SET-UP FOR THE FIU PUBLICATIONS ===>"""
++
++# TODO: replace with each document's direct PDF link. The PDFs are committed to data/raw,
++# so --get-pdfs is not needed for these
++FIU_LANDING_PAGE = "https://www.fiu.im/"
++
++# The SAR guidance, consent FAQs and sanctions reporting guidance tell a reporter how to use
++# the reporting regime - guidance. The typology reports illustrate risks with fictitious
++# cases and red flags - supplemental.
++FIU_GUIDANCE = "guidance"
++FIU_SUPPLEMENTAL = "supplemental"
++
++
++def drop_picture_markers(text: str) -> str:
++    # "**==> picture [117 x 35] intentionally omitted <==**" - logos and page furniture
++    return re.sub(
++        r"^\*\*==> picture .*?<==\*\*[ \t]*$\n?", "", text, flags=re.MULTILINE
++    )
++
++
++def drop_empty_bullets(text: str) -> str:
++    # list markers left behind when the item text was read elsewhere on the page
++    text = re.sub(r"^[ \t]*-[ \t]*$\n?", "", text, flags=re.MULTILINE)
++    # items pymupdf4llm indented as a nested list although they are not
++    return re.sub(r"^[ \t]+- ", "- ", text, flags=re.MULTILINE)
++
++
++def strip_footnote_numbers(text: str) -> str:
++    # "Crime Act 2008[1] (POCA)", "NRA[5]", "RUSI.[6,7]", "security mechanisms.[41 ]",
++    # "billion annually **[2]**"
++    return re.sub(r" ?(\*\*)?\[\s*\d{1,2}(?:\s*,\s*\d{1,2})*\s*\](?(1)\*\*)", "", text)
++
++
++def close_punctuation_gaps(text: str) -> str:
++    # "**Themis** ," and "the Isle of Man ." - a space left before punctuation where a bold
++    # run or a line of text ends
++    return re.sub(r"(?<=[\w)*]) +([.,;:])(?=[\s*]|$)", r"\1", text)
++
++
++def collapse_heading_spaces(text: str) -> str:
++    # "## **1.3    Information Required - SARs**"
++    return re.sub(r"^(#{1,6} \*\*\S+)[ \t]{2,}", r"\1 ", text, flags=re.MULTILINE)
++
++
++def numbered_heading(depth: int) -> Callable[[str], bool]:
++    """'## **3. Consent'' is depth 1, '## **3.3 The Notice' depth 2, '## **3.3.1 Notice'
++    depth 3"""
++    pattern = re.compile(r"^## \*\*\d+" + r"\.\d+" * (depth - 1) + r"\.?\s")
++
++    def inner(line: str) -> bool:
++        return bool(pattern.match(line))
++
++    return inner
++
++
++def demote_unnumbered_headings(text: str) -> str:
++    """Bold run-in labels ("POCA", "As soon as practicable:", the shaded "Example" boxes)
++    come through as headings. They belong to the numbered section they sit in."""
++
++    def repl(match: re.Match) -> str:
++        label = match.group(1).strip()
++        example = re.match(r"^(?:[-–]\s*)?Example\s*[-–]?\s*(.*)$", label)
++        if example:
++            return f"**Example - {example.group(1).strip()}:**"
++        return f"**{label}**"
++
++    return re.sub(r"^## \*\*(?!\d)(.*?)\*\*[ \t]*$", repl, text, flags=re.MULTILINE)
+diff --git a/extraction_ops/toolbelts/fiu/fiu_typologies.py b/extraction_ops/toolbelts/fiu/fiu_typologies.py
+new file mode 100644
+index 0000000..e3a1cb0
+--- /dev/null
++++ b/extraction_ops/toolbelts/fiu/fiu_typologies.py
+@@ -0,0 +1,444 @@
++import functools
++import itertools
++import logging
++import re
++from collections.abc import Callable
++from pathlib import Path
++from typing import Any, cast
++
++import fitz
++
++from extraction_ops.models import ChunkSplitters
++from extraction_ops.toolbelts.fiu.fiu_shared import (
++    close_punctuation_gaps,
++    drop_empty_bullets,
++    drop_picture_markers,
++    strip_footnote_numbers,
++)
++from extraction_ops.toolbelts.nra.nra_base import split_on_paragraph_item_or_sentence
++from extraction_ops.toolbelts.nra.nra_styles import match_key, styled_lines
++from extraction_ops.toolbelts.shared_funcs import (
++    base_text_cleaner,
++    rejoin_page_breaks,
++    replace_from_dict,
++    split_on_paragraph_not_list,
++)
++
++logger = logging.getLogger(__name__)
++
++"""<=== SHARED SET-UP FOR THE FIU TYPOLOGY REPORTS ===>"""
++
++# The four typology reports share one Publisher template:
++#   - section titles are white 28-36pt text set over a photo banner. pymupdf4llm classes
++#     the banner as a picture, so the title arrives as "picture text" (or now and then as
++#     a "## " heading)
++#   - each typology is white text in a shaded box - also picture text - followed by a
++#     "Red Flags" list
++#   - diagrams are pictures whose text is labels only
++# The md stays the source of the text. fitz is consulted for the section titles (so a
++# picture is only made a heading when its text really is a banner) and for the few boxes
++# and the glossary that pymupdf4llm loses or mangles.
++
++_BANNER_MIN_SIZE = 27
++_WHITE = "ffffff"
++
++_PICTURE = re.compile(
++    r"\*\*----- Start of picture text -----\*\*(?:<br>)?(.*?)\*\*----- End of picture text -----\*\*(?:<br>)?",
++    re.DOTALL,
++)
++_TYPOLOGY = re.compile(r"^Typology\s*(\d+)\s*[:\-–—]?\s*(.*)$")
++# a title wrapped onto a second line is short; the first line of the case is not
++_TITLE_WRAP_CHARS = 45
++_MIN_PROSE_WORDS = 40
++_MIN_STATEMENT_WORDS = 15
++
++
++@functools.cache
++def _title_keys(pdf_path: Path) -> frozenset[str]:
++    """Match keys of every banner title, and of each pair of consecutive banner lines (a
++    title set over two lines in two sizes, eg "Typologies:" / "Multiple Occupancy")."""
++    banners = [
++        line
++        for line in styled_lines(pdf_path)
++        # "Typologies:" is set in black over a white panel, every other title in white
++        if line.size >= _BANNER_MIN_SIZE and line.page > 1
++    ]
++    keys = {match_key(line.text) for line in banners}
++    keys.update(
++        match_key(a.text) + match_key(b.text)
++        for a, b in itertools.pairwise(banners)
++        if a.page == b.page
++    )
++    keys.discard("")
++    return frozenset(keys)
++
++
++@functools.cache
++def banner_keys(pdf_path: Path) -> frozenset[str]:
++    # "Typologies: Labour Exploitation" can arrive as the heading "Labour Exploitation"
++    keys = _title_keys(pdf_path)
++    return keys | {k.removeprefix("typologies") for k in keys} - {""}
++
++
++def banner_heading(title: str, pdf_path: Path) -> str:
++    """ "# title", with the "Typologies: " the md dropped put back and the trailing colon of
++    "High Risk Countries:" taken off"""
++    key = match_key(title)
++    titles = _title_keys(pdf_path)
++    if key not in titles and "typologies" + key in titles:
++        title = f"Typologies: {title}"
++    return f"# {title.rstrip(' :')}"
++
++
++def _picture_lines(body: str) -> list[str]:
++    lines = [line.strip() for line in body.replace(" ", " ").split("<br>")]
++    # stray dashes the template sets beside a title
++    lines = [line for line in lines if line and not re.fullmatch(r"[-–—]+", line)]
++    if "'" in lines:
++        # "The Isle of Man's" with its apostrophe set as a line of its own
++        lines = [line for line in lines if line != "'"]
++        lines = [re.sub(r"(?<=\w) s\b", "'s", line, count=1) for line in lines]
++    return lines
++
++
++def _flow(lines: list[str]) -> str:
++    """Picture text keeps the box's line wraps. Lines are joined into paragraphs, with a
++    break after a line ending a sentence and a list item for each bullet."""
++    paragraphs: list[str] = []
++    for line in lines:
++        bullet = line.startswith(("•", ""))
++        if bullet:
++            line = "- " + line.lstrip("• ").strip()
++        if not paragraphs or bullet or re.search(r"[.:;!?\"')]$", paragraphs[-1]):
++            paragraphs.append(line)
++        elif paragraphs[-1].endswith("-"):
++            # "the same Isle of Man-" / "licensed poker platform"
++            paragraphs[-1] = f"{paragraphs[-1]}{line}"
++        else:
++            paragraphs[-1] = f"{paragraphs[-1]} {line}"
++    return "\n\n".join(paragraphs)
++
++
++def typology_heading(number: str, title: str) -> str:
++    title = re.sub(r"\s+", " ", title).strip(" -–—:")
++    return f"## Typology {number} - {title}" if title else f"## Typology {number}"
++
++
++def _typology(lines: list[str]) -> str:
++    match = cast(re.Match, _TYPOLOGY.match(lines[0]))
++    title = [match.group(2)]
++    rest = lines[1:]
++    while rest and len(rest[0]) < _TITLE_WRAP_CHARS and not rest[0].endswith("."):
++        title.append(rest.pop(0))
++    return f"{typology_heading(match.group(1), ' '.join(title))}\n\n{_flow(rest)}"
++
++
++def pictures_to_text(text: str, pdf_path: Path) -> str:
++    """Banner titles become "# " headings, typology boxes "## Typology N - title" headings
++    with their case as the body, and other boxes of prose (eg "Sanctions evasion commonly
++    involves:") paragraphs. Chart and diagram labels, and the pull quote, are dropped."""
++    banners = banner_keys(pdf_path)
++
++    def repl(match: re.Match) -> str:
++        lines = _picture_lines(match.group(1))
++        if not lines:
++            return ""
++        joined = re.sub(r"\s+", " ", " ".join(lines))
++        if match_key(joined) in banners:
++            return f"\n\n{banner_heading(joined, pdf_path)}\n\n"
++        if _TYPOLOGY.match(lines[0]):
++            return f"\n\n{_typology(lines)}\n\n"
++        words = len(joined.split())
++        # a box of prose, or a short statement in a box ("Immediate outcome 11 dictates
++        # ..."); the pull quote has no full stop and is dropped
++        if words >= _MIN_PROSE_WORDS or (
++            words >= _MIN_STATEMENT_WORDS and joined.endswith(".")
++        ):
++            return f"\n\n{_flow(lines)}\n\n"
++        return ""
++
++    return _PICTURE.sub(repl, text)
++
++
++"""<=== BOXES PYMUPDF4LLM LOSES ===>"""
++
++
++def _block_text(block: dict) -> str:
++    lines = [
++        "".join(s["text"] for s in line["spans"]).strip()
++        for line in block.get("lines", [])
++    ]
++    return " ".join(line for line in lines if line).replace(" ", " ")
++
++
++def _is_white(block: dict) -> bool:
++    spans = [
++        s for line in block.get("lines", []) for s in line["spans"] if s["text"].strip()
++    ]
++    return bool(spans) and all(f"{s['color']:06x}" == _WHITE for s in spans)
++
++
++def restore_lost_boxes(text: str, pdf_path: Path) -> str:
++    """Now and then a typology box is dropped whole, leaving only its last line behind as a
++    bold paragraph. The box is rebuilt from the PDF's own text blocks (one per paragraph)
++    in place of that line."""
++    md_keys = " ".join(match_key(w) for w in text.replace("<br>", " ").split())
++    with fitz.open(pdf_path) as doc:
++        for page in doc:
++            blocks = [
++                b
++                for b in cast(dict[str, Any], page.get_text("dict"))["blocks"]
++                if _is_white(b)
++            ]
++            for i, block in enumerate(blocks):
++                title = _block_text(block)
++                match = _TYPOLOGY.match(title)
++                if not match:
++                    continue
++                paragraphs = []
++                for following in blocks[i + 1 :]:
++                    if _TYPOLOGY.match(_block_text(following)):
++                        break
++                    paragraphs.append(_block_text(following))
++                probe = " ".join(match_key(w) for w in " ".join(paragraphs).split()[:8])
++                if not paragraphs or probe in md_keys:
++                    continue
++                tail = cast(list, cast(dict, blocks[i + len(paragraphs)])["lines"])[-1]
++                tail_text = "".join(s["text"] for s in tail["spans"]).strip()
++                tail_text = base_text_cleaner(tail_text).replace("‑", "-")
++                orphan = f"**{tail_text}**"
++                if orphan not in text:
++                    logger.error("lost box [%s] has no orphan line to replace", title)
++                    raise ValueError(
++                        f"lost box [{title}] has no orphan line to replace"
++                    )
++                box = typology_heading(match.group(1), match.group(2))
++                body = "\n\n".join(
++                    base_text_cleaner(p).replace("‑", "-") for p in paragraphs
++                )
++                text = text.replace(orphan, f"{box}\n\n{body}", 1)
++                logger.info("restored lost box [%s] from the PDF", title)
++    return text
++
++
++"""<=== HEADINGS ===>"""
++
++_MD_HEADING = re.compile(r"^#{2,6} (?:\*\*)?(.*?)(?:\*\*)?[ \t]*$", re.MULTILINE)
++
++
++def relevel_headings(text: str, pdf_path: Path) -> str:
++    """md headings: banner titles "# ", "Red Flags" a bold label inside its typology, links
++    and other text mistaken for a heading plain text, everything else "## "."""
++    banners = banner_keys(pdf_path)
++
++    def repl(match: re.Match) -> str:
++        heading = match.group(1).strip().lstrip("- ").strip()
++        if heading.startswith("Typology"):
++            return match.group()
++        if not heading or re.search(r"https?://|www\.", heading):
++            return heading
++        if re.match(r"Red Flags", heading):
++            return "**Red Flags:**"
++        if match_key(heading) in banners:
++            return banner_heading(heading, pdf_path)
++        return f"## {heading}"
++
++    return _MD_HEADING.sub(repl, text)
++
++
++def drop_repeated_headings(text: str) -> str:
++    """A section title is often repeated straight after as the first sub-heading
++    ("Enforced Criminality" twice), and a section running over several pages repeats its
++    banner on each one."""
++    paragraphs = re.split(r"\n\s*\n", text)
++    out: list[str] = []
++    section = ""
++    for para in paragraphs:
++        if not para.strip():
++            continue
++        key = match_key(para.lstrip("#"))
++        if para.startswith("# "):
++            if key == section:
++                continue
++            section = key
++        # "# Typologies: Sexual Exploitation" then "## Sexual Exploitation"
++        if (
++            para.startswith("#")
++            and out
++            and out[-1].startswith("#")
++            and match_key(out[-1].lstrip("#")).endswith(key)
++        ):
++            continue
++        out.append(para)
++    return "\n\n".join(out)
++
++
++"""<=== FOOTNOTES AND LISTS ===>"""
++
++
++def drop_footnotes(text: str) -> str:
++    # "**1.** htps://...", "> **4.** RUSI - Guide to ...", "**6.** https://... **7.** https://..."
++    text = re.sub(r"^(?:> )?\*\*\d{1,2}\.\s?\*\*.*$\n?", "", text, flags=re.MULTILINE)
++    # the wrapped tail of a footnote link: "> -the-symbols/"
++    text = re.sub(r"^> \S*/[ \t]*$\n?", "", text, flags=re.MULTILINE)
++    # "> ***** The Isle of Man NRA uses ..." - asterisk footnotes carry substance
++    text = re.sub(r"^> \*{4,}\s*", "Note: ", text, flags=re.MULTILINE)
++    return strip_footnote_numbers(text)
++
++
++def tidy_lists(text: str) -> str:
++    # red flag bullets that came through as the Wingdings arrow, sometimes two to a line
++    text = re.sub(r"[ \t]*[ \t]*", "\n\n- ", text)
++    text = re.sub(r"^\n\n- ", "- ", text)
++
++    # items wrapped onto a second item: "- **... closed social**" / "- **media groups ...**",
++    # "- **... no arm's-**" / "- **length terms ...**"
++    def join(match: re.Match) -> str:
++        item = match.group(1)
++        return item if item.endswith("-") else f"{item} "
++
++    previous = None
++    while previous != text:
++        previous = text
++        text = re.sub(
++            r"^(- \*\*[^\n]*?[^.;:!?\n])\*\*[ \t]*\n\s*\n- \*\*(?=[a-z])",
++            join,
++            text,
++            flags=re.MULTILINE,
++        )
++    return text
++
++
++"""<=== GLOSSARY ===>"""
++
++
++def _glossary_rows(pdf_path: Path) -> list[tuple[str, str]]:
++    """The glossary page's term and meaning, read from fitz: a term and its meaning are
++    either one line with a wide gap or two lines at the same height."""
++    rows: list[tuple[str, str]] = []
++    with fitz.open(pdf_path) as doc:
++        for page in doc:
++            lines = []
++            for block in cast(dict[str, Any], page.get_text("dict"))["blocks"]:
++                for line in block.get("lines", []):
++                    text = "".join(s["text"] for s in line["spans"])
++                    size = max(s["size"] for s in line["spans"])
++                    lines.append((round(line["bbox"][1]), line["bbox"][0], text, size))
++            if not any(
++                t.strip() == "Glossary" and s >= _BANNER_MIN_SIZE
++                for _, _, t, s in lines
++            ):
++                continue
++            by_y: dict[int, list[tuple[float, str]]] = {}
++            for y, x, t, s in lines:
++                if t.strip() and 11 <= s <= 17:
++                    key = next((k for k in by_y if abs(k - y) <= 3), y)
++                    by_y.setdefault(key, []).append((x, t))
++            for y in sorted(by_y):
++                joined = "     ".join(t for _, t in sorted(by_y[y])).strip()
++                parts = re.split(r"\s{3,}|\s+[–-]\s+", joined, maxsplit=1)
++                if len(parts) == 2 and parts[1].strip():
++                    row = (parts[0].strip(), parts[1].strip())
++                    # the TF glossary lists "SDN" twice
++                    if row not in rows:
++                        rows.append(row)
++                elif rows and joined[:1].isupper() and " " in joined:
++                    # a meaning wrapped onto a second line ("... Trafficking in Persons, /
++                    # Especially Women and Children")
++                    rows[-1] = (rows[-1][0], f"{rows[-1][1]} {joined}")
++                else:
++                    logger.warning("glossary term with no meaning: [%s]", joined)
++    return rows
++
++
++def glossary_to_definitions(text: str, pdf_path: Path) -> str:
++    """The glossary section's md (a mangled run of terms) is replaced by definition lines in
++    the shape the definitions parser expects: "TERM" meaning"""
++    rows = _glossary_rows(pdf_path)
++    if not rows:
++        return text
++    lines = "\n".join(
++        f'"{base_text_cleaner(term)}" {base_text_cleaner(meaning).replace(chr(34), chr(39))}'
++        for term, meaning in rows
++    )
++    return re.sub(
++        r"(^# Glossary[ \t]*\n).*?(?=^# |\Z)",
++        lambda m: f"{m.group(1)}\n{lines}\n\n",
++        text,
++        count=1,
++        flags=re.MULTILINE | re.DOTALL,
++    )
++
++
++def definitions_to_lines(text: str, title: str = "Definitions") -> str:
++    """A section of "## Term" headings, each with a paragraph explaining it, becomes
++    definition lines: "Term" explanation. The section's own title is dropped so the lines
++    run straight on from the glossary before it."""
++
++    def section(match: re.Match) -> str:
++        body = re.sub(
++            r"^## (.+?)[ \t]*\n\s*\n(?!#)(.+)$",
++            lambda m: f'"{m.group(1)}" {m.group(2).replace(chr(34), chr(39))}',
++            match.group(2),
++            flags=re.MULTILINE,
++        )
++        return body
++
++    return re.sub(
++        rf"(^# {title}[ \t]*\n)(.*?)(?=^# |\Z)",
++        section,
++        text,
++        count=1,
++        flags=re.MULTILINE | re.DOTALL,
++    )
++
++
++"""<=== CLEANER AND TOOLBELT FACTORY ===>"""
++
++
++def tidy_blank_lines(text: str) -> str:
++    text = re.sub(r"[ \t]+$", "", text, flags=re.MULTILINE)
++    return re.sub(r"\n{3,}", "\n\n", text).strip() + "\n"
++
++
++def build_typology_cleaner(
++    pdf_path: Path,
++    replacements: dict[str, str] | None = None,
++    extra: Callable[[str], str] | None = None,
++) -> Callable[[str], str]:
++    def clean(text: str) -> str:
++        text = base_text_cleaner(text)
++        # non-breaking hyphen and narrow space
++        text = text.replace("‑", "-").replace(" ", " ")
++        if replacements:
++            text = replace_from_dict(text, replacements)
++        # chart legends: "**█ A Little █ Not at All █ Quite Well**"
++        text = re.sub(r"^.*\u2588.*$\n?", "", text, flags=re.MULTILINE)
++        text = restore_lost_boxes(text, pdf_path)
++        text = pictures_to_text(text, pdf_path)
++        text = drop_picture_markers(text)
++        text = relevel_headings(text, pdf_path)
++        text = drop_repeated_headings(text)
++        text = drop_footnotes(text)
++        text = tidy_lists(text)
++        text = drop_empty_bullets(text)
++        text = close_punctuation_gaps(text)
++        # "... to support the / regulated sector" broken by a column or page
++        text = rejoin_page_breaks(text)
++        text = glossary_to_definitions(text, pdf_path)
++        if extra is not None:
++            text = extra(text)
++        return tidy_blank_lines(text)
++
++    return clean
++
++
++def is_introduction(line: str) -> bool:
++    # the first section of every report - "# Introduction to Project Anton" comes later
++    return line.strip() == "# Introduction"
++
++
++TYPOLOGY_SPLITTERS = ChunkSplitters(
++    primary=split_on_paragraph_not_list,
++    fallback=split_on_paragraph_item_or_sentence,
++)
+diff --git a/extraction_ops/toolbelts/fiu/ms_typologies.py b/extraction_ops/toolbelts/fiu/ms_typologies.py
+new file mode 100644
+index 0000000..d7cdcf8
+--- /dev/null
++++ b/extraction_ops/toolbelts/fiu/ms_typologies.py
+@@ -0,0 +1,75 @@
++from core.sectors import ALL_SECTORS
++from extraction_ops.models import DefinitionTools, SectionMarkers, ToolBelt
++from extraction_ops.toolbelts.fiu.fiu_shared import FIU_LANDING_PAGE, FIU_SUPPLEMENTAL
++from extraction_ops.toolbelts.fiu.fiu_typologies import (
++    TYPOLOGY_SPLITTERS,
++    build_typology_cleaner,
++    is_introduction,
++)
++from extraction_ops.toolbelts.nra.nra_base import is_glossary_line
++from extraction_ops.toolbelts.shared_funcs import (
++    build_pdf_path,
++    fixed_sectors,
++    starts_with,
++)
++
++# the page of icons on page 9 - read from the image, which has no text layer
++_HIGHER_RISK_INDUSTRIES = """[Editors note: the below is transcribed from an image]
++Higher risk industries:
++
++- Construction
++- Crop and Animal Production
++- Forestry and Logging
++- Fishing and Aquaculture
++- Mining of Coal, Metal Ores or Precious Stones
++- Manufacture of Tabacco Products
++- Human Health and Social Care Services
++- Health and Beauty Services
++- IT Infrastructure or Support Services
++- Travel or Tour Operation Services
++- Manufacture of Textile Products
++- Video, Sound or Music Production
++- E-Gaming Software Supply Services
++- Food and Beverage Service Activities
++- Commercial Cleaning Services
++- Manufacture of Food Products, such as Processing and Preserving of Meat, Fish, Crustaceans, Fruits and Vegetables
++- Warehouse Activities to Support Cargo Handling
++- Temporary Employment Agency Services
++- Land and Water Freight Transport Services
++- Other Personal Service Activities such as Activities Related to the Red-Light Industry, Massage Salons, Escort Services or Dating Services
++"""
++
++_REPLACEMENTS = {
++    "## **[Higher Risk Industries ]** ": _HIGHER_RISK_INDUSTRIES,
++}
++
++_LAST_LINE = '"TF" Terrorism Financing'
++
++_Trimmer = SectionMarkers(
++    start=is_introduction,
++    end=starts_with([_LAST_LINE]),
++)
++
++_Glossary = SectionMarkers(
++    start=starts_with(['"AI" Artificial Intelligence']),
++    end=starts_with([_LAST_LINE]),
++)
++
++_PDF_PATH = build_pdf_path("fiu_ms_typologies")
++
++MsTypologies = ToolBelt(
++    document="FIU Human Trafficking and Modern Day Slavery Typologies and Red Flags (June 2026)",
++    hierarchy=FIU_SUPPLEMENTAL,
++    # the typologies cover every sector - a case set in a bank still teaches a TCSP
++    sectors=fixed_sectors(ALL_SECTORS),
++    input_url=FIU_LANDING_PAGE,
++    pdf_path=_PDF_PATH,
++    use_ocr=False,
++    trimmer=_Trimmer,
++    header_matchers=[starts_with(["# "]), starts_with(["## "])],
++    clean_text=build_typology_cleaner(_PDF_PATH, _REPLACEMENTS),
++    re_pack_splitters=TYPOLOGY_SPLITTERS,
++    definition_tools=DefinitionTools(
++        section_markers=[_Glossary], is_definition_line=is_glossary_line
++    ),
++)
+diff --git a/extraction_ops/toolbelts/fiu/pf_typologies.py b/extraction_ops/toolbelts/fiu/pf_typologies.py
+new file mode 100644
+index 0000000..d73034a
+--- /dev/null
++++ b/extraction_ops/toolbelts/fiu/pf_typologies.py
+@@ -0,0 +1,87 @@
++from core.sectors import ALL_SECTORS
++from extraction_ops.models import DefinitionTools, SectionMarkers, ToolBelt
++from extraction_ops.toolbelts.fiu.fiu_shared import FIU_LANDING_PAGE, FIU_SUPPLEMENTAL
++from extraction_ops.toolbelts.fiu.fiu_typologies import (
++    TYPOLOGY_SPLITTERS,
++    build_typology_cleaner,
++    definitions_to_lines,
++    is_introduction,
++)
++from extraction_ops.toolbelts.nra.nra_base import is_glossary_line
++from extraction_ops.toolbelts.shared_funcs import (
++    build_pdf_path,
++    fixed_sectors,
++    starts_with,
++)
++
++# read from the image on page 6 - the diagram has no text layer
++_PF_STAGES = """from raising funds to paying for goods and services.
++
++[Editors note: the below is transcribed from an image]
++
++- Program fundraising: A proliferating country raises financial resources for in-country costs.
++- Disguising the funds: The proliferating state moves assets into the international financial system, often involving a foreign exchange transaction, for trade purposes.
++- Materials and technology procurement: The proliferating state or its agents uses these resources for procurement of materials and technology within the international financial system.
++"""
++
++# read from the image on page 16
++_AI_METHODS = """[Editors note: the below is transcribed from an image]
++Artificial Intelligence:
++
++- AI-Enhanced Social Engineering: AI-generated phishing emails that mimic internal communications in order to gain system access by proliferators.
++- AI-Powered Virtual Currency Transactions: Automated routing of payments and instantaneous fragmenting of funds by AI to streamline the layering of illicit funds in initial PF fund generation.
++- AI-Fabricated Documentation: Realistic but false AI-created trade documents that are used by PF networks to deceive companies, regulators and law enforcement.
++- AI-Scaled PF Networks: Large scale synthetic PF networks constructed by AI to include fictitious personas and corporate entities that obfuscate the true end-user.
++- AI-Generated Deepfakes: AI-based face-swapping in live video calls that enables applicants linked to proliferating states to obscure their identity during the recruitment process.
++
++*Note: These examples were extracted from a PF document published by Saudi Arabia's Ministry"""
++
++_FUNDRAISING_TABLE = """|**Illicit Fundraising Activities**|**Licit Fundraising Activities**|
++|---|---|
++|Fraud<br>Cybertheft<br>Arms Trafficking<br>Illegal Wildlife Trade<br>Drugs Smuggling<br>Forgery|Charitable Donations<br>Government Funding<br>Sale of Non-Nuclear Military Equipment<br>Sale of Natural Resources<br>Foreign/Commercial Trade<br>Legitimate Business (restaurants, construction etc.)|"""
++
++_FUNDRAISING_FLAT = """[Editors note: the below is a flattened table]
++
++- Illicit fundraising activities: Fraud; Cybertheft; Arms Trafficking; Illegal Wildlife Trade; Drugs Smuggling; Forgery
++- Licit fundraising activities: Charitable Donations; Government Funding; Sale of Non-Nuclear Military Equipment; Sale of Natural Resources; Foreign/Commercial Trade; Legitimate Business (restaurants, construction etc.)"""
++
++_REPLACEMENTS = {
++    "from raising funds to paying for goods and services. ": _PF_STAGES,
++    "*Note: These examples were extracted from a PF document published by Saudi Arabia's Ministry": _AI_METHODS,
++    _FUNDRAISING_TABLE: _FUNDRAISING_FLAT,
++    # words hyphenated across a line of the FATF definition's box
++    "pur-<br>poses": "purposes",
++    "contra-<br>vention": "contravention",
++}
++
++_LAST_LINE = '"Zero Day Vulnerabilities"'
++
++_Trimmer = SectionMarkers(
++    start=is_introduction,
++    end=starts_with([_LAST_LINE]),
++)
++
++# the glossary of acronyms and the cyber terms defined after it
++_Glossary = SectionMarkers(
++    start=starts_with(['"AI" Artificial Intelligence']),
++    end=starts_with([_LAST_LINE]),
++)
++
++_PDF_PATH = build_pdf_path("fiu_pf_typologies")
++
++PfTypologies = ToolBelt(
++    document="FIU Proliferation Financing Typologies and Red Flags (August 2026)",
++    hierarchy=FIU_SUPPLEMENTAL,
++    # the typologies cover every sector - a case set in a bank still teaches a TCSP
++    sectors=fixed_sectors(ALL_SECTORS),
++    input_url=FIU_LANDING_PAGE,
++    pdf_path=_PDF_PATH,
++    use_ocr=False,
++    trimmer=_Trimmer,
++    header_matchers=[starts_with(["# "]), starts_with(["## "])],
++    clean_text=build_typology_cleaner(_PDF_PATH, _REPLACEMENTS, definitions_to_lines),
++    re_pack_splitters=TYPOLOGY_SPLITTERS,
++    definition_tools=DefinitionTools(
++        section_markers=[_Glossary], is_definition_line=is_glossary_line
++    ),
++)
+diff --git a/extraction_ops/toolbelts/fiu/sanctions_reporting.py b/extraction_ops/toolbelts/fiu/sanctions_reporting.py
+new file mode 100644
+index 0000000..671b548
+--- /dev/null
++++ b/extraction_ops/toolbelts/fiu/sanctions_reporting.py
+@@ -0,0 +1,98 @@
++from core.sectors import ALL_SECTORS
++from extraction_ops.models import ChunkSplitters, ToolBelt
++from extraction_ops.toolbelts.fiu.fiu_shared import (
++    FIU_GUIDANCE,
++    demote_unnumbered_headings,
++    drop_picture_markers,
++)
++from extraction_ops.toolbelts.shared_funcs import (
++    base_text_cleaner,
++    build_pdf_path,
++    build_simple_markers,
++    fixed_sectors,
++    replace_from_dict,
++    split_on_paragraph_not_list,
++    split_on_paragraph_or_list_item,
++    starts_with,
++)
++
++_THEMIS_OPTIONS_TABLE = """|**Legislation Option**|**When to Use**|
++|---|---|
++|**IOM/UK/UN Sanctions**<br>**Breach (or Attempted Breach)**|Where you know or suspect a breach of IOM/UK/UN sanctions has<br>occurred or been attempted.|
++|**Sanctions - Frozen Assets**|To inform the FIU of assets frozen in relation to a sanctions designation.|
++|**POCA/ATCA/S24**|For reports relating to other non-IOM/UK/UN sanctions regimes including<br>OFAC and international national level designations.|"""
++
++_THEMIS_OPTIONS_FLAT = """[Editors note: the below is a flattened table]
++
++Legislation option - when to use:
++
++- IOM/UK/UN Sanctions Breach (or Attempted Breach): Where you know or suspect a breach of IOM/UK/UN sanctions has occurred or been attempted.
++- Sanctions - Frozen Assets: To inform the FIU of assets frozen in relation to a sanctions designation.
++- POCA/ATCA/S24: For reports relating to other non-IOM/UK/UN sanctions regimes including OFAC and international national level designations."""
++
++_REPLACEMENT_DICT = {
++    _THEMIS_OPTIONS_TABLE: _THEMIS_OPTIONS_FLAT,
++    # hyphens in the link read as list markers
++    "Customs and Immigration - - - - - - - Sanctions Lists Webpage: https://www.gov.im/categories/tax vat and your money/sanctions and export - control/sanctions lists/": "Customs and Immigration Sanctions Lists Webpage: https://www.gov.im/categories/tax-vat-and-your-money/sanctions-and-export-control/sanctions-lists/",
++    # bullet character left inside a list item
++    "- • ": "- ",
++    "Section 24., POCA or ATCA": "Section 24, POCA or ATCA",
++    "A clear outline the activity": "A clear outline of the activity",
++    "undertake a transaction** .": "undertake a transaction**.",
++    # sub-headings within "Financial Sanctions Reporting via Themis"
++    "## **Reporting Obligations under Sanctions Legislation**": "### **Reporting Obligations under Sanctions Legislation**",
++    "## **Reporting via Themis**": "### **Reporting via Themis**",
++}
++
++# the shaded title bars; every other "## **" line is a bold statement or an example box
++_SECTION_TITLES = [
++    "## **Introduction",
++    "## **Financial Sanctions**",
++    "## **Financial Sanctions Reporting via Themis",
++    "## **Financial Sanctions Breach Reporting",
++    "## **Reporting Frozen Assets",
++    "## **Reporting Related to Non-IOM/UK/UN Financial Sanctions",
++    "## **Further Guidance and Contacts",
++]
++
++
++def _demote_statements(text: str) -> str:
++    lines = text.split("\n")
++    keep = [
++        line
++        if line.startswith(tuple(_SECTION_TITLES))
++        else demote_unnumbered_headings(line)
++        for line in lines
++    ]
++    return "\n".join(keep)
++
++
++def _text_cleaner(text: str) -> str:
++    text = base_text_cleaner(text)
++    text = drop_picture_markers(text)
++    text = replace_from_dict(text, _REPLACEMENT_DICT)
++    text = _demote_statements(text)
++    return text
++
++
++_Trimmer = build_simple_markers(
++    "## **Introduction",
++    "Customs and Immigration retain responsibility for investigating suspected breaches",
++)
++
++_Splitters = ChunkSplitters(
++    primary=split_on_paragraph_not_list, fallback=split_on_paragraph_or_list_item
++)
++
++SanctionsReporting = ToolBelt(
++    document="FIU Guidance: Financial Sanctions Reporting (August 2026)",
++    hierarchy=FIU_GUIDANCE,
++    sectors=fixed_sectors(ALL_SECTORS),
++    input_url="https://www.fiu.im/media/1299/mlro-sanctions-reporting-guidance-august-26.pdf",
++    pdf_path=build_pdf_path("fiu_sanactions_reporting"),
++    use_ocr=False,
++    trimmer=_Trimmer,
++    header_matchers=[starts_with(_SECTION_TITLES), starts_with(["### **"])],
++    clean_text=_text_cleaner,
++    re_pack_splitters=_Splitters,
++)
+diff --git a/extraction_ops/toolbelts/fiu/sar_guidance.py b/extraction_ops/toolbelts/fiu/sar_guidance.py
+new file mode 100644
+index 0000000..e1c34d1
+--- /dev/null
++++ b/extraction_ops/toolbelts/fiu/sar_guidance.py
+@@ -0,0 +1,78 @@
++import re
++
++from core.sectors import ALL_SECTORS
++from extraction_ops.models import ChunkSplitters, ToolBelt
++from extraction_ops.toolbelts.fiu.fiu_shared import (
++    FIU_GUIDANCE,
++    FIU_LANDING_PAGE,
++    close_punctuation_gaps,
++    collapse_heading_spaces,
++    demote_unnumbered_headings,
++    drop_empty_bullets,
++    drop_picture_markers,
++    numbered_heading,
++    strip_footnote_numbers,
++)
++from extraction_ops.toolbelts.shared_funcs import (
++    base_text_cleaner,
++    build_pdf_path,
++    build_simple_markers,
++    fixed_sectors,
++    rejoin_page_breaks,
++    replace_from_dict,
++    split_on_paragraph_not_list,
++    split_on_paragraph_or_list_item,
++)
++
++_REPLACEMENT_DICT = {
++    # section 5's heading is set over two lines in a shaded bar; only its last words survive
++    "## **Act 2016**": "## **5. Disclosing Information to the FIU Under Section 24 of the FIU Act 2016**",
++    # a bold sentence that pymupdf4llm read as a heading, broken over three lines
++    "## **It is important that every natural and legal person relevant to the narrative is uniquely** \n\n**identified and submitted as a 'subject'** . This enables the FIU to carry out searches and link SARs \n\nto related matters.": "**It is important that every natural and legal person relevant to the narrative is uniquely identified and submitted as a 'subject'.** This enables the FIU to carry out searches and link SARs to related matters.",
++    # hyphens in links read as list markers
++    "Authority - - - (https://www.iomfsa.im/media/3215/december 2023 handbook clean.pdf)": "Authority (https://www.iomfsa.im/media/3215/december-2023-handbook-clean.pdf)",
++    "can be found - - - in the FIU Sanctions Reporting Guidance - https://fiu.im/media/1299/mlro sanctions reporting guidance-august-26.pdf .": "can be found in the FIU Sanctions Reporting Guidance - https://fiu.im/media/1299/mlro-sanctions-reporting-guidance-august-26.pdf.",
++    "AntiTerrorism and Crime Act": "Anti-Terrorism and Crime Act",
++    "anti-moneylaundering-guidance": "anti-money-laundering-guidance",
++    "introduced on 1 August 2023 Regular telephone": "introduced on 1 August 2023 [Footnote: https://www.fiu.im/media/1189/mlro-sar-feedback-guidance.pdf]. Regular telephone",
++}
++
++
++def _text_cleaner(text: str) -> str:
++    text = base_text_cleaner(text)
++    text = drop_picture_markers(text)
++    # footnotes are links to the legislation and FIU pages - the one with substance (the
++    # feedback guidance) is moved inline by the dict
++    text = re.sub(r"^> \d+ .*$\n?", "", text, flags=re.MULTILINE)
++    text = strip_footnote_numbers(text)
++    text = replace_from_dict(text, _REPLACEMENT_DICT)
++    text = drop_empty_bullets(text)
++    text = collapse_heading_spaces(text)
++    text = close_punctuation_gaps(text)
++    text = demote_unnumbered_headings(text)
++    # "(Customs and Immigration retains / responsibility for ..." runs over a page break
++    text = rejoin_page_breaks(text)
++    return text
++
++
++_Trimmer = build_simple_markers(
++    "## **1. Introduction",
++    "If you have a specific SAR(s) where you would like feedback",
++)
++
++_Splitters = ChunkSplitters(
++    primary=split_on_paragraph_not_list, fallback=split_on_paragraph_or_list_item
++)
++
++SarGuidance = ToolBelt(
++    document="FIU Guidance for Making Suspicious Activity Reports (and Other Disclosures) (August 2026)",
++    hierarchy=FIU_GUIDANCE,
++    sectors=fixed_sectors(ALL_SECTORS),
++    input_url=FIU_LANDING_PAGE,
++    pdf_path=build_pdf_path("fiu_sar_guidance"),
++    use_ocr=False,
++    trimmer=_Trimmer,
++    header_matchers=[numbered_heading(1), numbered_heading(2), numbered_heading(3)],
++    clean_text=_text_cleaner,
++    re_pack_splitters=_Splitters,
++)
+diff --git a/extraction_ops/toolbelts/fiu/tf_typologies.py b/extraction_ops/toolbelts/fiu/tf_typologies.py
+new file mode 100644
+index 0000000..6f61339
+--- /dev/null
++++ b/extraction_ops/toolbelts/fiu/tf_typologies.py
+@@ -0,0 +1,89 @@
++from core.sectors import ALL_SECTORS
++from extraction_ops.models import DefinitionTools, SectionMarkers, ToolBelt
++from extraction_ops.toolbelts.fiu.fiu_shared import FIU_LANDING_PAGE, FIU_SUPPLEMENTAL
++from extraction_ops.toolbelts.fiu.fiu_typologies import (
++    TYPOLOGY_SPLITTERS,
++    build_typology_cleaner,
++    is_introduction,
++)
++from extraction_ops.toolbelts.nra.nra_base import is_glossary_line
++from extraction_ops.toolbelts.shared_funcs import (
++    build_pdf_path,
++    fixed_sectors,
++    starts_with,
++)
++
++# read from the image on page 11 - the four boxes have no text layer
++_APPROACH_BOXES = """Isle of Man based financial institutions can strengthen their approach by:
++[Editors note: the below is transcribed from an image]
++
++- Incorporating contextual open-source review into onboarding and periodic due diligence.
++- Training frontline and investigations staff on dual-use symbols and evolving extremist imagery.
++- Integrating behavioural, transactional and network analysis within existing TF risk frameworks.
++- Maintaining dynamic internal guidance reflecting emerging symbol trends.
++"""
++
++# three columns of names read across the page, so multi-word names run together
++_LIST_BI = "Bulgaria Monaco South Sudan Burkina Faso Syrian Arab Republic Mozambique Cameroon Namibia United Republic of Tanzania Democratic Republic of the Congo Nigeria Bolivarian Republic of Venezuela Croatia Philippines Vietnam Haiti Russian Federation Yemen Kenya Senegal Mali South Africa"
++
++_LIST_BII = """|Afghanistan|Eritrea|Pakistan|
++|---|---|---|
++|Angola|Eswatini|Sierra Leone|
++|Belarus|Ethiopia|Solomon Islands|
++|Plurinational State of Bolivia|Guinea|Somalia|
++|Burundi|Guinea-Bissau|Sudan|
++|Central African Republic|Iraq|Tajikistan|
++|Chad|Kyrgyzstan|Togo|
++|Comoros|Lebanon|Türkiye|
++|Congo|Liberia|Turkmenistan|
++|Cuba|Libya|Ukraine|
++|Djibouti|Mauritania|Zimbabwe|
++|Egypt|Republic of Moldova||
++|Equatorial Guinea|Niger||"""
++
++_REPLACEMENTS = {
++    "Isle of Man based financial institutions can strengthen their approach by: ": _APPROACH_BOXES,
++    _LIST_BI: "Bulgaria, Burkina Faso, Cameroon, Croatia, Democratic Republic of the Congo, Haiti, Kenya, Mali, Monaco, Mozambique, Namibia, Nigeria, Philippines, Russian Federation, Senegal, South Africa, South Sudan, Syrian Arab Republic, United Republic of Tanzania, Bolivarian Republic of Venezuela, Vietnam, Yemen",
++    _LIST_BII: "Afghanistan, Angola, Belarus, Plurinational State of Bolivia, Burundi, Central African Republic, Chad, Comoros, Congo, Cuba, Djibouti, Egypt, Equatorial Guinea, Eritrea, Eswatini, Ethiopia, Guinea, Guinea-Bissau, Iraq, Kyrgyzstan, Lebanon, Liberia, Libya, Mauritania, Republic of Moldova, Niger, Pakistan, Sierra Leone, Solomon Islands, Somalia, Sudan, Tajikistan, Togo, Türkiye, Turkmenistan, Ukraine, Zimbabwe",
++    # the "Typologies:" title is black text on a white panel and does not come through
++    "**----- Start of picture text -----**<br>\nTypology 1:<br>": "# Typologies\n\n**----- Start of picture text -----**<br>\nTypology 1:<br>",
++    # links read with their hyphens as list markers
++    "## - - - - -- https://www.gov.uk/government/publications/proscribed terror groups or organisations 2": "https://www.gov.uk/government/publications/proscribed-terror-groups-or-organisations",
++    "## - - - https://www.gov.uk/government/publications/the uk sanctions list": "https://www.gov.uk/government/publications/the-uk-sanctions-list",
++    '"14" (referencing': '- "14" (referencing',
++    "(TBML )": "(TBML)",
++    "Northern Ireland- related": "Northern Ireland-related",
++    # the second page of high risk countries repeats the section title
++    "**----- Start of picture text -----**<br>\nHigh Risk Countries (cont.):<br>**----- End of picture text -----**<br>": "",
++}
++
++_LAST_LINE = '"IVTs" Informal Value Transfer Systems'
++
++_Trimmer = SectionMarkers(
++    start=is_introduction,
++    end=starts_with([_LAST_LINE]),
++)
++
++_Glossary = SectionMarkers(
++    start=starts_with(['"AML" Anti-Money Laundering']),
++    end=starts_with([_LAST_LINE]),
++)
++
++_PDF_PATH = build_pdf_path("fiu_tf_typologies")
++
++TfTypologies = ToolBelt(
++    document="FIU Terrorist Financing Typologies and Red Flags (May 2026)",
++    hierarchy=FIU_SUPPLEMENTAL,
++    # the typologies cover every sector - a case set in a bank still teaches a TCSP
++    sectors=fixed_sectors(ALL_SECTORS),
++    input_url=FIU_LANDING_PAGE,
++    pdf_path=_PDF_PATH,
++    use_ocr=False,
++    trimmer=_Trimmer,
++    header_matchers=[starts_with(["# "]), starts_with(["## "])],
++    clean_text=build_typology_cleaner(_PDF_PATH, _REPLACEMENTS),
++    re_pack_splitters=TYPOLOGY_SPLITTERS,
++    definition_tools=DefinitionTools(
++        section_markers=[_Glossary], is_definition_line=is_glossary_line
++    ),
++)
+diff --git a/tests/db_ops/query_metrics/query_data.py b/tests/db_ops/query_metrics/query_data.py
+index bfc1858..ead13b9 100644
+--- a/tests/db_ops/query_metrics/query_data.py
++++ b/tests/db_ops/query_metrics/query_data.py
+@@ -48,6 +48,15 @@ CONSENT_NOTIFY = (
+ )
+ REGISTERS = "Financial Services Rule Book 2016 - Obligations to keep registers"
+ POLICIES = "Financial Services Rule Book 2016 - Rules relating to policies"
++FIU_SAR = "FIU Guidance for Making Suspicious Activity Reports (and Other Disclosures) (August 2026)"
++FIU_CONSENT = "FIU Consent Request Frequently Asked Questions (January 2026)"
++FIU_SANCTIONS = "FIU Guidance: Financial Sanctions Reporting (August 2026)"
++FIU_TF = "FIU Terrorist Financing Typologies and Red Flags (May 2026)"
++FIU_PF = "FIU Proliferation Financing Typologies and Red Flags (August 2026)"
++FIU_MS = (
++    "FIU Human Trafficking and Modern Day Slavery Typologies and Red Flags (June 2026)"
++)
++FIU_ENV = "FIU Environmental Crime Typologies and Red Flags (December 2025)"
+ 
+ 
+ """ test 1 - bare acronym, collides with PEP """
+@@ -637,6 +646,82 @@ QueryTest47 = RetrievalTest(
+     expected_strings=((INSURANCE_CIVIL_PENALTIES, expected_47_a),),
+ )
+ 
++""" test 48 - FIU SAR guidance, implied consent (the consent FAQs cover the same ground) """
++query48 = (
++    "if the FIU doesn't respond to my consent request when do I have implied consent"
++)
++# 3.3.1 - Notice Period
++expected_48_a = "If the FIU neither grants nor refuses consent within the Notice Period, the reporter has implied consent at the end of the 7 working days"
++
++QueryTest48 = RetrievalTest(
++    search_term=query48,
++    expected_strings=((FIU_SAR, expected_48_a),),
++)
++
++""" test 49 - FIU consent FAQs, a question heading built from a table row """
++query49 = (
++    "can the FIU give consent retrospectively for a payment that has already been made"
++)
++# FAQ - Will the FIU grant retrospective consent?
++expected_49_a = "there is no facility within the Proceeds of Crime Act 2008 for the FIU to grant retrospective consent in any circumstances"
++
++QueryTest49 = RetrievalTest(
++    search_term=query49,
++    expected_strings=((FIU_CONSENT, expected_49_a),),
++)
++
++""" test 50 - FIU sanctions reporting, frozen assets """
++query50 = "what information do I need to include when I report frozen assets to the FIU"
++# Reporting Frozen Assets
++expected_50_a = "When reporting frozen assets to the FIU, the following information must be included"
++
++QueryTest50 = RetrievalTest(
++    search_term=query50,
++    expected_strings=((FIU_SANCTIONS, expected_50_a),),
++)
++
++""" test 51 - TF typologies, a typology box read from picture text """
++query51 = "red flags for terrorist financing through online poker accounts"
++# Typology 8 - Use of Online Gambling to Transfer TF Funds
++expected_51_a = "with one deliberately losing high-value games to the other"
++
++QueryTest51 = RetrievalTest(
++    search_term=query51,
++    expected_strings=((FIU_TF, expected_51_a),),
++)
++
++""" test 52 - PF typologies, the stages diagram (transcribed from an image) """
++query52 = "what are the stages of proliferation financing"
++# Background - PF Stages
++expected_52_a = "Program fundraising: A proliferating country raises financial resources for in-country costs."
++
++QueryTest52 = RetrievalTest(
++    search_term=query52,
++    expected_strings=((FIU_PF, expected_52_a),),
++)
++
++""" test 53 - modern slavery typologies, the higher risk industries (transcribed from an image) """
++query53 = "which industries are higher risk for modern slavery and labour exploitation"
++# Higher risk industries
++expected_53_a = "Temporary Employment Agency Services"
++
++QueryTest53 = RetrievalTest(
++    search_term=query53,
++    expected_strings=((FIU_MS, expected_53_a),),
++)
++
++""" test 54 - environmental crime typologies, the sector boxes (transcribed from an image) """
++query54 = "why is the online gaming sector exposed to environmental crime"
++# Environmental Crime and the Isle of Man - sector boxes
++expected_54_a = (
++    "Previous identified links between gaming sector and transnational organised crime"
++)
++
++QueryTest54 = RetrievalTest(
++    search_term=query54,
++    expected_strings=((FIU_ENV, expected_54_a),),
++)
++
+ 
+ QUERY_TEST_DATA = [
+     QueryTest1,
+@@ -686,4 +771,11 @@ QUERY_TEST_DATA = [
+     QueryTest45,
+     QueryTest46,
+     QueryTest47,
++    QueryTest48,
++    QueryTest49,
++    QueryTest50,
++    QueryTest51,
++    QueryTest52,
++    QueryTest53,
++    QueryTest54,
+ ]

@@ -28,7 +28,7 @@ Every answer is built from the actual text of Isle of Man legislation and guidan
 
 ## What it covers right now
 
-Right now the tool only has limited material relating to AML/CFT and the Financial Services Act 2008. Thirty-six documents are loaded:
+Right now the tool only has limited material relating to AML/CFT and the Financial Services Act 2008. Forty-three documents are loaded:
 
 | Document | Hierarchy | Date | Tynwald | Made / issued under |
 |---|---|---|---|---|
@@ -68,6 +68,13 @@ Right now the tool only has limited material relating to AML/CFT and the Financi
 | Financial Services Rule Book 2016 - Consent and Information Summary Table | Guidance | August 2018 | No | Not stated* |
 | Financial Services Rule Book 2016 - Obligations to keep registers | Guidance | January 2017 | No | Not stated* |
 | Financial Services Rule Book 2016 - Rules relating to policies | Guidance | January 2017 | No | Not stated* |
+| FIU Guidance for Making Suspicious Activity Reports (and Other Disclosures) | Guidance | August 2026 | No | Not stated* |
+| FIU Consent Request Frequently Asked Questions | Guidance | January 2026 | No | Not stated* |
+| FIU Guidance: Financial Sanctions Reporting | Guidance | August 2026 | No | Not stated* |
+| FIU Terrorist Financing Typologies and Red Flags | Supplemental | May 2026 | No | Not stated* |
+| FIU Proliferation Financing Typologies and Red Flags | Supplemental | August 2026 | No | Not stated* |
+| FIU Human Trafficking and Modern Day Slavery Typologies and Red Flags | Supplemental | June 2026 | No | Not stated* |
+| FIU Environmental Crime Typologies and Red Flags | Supplemental | December 2025 | No | Not stated* |
 
 Dates for legislation are when it was enacted or made. The versions loaded are consolidated, so they include later amendments.
 
