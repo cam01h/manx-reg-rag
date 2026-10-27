@@ -1,6 +1,7 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from extraction_ops.toolbelts.defaults import (
     base_body_cleaner,
@@ -97,6 +98,9 @@ class ToolBelt:
     re_pack_splitters: ChunkSplitters
     use_ocr: bool = True
     use_layout: bool = True
+    # extra keyword arguments passed straight through to pymupdf4llm.to_markdown
+    # (e.g. page_separators, force_ocr, ocr_function). None keeps the defaults
+    md_options: Mapping[str, Any] | None = None
     pdf_handlers: list[Callable[[Path], None]] | None = None
     definition_tools: DefinitionTools | None = None
     clean_body: Callable[[str], str] = base_body_cleaner

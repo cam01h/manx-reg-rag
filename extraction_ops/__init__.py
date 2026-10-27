@@ -19,6 +19,13 @@ from extraction_ops.toolbelts.insurance import Insurance
 from extraction_ops.toolbelts.insurance_civ_pen_regs import InsuranceCivPenRegs
 from extraction_ops.toolbelts.insurance_regs import InsuranceRegs
 from extraction_ops.toolbelts.nb_governance.nb_governance import NbGovernance
+from extraction_ops.toolbelts.nra.banking_nra import BankingNra
+from extraction_ops.toolbelts.nra.lpa_nra import LpaNra
+from extraction_ops.toolbelts.nra.ml_nra import MlNra
+from extraction_ops.toolbelts.nra.pf_nra import PfNra
+from extraction_ops.toolbelts.nra.tcsp_nra import TcspNra
+from extraction_ops.toolbelts.nra.tf_nra import TfNra
+from extraction_ops.toolbelts.nra.vasp_nra import VaspNra
 from extraction_ops.toolbelts.outsourcing import Outsourcing
 from extraction_ops.toolbelts.poca_2008 import Poca
 from extraction_ops.toolbelts.rbook_guidance.rbook_guidance import RbookGuidance
@@ -75,6 +82,13 @@ ALL_TOOLBELTS: list[ToolBelt] = [
     InsuranceCivPenRegs,
     InsuranceRegs,
     Insurance,
+    MlNra,
+    TfNra,
+    PfNra,
+    BankingNra,
+    LpaNra,
+    TcspNra,
+    VaspNra,
 ]
 
 TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
@@ -119,4 +133,12 @@ TOOLBELT_REGISTRY: dict[str, ToolBelt] = {
     # Supervision
     "inspections_guidance": InspectionsGuidance,
     "cp_guidance": CpGuidance,
+    # National Risk Assessments
+    "ml_nra": MlNra,
+    "tf_nra": TfNra,
+    "pf_nra": PfNra,
+    "banking_nra": BankingNra,
+    "lpa_nra": LpaNra,
+    "tcsp_nra": TcspNra,
+    "vasp_nra": VaspNra,
 }

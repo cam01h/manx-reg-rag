@@ -8,7 +8,9 @@ from pydantic import TypeAdapter
 from config import setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
 
+from .chunks import Chunks
 from .clean_md import CleanMd
+from .coverage import Coverage
 from .definitions import Definitions
 from .handled_pdf import HandledPdf
 from .normalise_sections import NormSections
@@ -35,6 +37,8 @@ _STAGES = {
     "raw_sections": Sections,
     "headers": Headers,
     "norm_sections": NormSections,
+    "chunks": Chunks,
+    "coverage": Coverage,
     "def_segs": DefSegs,
     "definitions": Definitions,
     "variants": Variants,

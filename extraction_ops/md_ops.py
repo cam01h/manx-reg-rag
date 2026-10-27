@@ -1,7 +1,7 @@
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pymupdf4llm
 
@@ -10,7 +10,13 @@ from extraction_ops.models import CleanOutPut, ToolBelt
 logger = logging.getLogger(__name__)
 
 
-def pdf_to_md(pdf_path: Path, doc: str, use_ocr: bool, use_layout: bool) -> str:
+def pdf_to_md(
+    pdf_path: Path,
+    doc: str,
+    use_ocr: bool,
+    use_layout: bool,
+    md_options: Mapping[str, Any] | None = None,
+) -> str:
     logger.info("Loading [%s] to md", doc)
     try:
         if not use_layout:
@@ -23,6 +29,7 @@ def pdf_to_md(pdf_path: Path, doc: str, use_ocr: bool, use_layout: bool) -> str:
                 footer=False,
                 use_ocr=use_ocr,
                 ignor_images=not use_layout,
+                **(md_options or {}),
             ),
         )
     except Exception:
@@ -170,6 +177,12 @@ def process_lines(md_lines: list[str], tools: ToolBelt) -> CleanOutPut:
 
 
 def pdf_to_output(tools: ToolBelt) -> CleanOutPut:
-    md = pdf_to_md(tools.pdf_path, tools.document, tools.use_ocr, tools.use_layout)
+    md = pdf_to_md(
+        tools.pdf_path,
+        tools.document,
+        tools.use_ocr,
+        tools.use_layout,
+        tools.md_options,
+    )
     clean_md_lines = clean_md_to_lines(tools.clean_text, md)
     return process_lines(clean_md_lines, tools)

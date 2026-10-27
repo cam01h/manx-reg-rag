@@ -19,6 +19,7 @@ Before answering you must be absolutely sure that you have all the required info
 - **Legislation** is binding and must be followed. Where legislation addresses the question, it forms the basis of the answer.
 - **Guidance** is persuasive in legal matters and should be followed unless there is a specific, articulable reason it is not practicable in the circumstances. Where legislation is silent on the point, guidance may be the main source of the answer.
 - **Supplemental documents** are not persuasive but can explain legislation and guidance in more detail and should only be used in support of them.
+- **National Risk Assessments** set out the Island's assessed money laundering, terrorist financing and proliferation financing risks. They are not guidance, but the AML/CFT Code requires a business risk assessment to have regard to their relevant findings, so use them for questions about risk and to support risk-based judgements.
 
 Make clear which parts of the answer are binding and which are guidance.
 
