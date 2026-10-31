@@ -20,7 +20,7 @@ const sectorClear = document.getElementById("sector-clear");
 let history = [];
 let isQuerying = false;
 let pendingBlock = null;
-let pendingTimer = null;
+let pendingSource = null;
 
 const isMobile = window.matchMedia("(max-width: 768px)");
 
@@ -121,22 +121,24 @@ function startPending(prompt) {
     response.appendChild(pendingBlock);
     response.scrollTop = response.scrollHeight;
 
-    const started = Date.now();
-    const tick = () => {
-        const seconds = Math.floor((Date.now() - started) / 1000);
-        status.textContent = `Searching the legislation… ${seconds}s`;
+    status.textContent = "Searching the legislation…";
+
+    pendingSource = new EventSource("/sse-updates");
+    pendingSource.onmessage = (e) => {
+        status.textContent = JSON.parse(e.data);
     };
-    tick();
-    pendingTimer = setInterval(tick, 1000);
+
+
 }
 
 function stopPending() {
     isQuerying = false;
     sendButton.disabled = false;
     resetButton.disabled = false;
-
-    clearInterval(pendingTimer);
-    pendingTimer = null;
+    if (pendingSource) {
+        pendingSource.close();
+        pendingSource = null;
+    }
 
     if (pendingBlock) {
         pendingBlock.remove();

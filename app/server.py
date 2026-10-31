@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncIterable
 
@@ -88,9 +89,11 @@ async def get_sectors() -> dict[str, str]:
     return SECTOR_LABELS
 
 
-@app.get("sse-updates", response_class=EventSourceResponse)
+@app.get("/sse-updates", response_class=EventSourceResponse)
 async def stream_items() -> AsyncIterable[ServerSentEvent]:
-    yield ServerSentEvent(comment="hello")
+    for i in range(5):
+        yield ServerSentEvent(data=f"hello {i}")
+        await asyncio.sleep(1)
 
 
 app.mount("/", StaticFiles(directory="web", html=True), name="web")
