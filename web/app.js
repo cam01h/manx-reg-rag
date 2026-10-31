@@ -684,7 +684,11 @@ const SAMPLE_QUESTIONS = [
     {
         text: "What are the key proliferation typologies facing the TCSP sector?",
         sectors: ["class_4", "class_5"]
-    }
+    },
+    {
+        text: "What simplified measures could I use as an estate agent and under what circumstances?",
+        sectors: ["Estate agent"]
+    },
 ];
 
 // Plain-English names for the documents' legal standing, in reading order.
@@ -774,11 +778,11 @@ function renderWelcome() {
 
     welcome.append(
         element("p", "welcome-kicker", "Isle of Man · AML/CFT"),
-        element("h2", "", "Ask a question about Isle of Man AML/CFT rules"),
+        element("h2", "", "Ask a question about Manx financial services and designated businesses"),
         element("p", "welcome-intro",
-            "Answers come from the actual laws and guidance, not general knowledge, and every " +
-            "answer shows where in the documents it came from. If the documents don't cover " +
-            "your question, it will tell you rather than guess.")
+            "Answers come from actual Man legislation and guidance, not general knowledge, and every " +
+            "answer will include citations showing where the answers came from. If the documents don't cover " +
+            "your question, the agent will tell you rather than guess.")
     );
 
     if (documents && documents.length > 0) {
