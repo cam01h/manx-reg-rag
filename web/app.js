@@ -47,7 +47,9 @@ if (!sessionId) {
 /* 4. Rendering
    ========================================================================== */
 
-function renderConversation() {
+// scrollTop is where the conversation was scrolled to before the redraw.
+// Putting it back means a new answer lands without the page jumping.
+function renderConversation(scrollTop) {
     response.innerHTML = "";
     for (const turn of history) {
         const block = document.createElement("div");
@@ -92,7 +94,7 @@ function renderConversation() {
         block.append(...parts);
         response.appendChild(block);
     }
-    response.scrollTop = response.scrollHeight;
+    response.scrollTop = scrollTop ?? response.scrollHeight;
 }
 
 function renderCitations(items) {
@@ -430,9 +432,13 @@ form.addEventListener("submit", async (event) => {
         }
 
         const log = progressLog;
+        // Both of these have to be read now: stopPending removes the live
+        // block, which shortens the page and moves the scroll position.
+        const scrollTop = response.scrollTop;
+        const logWasOpen = pendingBox ? pendingBox.open : false;
         stopPending();
-        history.push({ prompt, answer: data.answer, log });
-        renderConversation();
+        history.push({ prompt, answer: data.answer, log, open: logWasOpen });
+        renderConversation(scrollTop);
         renderCitations(data.citations);
     } catch (err) {
         console.error("query failed:", err);
