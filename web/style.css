@@ -4,6 +4,7 @@
 :root {
     color-scheme: dark;
 
+    --crust: #11111b;
     --base: #1e1e2e;
     --mantle: #181825;
     --surface: #313244;
@@ -23,6 +24,18 @@
     --radius: 8px;
     --radius-sm: 6px;
     --gap: 1.5rem;
+
+    /* Depth. Shadows are tinted with Mocha's darkest colour rather than black,
+       built from a few soft layers, and always fall the same way (down).
+       Each step up is a little further from the page. */
+    --shadow-1: 0 1px 2px rgb(17 17 27 / 0.3), 0 2px 6px rgb(17 17 27 / 0.2);
+    --shadow-2: 0 1px 2px rgb(17 17 27 / 0.3), 0 3px 6px rgb(17 17 27 / 0.2),
+        0 8px 16px rgb(17 17 27 / 0.2);
+    --shadow-3: 0 2px 4px rgb(17 17 27 / 0.25), 0 8px 16px rgb(17 17 27 / 0.25),
+        0 24px 48px rgb(17 17 27 / 0.3);
+    --edge: rgb(205 214 244 / 0.07); /* the page's text colour at 7%: a faint rim */
+    --highlight: inset 0 1px 0 rgb(205 214 244 / 0.05); /* light catching a top edge */
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --breakpoint-mobile: 768px; /* reference only — media queries can't use vars */
 }
 
@@ -57,14 +70,44 @@ header {
     background: var(--mantle);
     padding: 1rem 2rem;
     border-bottom: 1px solid var(--surface);
+    box-shadow: var(--shadow-1);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    z-index: 2; /* so its shadow falls over the panels below */
+}
+
+/* a thin line of colour along the header's bottom edge */
+header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgb(137 180 250 / 0.35),
+        rgb(180 190 254 / 0.35),
+        transparent
+    );
+    pointer-events: none;
 }
 
 header h1 {
     margin: 0;
     color: var(--blue);
+}
+
+/* blue easing into lavender, where the browser can do text gradients */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+    header h1 {
+        background: linear-gradient(90deg, var(--blue), var(--lavender));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
 }
 
 main {
@@ -95,6 +138,23 @@ main {
     overflow-y: auto;
 }
 
+/* Both panels: lifted off the page by a shadow and a faint rim, with a hint
+   of light along the top. Slightly see-through so the background glow shows. */
+#left-panel,
+#right-panel {
+    background-color: var(--mantle);
+    background-image: linear-gradient(180deg, rgb(205 214 244 / 0.025), transparent 35%);
+    border: 1px solid var(--edge);
+    box-shadow: var(--shadow-2), var(--highlight);
+}
+
+@supports (background-color: color-mix(in srgb, red, blue)) {
+    #left-panel,
+    #right-panel {
+        background-color: color-mix(in srgb, var(--mantle) 80%, transparent);
+    }
+}
+
 /* Panel visibility is driven by one class on <body>, set in app.js.
    On desktop it hides the citations and lets the conversation widen.
    On mobile it swaps which single panel is shown — see section 8. */
@@ -107,6 +167,11 @@ body.citations-hidden #right-panel {
     min-height: 0;
     overflow-y: auto;
     font-size: 1rem;
+    /* text fades out at the top and bottom edges instead of being cut off;
+       the padding keeps the first and last lines clear of the fade */
+    padding-block: 0.75rem;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
 }
 
 
@@ -147,6 +212,42 @@ body.citations-hidden #right-panel {
     color: var(--peach);
 }
 
+.assistant-turn h1,
+.assistant-turn h2 {
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--edge);
+}
+
+.assistant-turn li::marker {
+    color: var(--peach);
+}
+
+.assistant-turn blockquote {
+    margin: 1rem 0;
+    padding: 0.1rem 1rem;
+    border-left: 3px solid var(--lavender);
+    color: var(--subtext1);
+}
+
+.assistant-turn code {
+    background: var(--base);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.9em;
+}
+
+.assistant-turn pre {
+    background: var(--base);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+}
+
+.assistant-turn pre code {
+    padding: 0;
+}
+
 .assistant-turn th,
 .assistant-turn td {
     border: 1px solid var(--surface);
@@ -158,6 +259,17 @@ body.citations-hidden #right-panel {
 .assistant-turn th {
     background: var(--surface);
     font-weight: 600;
+}
+
+/* every other row slightly lighter, and the row under the pointer */
+.assistant-turn tbody tr:nth-child(even) td {
+    background: rgb(205 214 244 / 0.03);
+}
+
+@media (hover: hover) {
+    .assistant-turn tbody tr:hover td {
+        background: rgb(205 214 244 / 0.06);
+    }
 }
 
 .assistant-turn table {
@@ -196,11 +308,13 @@ body.citations-hidden #right-panel {
     resize: none;
     overflow-y: auto;
     max-height: 8.5rem; /* ~5 lines */
+    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
 
 #prompt-input:focus {
     outline: none;
     border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgb(137 180 250 / 0.15);
 }
 
 
@@ -209,11 +323,26 @@ body.citations-hidden #right-panel {
 
 .citation-card {
     background: var(--base);
+    border: 1px solid var(--edge);
     border-left: 3px solid var(--blue);
     border-radius: 4px;
     padding: 0.75rem 1rem;
     margin-bottom: 0.75rem;
     font-size: 0.9rem;
+    box-shadow: var(--shadow-1), var(--highlight);
+    /* app.js sets --i (0, 1, 2 ...) so the cards appear one after another */
+    animation: rise 0.35s var(--ease) both;
+    animation-delay: calc(min(var(--i, 0), 8) * 60ms);
+    transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease),
+        border-left-color 0.2s var(--ease);
+}
+
+@media (hover: hover) {
+    .citation-card:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-2), var(--highlight);
+        border-left-color: var(--lavender);
+    }
 }
 
 .citation-id {
@@ -247,6 +376,9 @@ button {
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
+    box-shadow: var(--shadow-1);
+    transition: background-color 0.2s var(--ease), color 0.2s var(--ease),
+        transform 0.15s var(--ease), box-shadow 0.2s var(--ease), opacity 0.2s;
 }
 
 button:disabled {
@@ -270,6 +402,13 @@ button:disabled {
 @media (hover: hover) {
     button:hover {
         background: var(--text);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-2);
+    }
+
+    button:disabled:hover {
+        transform: none;
+        box-shadow: var(--shadow-1);
     }
 
     #reset-button:hover {
@@ -285,6 +424,7 @@ button:disabled {
 
 button:active {
     opacity: 0.7;
+    transform: translateY(0) scale(0.98);
 }
 
 
@@ -396,7 +536,16 @@ header {
     border: 1px solid var(--surface);
     border-radius: var(--radius);
     padding: 1rem;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+    box-shadow: var(--shadow-3);
+}
+
+/* frosted glass where the browser supports it; a plain panel where it doesn't */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .sector-panel {
+        background: color-mix(in srgb, var(--mantle) 88%, transparent);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+    }
 }
 
 .sector-hint {
@@ -431,6 +580,7 @@ header {
     border: 1px solid var(--surface);
     padding: 0.4rem 1rem;
     font-size: 0.85rem;
+    box-shadow: none;
 }
 
 @media (hover: hover) {
@@ -716,6 +866,39 @@ header {
     background: var(--teal);
 }
 
+/* what is inside a row: a search is a dim label then the term; a read is a
+   breadcrumb, document (bold) › first header › deeper headers (dim) */
+.log-label {
+    margin-right: 0.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--subtext);
+}
+
+.log-term {
+    color: var(--text);
+}
+
+.crumb-doc {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.crumb-sep {
+    margin: 0 0.4rem;
+    color: var(--overlay0);
+}
+
+.crumb-first {
+    font-weight: 600;
+    color: var(--subtext1);
+}
+
+.crumb-rest {
+    color: var(--subtext);
+}
+
 @keyframes progress-in {
     from {
         opacity: 0;
@@ -761,5 +944,285 @@ header {
         animation: none;
         background: none;
         color: var(--green);
+    }
+}
+
+
+/* 11. Motion
+   ========================================================================== */
+
+/* New things fade up a few pixels into place. */
+@keyframes rise {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+.turn.enter,
+.assistant-turn.enter {
+    animation: rise 0.35s var(--ease) both;
+}
+
+/* After picking a sample question: the Sectors button briefly rings, so it is
+   clear the selection just changed. */
+@keyframes sector-flash {
+    from {
+        box-shadow: 0 0 0 0 rgb(137 180 250 / 0.5);
+    }
+    to {
+        box-shadow: 0 0 0 0.6rem rgb(137 180 250 / 0);
+    }
+}
+
+#sector-picker.flash #sector-summary {
+    animation: sector-flash 1s var(--ease);
+}
+
+
+/* 12. Background glow
+   Three very faint patches of Mocha colour fixed behind everything. It only
+   moves while a question is being answered (app.js puts "querying" on <body>);
+   the rest of the time the animation is paused, which costs nothing. Only
+   transform is animated, never blur, so it stays cheap.
+   ========================================================================== */
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: -15%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(45vmax 35vmax at 12% 8%, rgb(137 180 250 / 0.07), rgb(137 180 250 / 0.04) 30%, rgb(137 180 250 / 0.015) 55%, transparent 75%),
+        radial-gradient(40vmax 35vmax at 92% 90%, rgb(180 190 254 / 0.06), rgb(180 190 254 / 0.035) 30%, rgb(180 190 254 / 0.012) 55%, transparent 75%),
+        radial-gradient(30vmax 25vmax at 85% 12%, rgb(116 199 236 / 0.04), rgb(116 199 236 / 0.02) 35%, transparent 75%);
+    animation: glow-drift 36s ease-in-out infinite alternate;
+    animation-play-state: paused;
+    will-change: transform;
+}
+
+body.querying::before {
+    animation-play-state: running;
+}
+
+@keyframes glow-drift {
+    to {
+        transform: translate3d(4%, 3%, 0) scale(1.04);
+    }
+}
+
+
+/* 13. Welcome screen
+   Drawn by app.js when the page is empty.
+   ========================================================================== */
+
+.welcome {
+    max-width: 44rem;
+    margin: 0 auto;
+    padding: 0.5rem 0 0.5rem;
+}
+
+/* each block fades up a moment after the one before */
+.welcome > * {
+    animation: rise 0.4s var(--ease) both;
+}
+
+.welcome > :nth-child(2) { animation-delay: 60ms; }
+.welcome > :nth-child(3) { animation-delay: 120ms; }
+.welcome > :nth-child(4) { animation-delay: 180ms; }
+.welcome > :nth-child(5) { animation-delay: 240ms; }
+.welcome > :nth-child(6) { animation-delay: 300ms; }
+
+.welcome h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.5rem;
+    line-height: 1.25;
+    color: var(--text);
+}
+
+.welcome-intro {
+    margin: 0 0 1.25rem;
+    color: var(--subtext1);
+}
+
+/* the "N documents loaded" box */
+.welcome-docs {
+    margin: 0 0 1rem;
+    background: var(--base);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-1), var(--highlight);
+}
+
+.welcome-docs summary {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 1rem;
+    color: var(--subtext1);
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+}
+
+.welcome-docs summary::-webkit-details-marker {
+    display: none;
+}
+
+.welcome-docs summary:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.welcome-docs summary::after {
+    content: "";
+    margin-left: auto;
+    flex-shrink: 0;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.25s var(--ease);
+}
+
+.welcome-docs[open] summary::after {
+    transform: translateY(-0.12rem) rotate(45deg);
+}
+
+.welcome-docs-count {
+    color: var(--text);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.welcome-docs-hint {
+    color: var(--subtext);
+}
+
+.welcome-docs-body {
+    max-height: 18rem;
+    overflow-y: auto;
+    padding: 0 1rem 0.75rem;
+}
+
+.welcome-docs-body h3,
+.welcome-try {
+    margin: 0.75rem 0 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sapphire);
+}
+
+.welcome-docs-body ul {
+    margin: 0 0 0.5rem;
+    padding-left: 1.1rem;
+    color: var(--subtext);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* "Focus on your business" */
+.welcome-tip {
+    margin: 0 0 1.25rem;
+    padding: 0.75rem 1rem;
+    background: var(--base);
+    border-left: 3px solid var(--sapphire);
+    border-radius: var(--radius-sm);
+    color: var(--subtext1);
+    font-size: 0.95rem;
+    box-shadow: var(--shadow-1);
+}
+
+.welcome-tip strong {
+    color: var(--text);
+}
+
+.welcome-tip em {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--blue);
+}
+
+.welcome-try {
+    margin: 0 0 0.6rem;
+}
+
+.welcome-samples {
+    display: grid;
+    gap: 0.6rem;
+}
+
+/* the sample question buttons: plain cards, not the blue action buttons */
+.sample {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background: var(--base);
+    color: var(--text);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    text-align: left;
+    font-weight: 500;
+    box-shadow: var(--shadow-1), var(--highlight);
+}
+
+.sample-note {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--subtext);
+}
+
+.sample:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+@media (hover: hover) {
+    .sample:hover {
+        background: var(--base);
+        border-color: var(--blue);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-2), var(--highlight);
+    }
+}
+
+@media (max-width: 768px) {
+    .welcome h2 {
+        font-size: 1.25rem;
+    }
+
+    .welcome-docs-body {
+        max-height: 45vh;
+    }
+}
+
+/* on a narrow phone the hint would wrap; the arrow already says "open me" */
+@media (max-width: 480px) {
+    .welcome-docs-hint {
+        display: none;
+    }
+}
+
+
+/* 14. Reduced motion
+   Anyone who has asked their device for less movement gets none of the above.
+   (Near-zero rather than zero, so things still end up in their final state.)
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
     }
 }

@@ -24,6 +24,8 @@ let pendingStatus = null;
 let pendingBox = null;
 let pendingLog = null;
 let progressLog = [];
+let documents = null;      // from GET /documents; null if it couldn't be loaded
+let sectorLabels = {};     // from GET /sectors: { class_1: "Class 1 – Deposit taking", ... }
 
 const isMobile = window.matchMedia("(max-width: 768px)");
 
@@ -60,6 +62,11 @@ function renderConversation() {
         const assistantTurn = document.createElement("div");
         assistantTurn.className = "assistant-turn";
         assistantTurn.innerHTML = marked.parse(turn.answer);
+        // every new answer redraws the whole conversation, so only the
+        // newest one gets the fade-in or the older ones would replay it too
+        if (turn === history[history.length - 1]) {
+            assistantTurn.classList.add("enter");
+        }
 
         assistantTurn.querySelectorAll("table").forEach((table) => {
             const wrap = document.createElement("div");
@@ -90,9 +97,10 @@ function renderConversation() {
 
 function renderCitations(items) {
     citations.innerHTML = "";
-    for (const citation of items) {
+    for (const [index, citation] of items.entries()) {
         const card = document.createElement("div");
         card.className = "citation-card";
+        card.style.setProperty("--i", index); // style.css staggers the fade-in by this
 
         const id = document.createElement("div");
         id.className = "citation-id";
@@ -124,11 +132,64 @@ function renderError(message) {
    style.css decides what each one looks like.
    ========================================================================== */
 
-// The server sends plain text lines, so the kind is read from how they start.
-function classifyProgress(text) {
-    if (text.startsWith("agent searching for")) return "search";
-    if (text.startsWith("reading")) return "read";
-    return "other";
+/* Tidying titles
+   The rule is: only touch text that is entirely in capitals, which is how some
+   headers come out of the documents ("PART 4 - CUSTOMER DUE DILIGENCE"). Those
+   become "Part 4 - Customer Due Diligence". Anything already in normal case,
+   like "The AML/CFT Code 2019", is left exactly as it is. */
+
+// kept in capitals even inside a tidied title
+const ACRONYMS = new Map(
+    ["AML", "CFT", "ML", "FT", "TF", "PF", "TCSP", "VASP", "PEP", "MLRO", "FIU", "CDD",
+     "EDD", "FATF", "BRA", "CRA", "SAR", "KYC", "NRA", "UK", "IOM", "FSA", "POCA", "ATCA",
+     "DBROA", "RAO", "SOF", "SOW", "EU", "UN"].map((word) => [word, word])
+);
+ACRONYMS.set("PEPS", "PEPs");
+
+// kept in lower case in the middle of a title
+const SMALL_WORDS = new Set(["a", "an", "and", "as", "at", "but", "by", "for", "from",
+                             "in", "of", "on", "or", "the", "to", "with"]);
+
+// Roman numerals up to 39 (PART II, SCHEDULE IV). Kept narrow on purpose so
+// that words like CIVIL or MIX are not mistaken for numerals.
+const ROMAN_NUMERAL = /^(I{1,3}|IV|VI{0,3}|IX|X{1,3})$/;
+
+function tidyTitle(text) {
+    const isAllCaps = /[A-Z]/.test(text) && text === text.toUpperCase();
+    if (!isAllCaps) return text;
+
+    let isFirstWord = true;
+    return text.replace(/[A-Za-z0-9][A-Za-z0-9']*/g, (word) => {
+        const atStart = isFirstWord;
+        isFirstWord = false;
+
+        if (/\d/.test(word)) return word; // 14, 3.8.13, FSA08 ...
+        const upper = word.toUpperCase();
+        if (ACRONYMS.has(upper)) return ACRONYMS.get(upper);
+        if (ROMAN_NUMERAL.test(upper)) return upper;
+
+        const lower = word.toLowerCase();
+        if (!atStart && SMALL_WORDS.has(lower)) return lower;
+        return lower[0].toUpperCase() + lower.slice(1);
+    });
+}
+
+// A "read" line arrives as a document plus one string of headers joined by
+// ", ". Returns the tidied headers as a list, outermost first.
+function headerTrail(entry) {
+    return entry.headers
+        .split(", ")
+        .map((header) => header.trim())
+        .filter(Boolean)
+        .map(tidyTitle);
+}
+
+// The single line shown in the pill while the agent works.
+function liveLabel(entry) {
+    if (entry.kind === "search") return `Searching: ${entry.term}`;
+    const [firstHeader] = headerTrail(entry);
+    const where = [tidyTitle(entry.document), firstHeader].filter(Boolean).join(" › ");
+    return `Reading: ${where}`;
 }
 
 function summariseLog(log) {
@@ -146,10 +207,29 @@ function finishedLabel(state, log) {
     return counts ? `${verb} · ${counts}` : verb;
 }
 
+function span(className, text) {
+    const element = document.createElement("span");
+    element.className = className;
+    element.textContent = text;
+    return element;
+}
+
+// One row of the expanded list. A search reads "Searching  <term>". A read is
+// a breadcrumb: document (bold) › first header › the deeper headers (dim).
 function appendLogItem(list, entry) {
     const item = document.createElement("li");
     item.className = entry.kind;
-    item.textContent = entry.text;
+
+    if (entry.kind === "search") {
+        item.append(span("log-label", "Searching"), span("log-term", entry.term));
+    } else {
+        item.append(span("crumb-doc", tidyTitle(entry.document)));
+        headerTrail(entry).forEach((header, index) => {
+            const separator = span("crumb-sep", "›");
+            separator.setAttribute("aria-hidden", "true");
+            item.append(separator, span(index === 0 ? "crumb-first" : "crumb-rest", header));
+        });
+    }
     list.appendChild(item);
 }
 
@@ -175,12 +255,12 @@ function buildProgressBox(state, label, log) {
     return { box, text, list };
 }
 
-// Called for each progress line: updates the visible line and the list,
+// Called for each progress event: updates the visible line and the list,
 // and keeps a copy so it can be saved with the answer.
-function addProgress(text) {
-    const entry = { kind: classifyProgress(text), text };
+// entry is { kind: "search", term } or { kind: "read", document, headers }.
+function addProgress(entry) {
     progressLog.push(entry);
-    if (pendingStatus) pendingStatus.textContent = text;
+    if (pendingStatus) pendingStatus.textContent = liveLabel(entry);
     if (pendingLog) {
         appendLogItem(pendingLog, entry);
         pendingLog.scrollTop = pendingLog.scrollHeight;
@@ -196,9 +276,13 @@ function startPending(prompt) {
     isQuerying = true;
     sendButton.disabled = true;
     resetButton.disabled = true;
+    // style.css moves the background glow only while this class is on
+    document.body.classList.add("querying");
+
+    clearWelcome();
 
     pendingBlock = document.createElement("div");
-    pendingBlock.className = "turn";
+    pendingBlock.className = "turn enter";
 
     const userTurn = document.createElement("div");
     userTurn.className = "user-turn";
@@ -220,6 +304,7 @@ function stopPending(keepBlock = false) {
     isQuerying = false;
     sendButton.disabled = false;
     resetButton.disabled = false;
+    document.body.classList.remove("querying");
 
     pendingStatus = null;
     pendingBox = null;
@@ -246,9 +331,10 @@ function failPending() {
 
 /* Reading the server's streamed reply
    /query sends a series of events, each a few lines of text like:
-       event: progress
-       data: "agent searching for: customer due diligence"
-   followed by a blank line. This reads the reply as it arrives and calls
+       event: search
+       data: {"term": "customer due diligence"}
+   followed by a blank line. The events are "search", "read", then "answer"
+   (or "error"). This reads the reply as it arrives and calls
    onEvent(name, payload) once per event, with the payload already decoded.
    (The browser's EventSource can't be used here because /query is a POST.)
    ========================================================================== */
@@ -329,8 +415,10 @@ form.addEventListener("submit", async (event) => {
 
         let data = null;
         await readEvents(reply, (name, payload) => {
-            if (name === "progress") {
-                addProgress(payload);
+            if (name === "search") {
+                addProgress({ kind: "search", term: payload.term });
+            } else if (name === "read") {
+                addProgress({ kind: "read", document: payload.document, headers: payload.headers });
             } else if (name === "answer") {
                 data = payload;
             } else if (name === "error") {
@@ -378,6 +466,7 @@ resetButton.addEventListener("click", async () => {
     citations.innerHTML = "";
     input.value = "";
     resetInputHeight();
+    renderWelcome();
 });
 
 // Server keeps history keyed by email; the page doesn't. Clear the server
@@ -460,6 +549,17 @@ function selectedSectors() {
     );
 }
 
+// Used by the sample questions: ticks exactly these sectors and unticks the rest.
+function setSelectedSectors(values) {
+    const boxes = sectorOptions.querySelectorAll("input[type='checkbox']");
+    if (boxes.length === 0) return; // the sector list didn't load; leave things alone
+    for (const box of boxes) {
+        box.checked = values.includes(box.value);
+    }
+    saveSectors(selectedSectors());
+    updateSectorSummary();
+}
+
 function updateSectorSummary() {
     const count = selectedSectors().length;
     sectorSummary.textContent = count === 0 ? "Sectors: all" : `Sectors: ${count} selected`;
@@ -473,6 +573,7 @@ async function loadSectors() {
             throw new Error(`server responded with status ${reply.status}`);
         }
         const labels = await reply.json();
+        sectorLabels = labels;
         const saved = new Set(loadSavedSectors());
 
         for (const [value, label] of Object.entries(labels)) {
@@ -526,4 +627,153 @@ document.addEventListener("keydown", (event) => {
     }
 });
 
-loadSectors();
+
+/* 10. Welcome screen
+   Shown when the page is empty (on load, and after Reset): what the tool is,
+   which documents it has, what the Sectors button does, and a few questions to
+   try. It disappears when the first question is sent.
+   ========================================================================== */
+
+// Each sample ticks its own sectors (or none) and fills the question box.
+const SAMPLE_QUESTIONS = [
+    {
+        text: "What's the difference between source of funds and source of wealth?",
+        sectors: []
+    },
+    {
+        text: "What are the governance requirements in the rule book for a bank?",
+        sectors: ["class_1"]
+    },
+    {
+        text: "What are the key proliferation typologies facing the TCSP sector?",
+        sectors: ["class_4", "class_5"]
+    }
+];
+
+// Plain-English names for the documents' legal standing, in reading order.
+const DOCUMENT_GROUPS = [
+    { hierarchy: "Primary legislation", title: "Acts of Tynwald" },
+    { hierarchy: "Secondary legislation", title: "Regulations, Orders and Codes" },
+    { hierarchy: "Guidance", title: "Guidance" },
+    { hierarchy: "Supplemental", title: "Supporting documents" }
+];
+
+async function loadDocuments() {
+    try {
+        const reply = await fetch("/documents");
+        if (!reply.ok) {
+            throw new Error(`server responded with status ${reply.status}`);
+        }
+        documents = await reply.json();
+    } catch (err) {
+        console.error("loading documents failed:", err);
+        documents = null; // the welcome screen just leaves the list out
+    }
+}
+
+function element(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+}
+
+function buildDocumentList() {
+    const box = element("details", "welcome-docs");
+    const summary = element("summary");
+    summary.append(
+        span("welcome-docs-count", `${documents.length} documents`),
+        span("welcome-docs-loaded", "loaded"),
+        span("welcome-docs-hint", "· see what's included")
+    );
+
+    const body = element("div", "welcome-docs-body");
+    const known = new Set(DOCUMENT_GROUPS.map((group) => group.hierarchy));
+    const groups = [...DOCUMENT_GROUPS];
+    for (const doc of documents) {
+        if (!known.has(doc.hierarchy)) {
+            known.add(doc.hierarchy);
+            groups.push({ hierarchy: doc.hierarchy, title: doc.hierarchy });
+        }
+    }
+    for (const group of groups) {
+        const names = documents.filter((doc) => doc.hierarchy === group.hierarchy);
+        if (names.length === 0) continue;
+        body.append(element("h3", "", `${group.title} (${names.length})`));
+        const list = element("ul");
+        for (const doc of names) {
+            list.append(element("li", "", doc.name));
+        }
+        body.append(list);
+    }
+
+    box.append(summary, body);
+    return box;
+}
+
+function sampleNote(sample) {
+    if (sample.sectors.length === 0) return "Searches everything";
+    return "Sectors: " + sample.sectors.map((key) => sectorLabels[key] || key).join(", ");
+}
+
+function useSample(sample) {
+    setSelectedSectors(sample.sectors);
+    input.value = sample.text;
+    input.dispatchEvent(new Event("input")); // grows the box to fit
+    input.focus();
+
+    // a brief highlight so it's clear the Sectors button just changed
+    sectorPicker.classList.remove("flash");
+    void sectorPicker.offsetWidth; // lets the animation restart if it is clicked twice
+    sectorPicker.classList.add("flash");
+}
+
+function renderWelcome() {
+    clearWelcome();
+    if (history.length > 0 || isQuerying) return;
+
+    const welcome = element("div", "welcome");
+    welcome.id = "welcome";
+
+    welcome.append(
+        element("h2", "", "Ask a question about Isle of Man AML/CFT rules"),
+        element("p", "welcome-intro",
+            "Answers come from the actual laws and guidance, not general knowledge, and every " +
+            "answer shows where in the documents it came from. If the documents don't cover " +
+            "your question, it will tell you rather than guess.")
+    );
+
+    if (documents && documents.length > 0) {
+        welcome.append(buildDocumentList());
+    }
+
+    const tip = element("div", "welcome-tip");
+    tip.append(
+        element("strong", "", "Focus on your business. "),
+        "Use ", element("em", "", "Sectors"),
+        " at the top right to say what kind of business you are, for example a bank or a trust " +
+        "company, and the answers will focus on the rules that apply to you. Leave it blank to " +
+        "search everything."
+    );
+    welcome.append(tip);
+
+    welcome.append(element("h3", "welcome-try", "Try one of these"));
+    const samples = element("div", "welcome-samples");
+    for (const sample of SAMPLE_QUESTIONS) {
+        const button = element("button", "sample");
+        button.type = "button";
+        button.append(span("sample-text", sample.text), span("sample-note", sampleNote(sample)));
+        button.addEventListener("click", () => useSample(sample));
+        samples.append(button);
+    }
+    welcome.append(samples);
+
+    response.prepend(welcome);
+}
+
+function clearWelcome() {
+    const welcome = document.getElementById("welcome");
+    if (welcome) welcome.remove();
+}
+
+Promise.all([loadSectors(), loadDocuments()]).then(renderWelcome);
