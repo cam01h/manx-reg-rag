@@ -736,6 +736,7 @@ function renderWelcome() {
     welcome.id = "welcome";
 
     welcome.append(
+        element("p", "welcome-kicker", "Isle of Man · AML/CFT"),
         element("h2", "", "Ask a question about Isle of Man AML/CFT rules"),
         element("p", "welcome-intro",
             "Answers come from the actual laws and guidance, not general knowledge, and every " +
@@ -762,7 +763,8 @@ function renderWelcome() {
     for (const sample of SAMPLE_QUESTIONS) {
         const button = element("button", "sample");
         button.type = "button";
-        button.append(span("sample-text", sample.text), span("sample-note", sampleNote(sample)));
+        const noteClass = sample.sectors.length > 0 ? "sample-note filtered" : "sample-note";
+        button.append(span("sample-text", sample.text), span(noteClass, sampleNote(sample)));
         button.addEventListener("click", () => useSample(sample));
         samples.append(button);
     }

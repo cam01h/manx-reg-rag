@@ -1226,3 +1226,522 @@ body.querying::before {
         transition-duration: 0.001ms !important;
     }
 }
+
+
+/* 15. Visual lift
+   Overrides earlier rules, so this whole section can be deleted to get the
+   calmer look back. Everything is still Mocha colours.
+   ========================================================================== */
+
+:root {
+    --radius: 14px;
+    --radius-sm: 10px;
+}
+
+/* The page: a faint dot grid under stronger patches of colour. */
+body {
+    background-color: var(--base);
+    background-image: radial-gradient(rgb(205 214 244 / 0.05) 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+
+::selection {
+    background: rgb(137 180 250 / 0.3);
+    color: var(--text);
+}
+
+body::before {
+    background:
+        radial-gradient(48vmax 38vmax at 10% 6%, rgb(137 180 250 / 0.16), rgb(137 180 250 / 0.08) 35%, rgb(137 180 250 / 0.025) 60%, transparent 78%),
+        radial-gradient(42vmax 36vmax at 94% 92%, rgb(180 190 254 / 0.13), rgb(180 190 254 / 0.065) 35%, rgb(180 190 254 / 0.02) 60%, transparent 78%),
+        radial-gradient(34vmax 28vmax at 88% 10%, rgb(116 199 236 / 0.09), rgb(116 199 236 / 0.035) 40%, transparent 78%),
+        radial-gradient(30vmax 26vmax at 6% 94%, rgb(148 226 213 / 0.07), rgb(148 226 213 / 0.025) 40%, transparent 78%);
+}
+
+
+/* Header: frosted bar, a real wordmark, a badge. The frosting is on a
+   pseudo-element so the Sectors dropdown can still blur the page itself. */
+
+header {
+    background: transparent;
+    padding-block: 0.85rem;
+}
+
+header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: rgb(24 24 37 / 0.78);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+
+header::after {
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgb(137 180 250 / 0.7),
+        rgb(116 199 236 / 0.6),
+        rgb(180 190 254 / 0.7),
+        transparent
+    );
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-width: 0;
+}
+
+.brand-mark {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 0.9rem;
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--crust);
+    background: linear-gradient(135deg, var(--teal), var(--sapphire) 40%, var(--blue) 70%, var(--lavender));
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.35),
+        0 6px 18px -2px rgb(137 180 250 / 0.45),
+        0 2px 4px rgb(17 17 27 / 0.4);
+    transform: rotate(-5deg);
+}
+
+.brand-text {
+    min-width: 0;
+    line-height: 1.1;
+}
+
+.brand-tag {
+    margin: 0.3rem 0 0;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--subtext);
+}
+
+header h1 {
+    font-size: 2.05rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+}
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+    header h1 {
+        background: linear-gradient(100deg, var(--teal) 0%, var(--sapphire) 35%, var(--blue) 65%, var(--lavender) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 2px 14px rgb(137 180 250 / 0.35));
+    }
+
+    body.querying header h1 {
+        background-image: linear-gradient(
+            100deg,
+            var(--teal) 0%,
+            var(--sapphire) 17%,
+            var(--blue) 33%,
+            var(--lavender) 50%,
+            var(--blue) 67%,
+            var(--sapphire) 83%,
+            var(--teal) 100%
+        );
+        background-size: 200% 100%;
+    }
+}
+
+/* While a question is being answered the title shimmers and the badge pulses. */
+body.querying header h1 {
+    animation: title-sweep 4s linear infinite;
+}
+
+body.querying .brand-mark {
+    animation: mark-pulse 1.8s ease-out infinite;
+}
+
+@keyframes title-sweep {
+    to {
+        background-position: -200% 0;
+    }
+}
+
+@keyframes mark-pulse {
+    0% {
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 6px 18px -2px rgb(137 180 250 / 0.45),
+            0 2px 4px rgb(17 17 27 / 0.4), 0 0 0 0 rgb(137 180 250 / 0.5);
+    }
+    100% {
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 6px 18px -2px rgb(137 180 250 / 0.45),
+            0 2px 4px rgb(17 17 27 / 0.4), 0 0 0 0.9rem rgb(137 180 250 / 0);
+    }
+}
+
+
+/* Panels: a gradient edge (bright at the top-left and bottom-right corners),
+   a glow in two corners, and a coloured shadow. */
+
+#left-panel,
+#right-panel {
+    border: 1px solid transparent;
+    background:
+        radial-gradient(70% 45% at 0% 0%, rgb(137 180 250 / 0.11), transparent 70%) padding-box,
+        radial-gradient(60% 40% at 100% 100%, rgb(180 190 254 / 0.08), transparent 70%) padding-box,
+        linear-gradient(var(--mantle), var(--mantle)) padding-box,
+        linear-gradient(
+            150deg,
+            rgb(137 180 250 / 0.5),
+            rgb(205 214 244 / 0.07) 28%,
+            rgb(205 214 244 / 0.04) 72%,
+            rgb(180 190 254 / 0.4)
+        ) border-box;
+    box-shadow: var(--shadow-2), 0 0 40px -12px rgb(137 180 250 / 0.18);
+}
+
+#right-panel h2 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--sapphire);
+}
+
+
+/* Conversation: a chat. Your question is a tinted bubble on the right, the
+   answer a soft card on the left. */
+
+.turn {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.user-turn {
+    align-self: flex-end;
+    max-width: min(85%, 34rem);
+    margin: 0 0 0.9rem;
+    padding: 0.7rem 1.05rem;
+    color: var(--text);
+    font-weight: 500;
+    background: linear-gradient(135deg, rgb(137 180 250 / 0.22), rgb(180 190 254 / 0.1));
+    border: 1px solid rgb(137 180 250 / 0.32);
+    border-radius: 18px 18px 4px 18px;
+    box-shadow: 0 6px 20px -6px rgb(137 180 250 / 0.3), var(--highlight);
+}
+
+.assistant-turn {
+    padding: 1rem 1.3rem;
+    background: linear-gradient(180deg, rgb(205 214 244 / 0.05), rgb(205 214 244 / 0.018));
+    border: 1px solid var(--edge);
+    border-radius: 18px 18px 18px 4px;
+    box-shadow: var(--shadow-1), var(--highlight);
+}
+
+.assistant-turn > :first-child {
+    margin-top: 0;
+}
+
+.assistant-turn > :last-child {
+    margin-bottom: 0;
+}
+
+/* headings get a peach bar instead of an underline */
+.assistant-turn h1,
+.assistant-turn h2 {
+    padding: 0.05rem 0 0.05rem 0.7rem;
+    border-bottom: none;
+    border-left: 3px solid var(--peach);
+}
+
+
+/* The progress pill: while running, a bright arc orbits its edge. */
+
+@property --angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes pill-orbit {
+    to {
+        --angle: 360deg;
+    }
+}
+
+.progress.running summary,
+.progress.running[open] summary {
+    border: 1.5px solid transparent;
+    background:
+        linear-gradient(var(--base), var(--base)) padding-box,
+        conic-gradient(
+            from var(--angle),
+            rgb(137 180 250 / 0.1) 0%,
+            rgb(166 227 161 / 0.95) 14%,
+            rgb(148 226 213 / 0.95) 24%,
+            rgb(116 199 236 / 0.95) 34%,
+            rgb(137 180 250 / 0.1) 50%,
+            rgb(137 180 250 / 0.1) 100%
+        ) border-box;
+    box-shadow: 0 6px 20px -8px rgb(148 226 213 / 0.5);
+    animation: pill-orbit 3.2s linear infinite;
+}
+
+.progress.running[open] summary {
+    background:
+        linear-gradient(var(--surface), var(--surface)) padding-box,
+        conic-gradient(
+            from var(--angle),
+            rgb(137 180 250 / 0.1) 0%,
+            rgb(166 227 161 / 0.95) 14%,
+            rgb(148 226 213 / 0.95) 24%,
+            rgb(116 199 236 / 0.95) 34%,
+            rgb(137 180 250 / 0.1) 50%,
+            rgb(137 180 250 / 0.1) 100%
+        ) border-box;
+}
+
+.progress.done summary {
+    border-color: rgb(166 227 161 / 0.28);
+    box-shadow: 0 4px 16px -8px rgb(166 227 161 / 0.45);
+}
+
+.progress.failed summary {
+    box-shadow: 0 4px 16px -8px rgb(243 139 168 / 0.5);
+}
+
+
+/* Citations */
+
+.citation-card {
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-sm);
+    padding-left: 1.15rem;
+    background:
+        linear-gradient(180deg, var(--blue), var(--lavender)) left / 3px 100% no-repeat,
+        var(--base);
+}
+
+@media (hover: hover) {
+    .citation-card:hover {
+        border-color: rgb(137 180 250 / 0.4);
+        box-shadow: 0 10px 28px -10px rgb(137 180 250 / 0.35), var(--highlight);
+    }
+}
+
+
+/* Input and buttons */
+
+#prompt-input {
+    border-radius: var(--radius);
+    background: rgb(30 30 46 / 0.85);
+    padding: 0.8rem 1.1rem;
+}
+
+#prompt-input:focus {
+    border-color: rgb(137 180 250 / 0.7);
+    box-shadow: 0 0 0 1px rgb(137 180 250 / 0.5), 0 0 28px -4px rgb(137 180 250 / 0.4);
+}
+
+#prompt-form button {
+    border-radius: var(--radius);
+}
+
+#prompt-form button[type="submit"] {
+    background: linear-gradient(135deg, var(--sapphire), var(--blue) 55%, var(--lavender));
+    color: var(--crust);
+    box-shadow: 0 8px 22px -6px rgb(137 180 250 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+
+@media (hover: hover) {
+    #prompt-form button[type="submit"]:hover {
+        background: linear-gradient(135deg, var(--sapphire), var(--blue) 55%, var(--lavender));
+        filter: brightness(1.08);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px -6px rgb(137 180 250 / 0.65), inset 0 1px 0 rgb(255 255 255 / 0.3);
+    }
+
+    #prompt-form button[type="submit"]:disabled:hover {
+        filter: none;
+        transform: none;
+    }
+}
+
+
+/* Welcome screen: a proper opening. */
+
+.welcome {
+    max-width: 46rem;
+    padding: 1.25rem 0 0.5rem;
+}
+
+.welcome > :nth-child(7) {
+    animation-delay: 360ms;
+}
+
+.welcome-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.9rem;
+    padding: 0.3rem 0.85rem 0.3rem 0.7rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--teal);
+    background: rgb(148 226 213 / 0.08);
+    border: 1px solid rgb(148 226 213 / 0.28);
+    border-radius: 999px;
+}
+
+.welcome-kicker::before {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--teal);
+    box-shadow: 0 0 10px var(--teal);
+}
+
+.welcome h2 {
+    font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+    margin-bottom: 0.8rem;
+}
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+    .welcome h2 {
+        background: linear-gradient(100deg, var(--text) 5%, var(--blue) 55%, var(--lavender) 95%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+}
+
+.welcome-intro {
+    font-size: 1.05rem;
+}
+
+.welcome-docs {
+    border-radius: var(--radius);
+}
+
+.welcome-tip {
+    background: linear-gradient(135deg, rgb(116 199 236 / 0.1), transparent 65%), var(--base);
+    border: 1px solid rgb(116 199 236 / 0.2);
+    border-left: 3px solid var(--sapphire);
+    border-radius: var(--radius);
+}
+
+/* sample questions: numbered cards, with an arrow that slides in on hover */
+.welcome-samples {
+    counter-reset: sample;
+}
+
+.sample {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: 0.95rem;
+    row-gap: 0.2rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: var(--radius);
+}
+
+.sample::before {
+    counter-increment: sample;
+    content: counter(sample);
+    grid-row: 1 / span 2;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.65rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--crust);
+    background: linear-gradient(135deg, var(--sapphire), var(--blue) 60%, var(--lavender));
+    box-shadow: 0 4px 12px -3px rgb(137 180 250 / 0.5);
+}
+
+.sample::after {
+    content: "→";
+    grid-row: 1 / span 2;
+    grid-column: 3;
+    color: var(--blue);
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.sample-text {
+    grid-column: 2;
+    align-self: end;
+}
+
+.sample-note {
+    grid-column: 2;
+    justify-self: start;
+    padding: 0.05rem 0.6rem;
+    font-size: 0.74rem;
+    color: var(--subtext1);
+    background: rgb(205 214 244 / 0.06);
+    border-radius: 999px;
+}
+
+.sample-note.filtered {
+    color: var(--teal);
+    background: rgb(148 226 213 / 0.1);
+}
+
+@media (hover: hover) {
+    .sample:hover {
+        border-color: rgb(137 180 250 / 0.55);
+        box-shadow: 0 12px 30px -10px rgb(137 180 250 / 0.4), var(--highlight);
+        transform: translateY(-2px);
+    }
+
+    .sample:hover::after {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 1.45rem;
+    }
+
+    .brand-mark {
+        width: 2.2rem;
+        height: 2.2rem;
+        font-size: 1.25rem;
+    }
+
+    .user-turn {
+        max-width: 92%;
+    }
+
+    .assistant-turn {
+        padding: 0.9rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .brand-tag {
+        display: none;
+    }
+}
