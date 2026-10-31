@@ -1778,3 +1778,83 @@ body.querying .brand-mark {
         animation: panel-in-left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
     }
 }
+
+
+/* 17. Sectors dropdown and citations panel
+   The dropdown fades and drops in, and fades back out (the JS adds .closing).
+   On desktop the citations panel now shrinks to nothing instead of vanishing,
+   and the conversation widens into the space. On a phone the panels still
+   swap, so section 16 covers that.
+   ========================================================================== */
+
+@keyframes sector-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+}
+
+@keyframes sector-out {
+    to {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+}
+
+#sector-picker[open] .sector-panel {
+    transform-origin: top right;
+    animation: sector-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#sector-picker.closing .sector-panel {
+    transform-origin: top right;
+    animation: sector-out 0.16s ease-in forwards;
+}
+
+@media (min-width: 769px) {
+    /* Stay in the layout when "hidden" so there is something to animate. */
+    #right-panel,
+    body.citations-hidden #right-panel {
+        display: block;
+    }
+
+    #right-panel {
+        overflow-x: hidden;
+        /* showing: the width opens first, then the content fades in */
+        transition:
+            flex-grow 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            padding 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            margin-left 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            border-width 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            transform 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            opacity 0.3s ease 0.15s,
+            visibility 0s;
+    }
+
+    /* keeps the cards from re-wrapping while the panel narrows */
+    #right-panel > * {
+        min-width: 10rem;
+    }
+
+    body.citations-hidden #right-panel {
+        flex-grow: 0;
+        padding-left: 0;
+        padding-right: 0;
+        margin-left: calc(var(--gap) * -1); /* cancels the gap between the panels */
+        border-width: 0;
+        opacity: 0;
+        transform: translateX(2rem);
+        visibility: hidden; /* once collapsed, no tabbing into it */
+        pointer-events: none;
+        /* hiding: it fades while it narrows, visibility switches at the end */
+        transition:
+            flex-grow 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            padding 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            margin-left 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            border-width 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            transform 0.5s cubic-bezier(0.65, 0, 0.35, 1),
+            opacity 0.45s ease-in,
+            visibility 0s linear 0.5s;
+    }
+}
+

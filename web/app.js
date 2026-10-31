@@ -395,7 +395,7 @@ form.addEventListener("submit", async (event) => {
 
     input.value = "";
     resetInputHeight();
-    sectorPicker.open = false;
+    closeSectorPicker();
     startPending(prompt);
 
     try {
@@ -613,16 +613,47 @@ sectorClear.addEventListener("click", () => {
     updateSectorSummary();
 });
 
+// A <details> element removes its content the instant `open` goes false, so
+// there is nothing left to animate. To fade the panel out we add a "closing"
+// class (the CSS plays the exit animation), wait for it to end, and only then
+// really close it. The timer is a safety net in case the animation never runs.
+function closeSectorPicker() {
+    if (!sectorPicker.open || sectorPicker.classList.contains("closing")) return;
+    sectorPicker.classList.add("closing");
+    const panel = sectorPicker.querySelector(".sector-panel");
+    const finish = () => {
+        if (!sectorPicker.classList.contains("closing")) return;
+        sectorPicker.open = false;
+        sectorPicker.classList.remove("closing");
+    };
+    panel.addEventListener(
+        "animationend",
+        (event) => {
+            if (event.target === panel) finish();
+        },
+        { once: true },
+    );
+    setTimeout(finish, 400);
+}
+
+// Clicking the button while it is open closes it the same way.
+sectorSummary.addEventListener("click", (event) => {
+    if (sectorPicker.open) {
+        event.preventDefault();
+        closeSectorPicker();
+    }
+});
+
 // Close the panel on a click anywhere else, or on Escape.
 document.addEventListener("click", (event) => {
     if (sectorPicker.open && !sectorPicker.contains(event.target)) {
-        sectorPicker.open = false;
+        closeSectorPicker();
     }
 });
 
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && sectorPicker.open) {
-        sectorPicker.open = false;
+        closeSectorPicker();
         sectorSummary.focus();
     }
 });
