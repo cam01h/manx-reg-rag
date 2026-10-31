@@ -780,7 +780,7 @@ function renderWelcome() {
         element("p", "welcome-kicker", "Isle of Man · AML/CFT"),
         element("h2", "", "Ask a question about Manx financial services and designated businesses"),
         element("p", "welcome-intro",
-            "Answers come from actual Man legislation and guidance, not general knowledge, and every " +
+            "Answers come from actual Manx legislation, regulations and guidance, not general knowledge, and every " +
             "answer will include citations showing where the answers came from. If the documents don't cover " +
             "your question, the agent will tell you rather than guess.")
     );
