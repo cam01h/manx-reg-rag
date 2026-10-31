@@ -1745,3 +1745,36 @@ body.querying .brand-mark {
         display: none;
     }
 }
+
+
+/* 16. Panel entrance
+   A panel slides in and fades up whenever it goes from hidden to shown. That
+   is what the Show citations button does, so the animation is on the panel,
+   not the button. The reduced-motion rule in section 14 switches it off.
+   ========================================================================== */
+
+@keyframes panel-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(1.5rem);
+    }
+}
+
+@keyframes panel-in-left {
+    from {
+        opacity: 0;
+        transform: translateX(-1.5rem);
+    }
+}
+
+#right-panel {
+    animation: panel-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* On a phone the button swaps one panel for the other, so the one coming back
+   from the left needs its own direction. */
+@media (max-width: 768px) {
+    #left-panel {
+        animation: panel-in-left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+}
