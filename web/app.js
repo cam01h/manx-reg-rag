@@ -20,7 +20,7 @@ const sectorClear = document.getElementById("sector-clear");
 let history = [];
 let isQuerying = false;
 let pendingBlock = null;
-let pendingSource = null;
+let pendingStatus = null;
 
 const isMobile = window.matchMedia("(max-width: 768px)");
 
@@ -98,10 +98,10 @@ function renderError(message) {
     response.scrollTop = response.scrollHeight;
 }
 
-/* Shows the question immediately with a live counter, so the wait reads as
-   the tool working rather than the page having died. Queries take roughly
-   40 seconds; without this people assume it's broken and send again, and
-   every resend is another full agent run. */
+/* Shows the question immediately, then the server's progress lines as they
+   arrive, so the wait reads as the tool working rather than the page having
+   died. Queries take roughly 40 seconds; without this people assume it's
+   broken and send again, and every resend is another full agent run. */
 function startPending(prompt) {
     isQuerying = true;
     sendButton.disabled = true;
@@ -122,27 +122,72 @@ function startPending(prompt) {
     response.scrollTop = response.scrollHeight;
 
     status.textContent = "Searching the legislation…";
-
-    pendingSource = new EventSource("/sse-updates");
-    pendingSource.onmessage = (e) => {
-        status.textContent = JSON.parse(e.data);
-    };
-
-
+    pendingStatus = status;
 }
 
 function stopPending() {
     isQuerying = false;
     sendButton.disabled = false;
     resetButton.disabled = false;
-    if (pendingSource) {
-        pendingSource.close();
-        pendingSource = null;
-    }
+
+    pendingStatus = null;
 
     if (pendingBlock) {
         pendingBlock.remove();
         pendingBlock = null;
+    }
+}
+
+
+/* Reading the server's streamed reply
+   /query sends a series of events, each a few lines of text like:
+       event: progress
+       data: "agent searching for: customer due diligence"
+   followed by a blank line. This reads the reply as it arrives and calls
+   onEvent(name, payload) once per event, with the payload already decoded.
+   (The browser's EventSource can't be used here because /query is a POST.)
+   ========================================================================== */
+
+function parseEvent(block) {
+    let name = "message";
+    const dataLines = [];
+    for (const line of block.split("\n")) {
+        if (line.startsWith("event:")) {
+            name = line.slice(6).trim();
+        } else if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).replace(/^ /, ""));
+        }
+        // anything else (comments starting with ":") is ignored
+    }
+    if (dataLines.length === 0) return null;
+    const text = dataLines.join("\n");
+    try {
+        return { name, payload: JSON.parse(text) };
+    } catch {
+        return { name, payload: text };
+    }
+}
+
+async function readEvents(reply, onEvent) {
+    const reader = reply.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            buffer = buffer.replace(/\r\n/g, "\n");
+
+            let end;
+            while ((end = buffer.indexOf("\n\n")) !== -1) {
+                const event = parseEvent(buffer.slice(0, end));
+                buffer = buffer.slice(end + 2);
+                if (event) onEvent(event.name, event.payload);
+            }
+        }
+    } finally {
+        reader.cancel().catch(() => {});
     }
 }
 
@@ -177,7 +222,19 @@ form.addEventListener("submit", async (event) => {
             throw new Error(`server responded with status ${reply.status}`);
         }
 
-        const data = await reply.json();
+        let data = null;
+        await readEvents(reply, (name, payload) => {
+            if (name === "progress" && pendingStatus) {
+                pendingStatus.textContent = payload;
+            } else if (name === "answer") {
+                data = payload;
+            } else if (name === "error") {
+                throw new Error(`server reported an error: ${payload}`);
+            }
+        });
+        if (!data) {
+            throw new Error("the reply ended without an answer");
+        }
 
         stopPending();
         history.push({ prompt, answer: data.answer });
