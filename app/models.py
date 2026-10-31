@@ -27,6 +27,11 @@ class AgentResponse(BaseModel):
     citations: list[Citation]
 
 
+class DocumentInfo(BaseModel):
+    name: str
+    hierarchy: str
+
+
 class ConversationStep(BaseModel):
     user_prompt: str
     agent_response: str

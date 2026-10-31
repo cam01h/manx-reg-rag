@@ -14,13 +14,14 @@ from pydantic_ai import (
 
 from app.deps import AppDeps
 from app.lifespan import lifespan
-from app.models import ConversationStep, UserPrompt
+from app.models import ConversationStep, DocumentInfo, UserPrompt
 from app.observabilty import configure_logfire
 from app.sessions import (
     CONVERSATIONS,
     build_prompt_with_sectors,
     to_message_history,
 )
+from app.sse import ReadProgress, SearchProgress
 from config import (
     setup_logging,
 )
@@ -73,7 +74,7 @@ async def query(user_prompt: UserPrompt, request: Request):
                     term = event.part.args_as_dict().get("query")
                     if term:
                         yield ServerSentEvent(
-                            event="progress", data=f"agent searching for: {term}"
+                            event="search", data=SearchProgress(term=term)
                         )
                 elif isinstance(event, FunctionToolResultEvent) and isinstance(
                     event.part, ToolReturnPart
@@ -84,7 +85,8 @@ async def query(user_prompt: UserPrompt, request: Request):
                     for chunk in chunks:
                         document, headers = chunk.title.split("\n", 1)
                         yield ServerSentEvent(
-                            event="progress", data=f"reading {headers} in {document}"
+                            event="read",
+                            data=ReadProgress(document=document, headers=headers),
                         )
                 elif isinstance(event, AgentRunResultEvent):
                     output = event.result.output
@@ -107,6 +109,11 @@ async def reset(user_prompt: UserPrompt, request: Request):
     n = len(CONVERSATIONS.pop(key, []))
     logger.info("conversation reset [%s] deleting %d interactions", key, n)
     return {"status": "ok"}
+
+
+@app.get("/documents")
+async def get_documents(request: Request) -> list[DocumentInfo]:
+    return request.app.state.documents
 
 
 @app.get("/sectors")
