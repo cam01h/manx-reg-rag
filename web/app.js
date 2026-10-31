@@ -687,7 +687,7 @@ const SAMPLE_QUESTIONS = [
     },
     {
         text: "What simplified measures could I use as an estate agent and under what circumstances?",
-        sectors: ["Estate agent"]
+        sectors: ["estate_agent"]
     },
 ];
 

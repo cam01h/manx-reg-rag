@@ -1858,3 +1858,69 @@ body.querying .brand-mark {
     }
 }
 
+
+
+/* 18. Bigger tap area on touch screens
+   The two header buttons are only about 33px tall, under the 44px that phone
+   guidelines recommend. This grows the area that responds to a tap, not the
+   buttons themselves, so the header keeps its height.
+   ========================================================================== */
+
+@media (pointer: coarse) {
+    #sector-summary,
+    #toggle-citations {
+        position: relative;
+    }
+
+    #sector-summary::after,
+    #toggle-citations::after {
+        content: "";
+        position: absolute;
+        inset: -6px 0; /* up and down only, so neighbouring buttons don't overlap */
+    }
+}
+
+
+/* Short screens, such as a phone on its side: every pixel of height counts,
+   so the header and the padding get tighter and the tagline goes. */
+@media (max-height: 520px) {
+    header {
+        padding-block: 0.4rem;
+    }
+
+    .brand-tag {
+        display: none;
+    }
+
+    header h1 {
+        font-size: 1.35rem;
+    }
+
+    .brand-mark {
+        width: 2.1rem;
+        height: 2.1rem;
+        font-size: 1.2rem;
+        border-radius: 0.7rem;
+    }
+
+    main {
+        padding: 0.6rem var(--gap);
+    }
+
+    #left-panel,
+    #right-panel {
+        padding: 0.75rem 1rem;
+    }
+
+    #left-panel {
+        gap: 0.6rem;
+    }
+
+    .welcome {
+        padding-top: 0;
+    }
+
+    .welcome-kicker {
+        display: none;
+    }
+}
