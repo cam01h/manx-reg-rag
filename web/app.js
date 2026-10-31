@@ -21,6 +21,9 @@ let history = [];
 let isQuerying = false;
 let pendingBlock = null;
 let pendingStatus = null;
+let pendingBox = null;
+let pendingLog = null;
+let progressLog = [];
 
 const isMobile = window.matchMedia("(max-width: 768px)");
 
@@ -65,7 +68,21 @@ function renderConversation() {
             wrap.appendChild(table);
         });
 
-        block.append(userTurn, assistantTurn);
+        // The agent's progress lines, kept from when the answer was streaming.
+        // Stays collapsed unless the person opened it (remembered across
+        // re-renders, since every new answer redraws the whole conversation).
+        const parts = [userTurn];
+        if (turn.log && turn.log.length > 0) {
+            const progress = buildProgressBox("done", finishedLabel("done", turn.log), turn.log);
+            progress.box.open = Boolean(turn.open);
+            progress.box.addEventListener("toggle", () => {
+                turn.open = progress.box.open;
+            });
+            parts.push(progress.box);
+        }
+        parts.push(assistantTurn);
+
+        block.append(...parts);
         response.appendChild(block);
     }
     response.scrollTop = response.scrollHeight;
@@ -98,6 +115,79 @@ function renderError(message) {
     response.scrollTop = response.scrollHeight;
 }
 
+/* Progress box
+   One expandable <details> element per question. Its <summary> is the one line
+   you always see; the list inside is every progress line the server sent.
+   While the agent works it shows the latest line. Once the answer lands it
+   becomes "Query complete · 3 searches, 12 sections read" and stays clickable.
+   The three states ("running", "done", "failed") are just a class on the box;
+   style.css decides what each one looks like.
+   ========================================================================== */
+
+// The server sends plain text lines, so the kind is read from how they start.
+function classifyProgress(text) {
+    if (text.startsWith("agent searching for")) return "search";
+    if (text.startsWith("reading")) return "read";
+    return "other";
+}
+
+function summariseLog(log) {
+    const searches = log.filter((entry) => entry.kind === "search").length;
+    const reads = log.filter((entry) => entry.kind === "read").length;
+    const parts = [];
+    if (searches > 0) parts.push(searches === 1 ? "1 search" : `${searches} searches`);
+    if (reads > 0) parts.push(reads === 1 ? "1 section read" : `${reads} sections read`);
+    return parts.join(", ");
+}
+
+function finishedLabel(state, log) {
+    const verb = state === "failed" ? "Query failed" : "Query complete";
+    const counts = summariseLog(log);
+    return counts ? `${verb} · ${counts}` : verb;
+}
+
+function appendLogItem(list, entry) {
+    const item = document.createElement("li");
+    item.className = entry.kind;
+    item.textContent = entry.text;
+    list.appendChild(item);
+}
+
+function buildProgressBox(state, label, log) {
+    const box = document.createElement("details");
+    box.className = `progress ${state}`;
+
+    const summary = document.createElement("summary");
+    const dot = document.createElement("span");
+    dot.className = "progress-dot";
+    const text = document.createElement("span");
+    text.className = "progress-label";
+    text.textContent = label;
+    summary.append(dot, text);
+
+    const list = document.createElement("ul");
+    list.className = "progress-log";
+    for (const entry of log) {
+        appendLogItem(list, entry);
+    }
+
+    box.append(summary, list);
+    return { box, text, list };
+}
+
+// Called for each progress line: updates the visible line and the list,
+// and keeps a copy so it can be saved with the answer.
+function addProgress(text) {
+    const entry = { kind: classifyProgress(text), text };
+    progressLog.push(entry);
+    if (pendingStatus) pendingStatus.textContent = text;
+    if (pendingLog) {
+        appendLogItem(pendingLog, entry);
+        pendingLog.scrollTop = pendingLog.scrollHeight;
+    }
+    response.scrollTop = response.scrollHeight;
+}
+
 /* Shows the question immediately, then the server's progress lines as they
    arrive, so the wait reads as the tool working rather than the page having
    died. Queries take roughly 40 seconds; without this people assume it's
@@ -114,27 +204,42 @@ function startPending(prompt) {
     userTurn.className = "user-turn";
     userTurn.textContent = prompt;
 
-    const status = document.createElement("div");
-    status.className = "pending";
+    progressLog = [];
+    const progress = buildProgressBox("running", "Searching the legislation…", []);
+    pendingBox = progress.box;
+    pendingStatus = progress.text;
+    pendingLog = progress.list;
 
-    pendingBlock.append(userTurn, status);
+    pendingBlock.append(userTurn, progress.box);
     response.appendChild(pendingBlock);
     response.scrollTop = response.scrollHeight;
-
-    status.textContent = "Searching the legislation…";
-    pendingStatus = status;
 }
 
-function stopPending() {
+// keepBlock: leave the question and progress box on the page (used on failure).
+function stopPending(keepBlock = false) {
     isQuerying = false;
     sendButton.disabled = false;
     resetButton.disabled = false;
 
     pendingStatus = null;
+    pendingBox = null;
+    pendingLog = null;
 
     if (pendingBlock) {
-        pendingBlock.remove();
+        if (!keepBlock) pendingBlock.remove();
         pendingBlock = null;
+    }
+}
+
+// On failure, keep the progress box if the agent got anywhere, so you can see
+// how far it got. With nothing to show, remove it as before.
+function failPending() {
+    if (pendingBox && progressLog.length > 0) {
+        pendingBox.classList.replace("running", "failed");
+        pendingStatus.textContent = finishedLabel("failed", progressLog);
+        stopPending(true);
+    } else {
+        stopPending();
     }
 }
 
@@ -224,8 +329,8 @@ form.addEventListener("submit", async (event) => {
 
         let data = null;
         await readEvents(reply, (name, payload) => {
-            if (name === "progress" && pendingStatus) {
-                pendingStatus.textContent = payload;
+            if (name === "progress") {
+                addProgress(payload);
             } else if (name === "answer") {
                 data = payload;
             } else if (name === "error") {
@@ -236,13 +341,14 @@ form.addEventListener("submit", async (event) => {
             throw new Error("the reply ended without an answer");
         }
 
+        const log = progressLog;
         stopPending();
-        history.push({ prompt, answer: data.answer });
+        history.push({ prompt, answer: data.answer, log });
         renderConversation();
         renderCitations(data.citations);
     } catch (err) {
         console.error("query failed:", err);
-        stopPending();
+        failPending();
         renderError(
             "That request didn't complete. The server may still be working on it — " +
             "wait a moment before sending again."

@@ -7,12 +7,17 @@
     --base: #1e1e2e;
     --mantle: #181825;
     --surface: #313244;
+    --surface1: #45475a;
+    --overlay0: #6c7086;
     --text: #cdd6f4;
+    --subtext1: #bac2de;
     --subtext: #a6adc8;
     --blue: #89b4fa;
+    --sapphire: #74c7ec;
+    --teal: #94e2d5;
     --green: #a6e3a1;
+    --peach: #fab387;
     --red: #f38ba8;
-    --mauve: #cba6f7;
     --lavender: #b4befe;
 
     --radius: 8px;
@@ -133,18 +138,13 @@ body.citations-hidden #right-panel {
 .assistant-turn h1,
 .assistant-turn h2,
 .assistant-turn h3 {
-    color: var(--mauve);
+    color: var(--peach);
     font-size: 1.05rem;
     margin: 1.25rem 0 0.5rem;
 }
 
 .assistant-turn strong {
-    color: var(--mauve);
-}
-
-.pending {
-    color: var(--green);
-    font-style: italic;
+    color: var(--peach);
 }
 
 .assistant-turn th,
@@ -475,5 +475,291 @@ header {
 
     .sector-panel {
         right: 1rem; /* the header's side padding on mobile */
+    }
+}
+
+
+/* 10. Progress box
+   One <details> per question, drawn by app.js between the question and the
+   answer. The class says which state it is in: running, done or failed.
+   Closed, it is a single pill; open, the list below is a timeline with a dot
+   per line the agent reported (blue = a search, teal = a section it read).
+   ========================================================================== */
+
+.progress {
+    margin: 0 0 1rem;
+    /* lets the list animate open to its natural height (Chrome and Edge;
+       other browsers just open it instantly) */
+    interpolate-size: allow-keywords;
+}
+
+.progress::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition: block-size 0.3s ease, content-visibility 0.3s ease allow-discrete;
+}
+
+.progress[open]::details-content {
+    block-size: auto;
+}
+
+/* The pill */
+.progress summary {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.4rem 0.9rem 0.4rem 0.75rem;
+    background: var(--base);
+    border: 1px solid var(--surface);
+    border-radius: 999px;
+    color: var(--subtext);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    list-style: none; /* hide the default disclosure triangle */
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.progress summary::-webkit-details-marker {
+    display: none; /* Safari's version of the triangle */
+}
+
+.progress summary:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Chevron: points right when closed, down when open */
+.progress summary::after {
+    content: "";
+    flex-shrink: 0;
+    width: 0.4rem;
+    height: 0.4rem;
+    margin-left: 0.1rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.25s ease;
+}
+
+.progress[open] summary {
+    background: var(--surface);
+}
+
+.progress[open] summary::after {
+    transform: translateY(-0.12rem) rotate(45deg);
+}
+
+.progress-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The status dot */
+.progress-dot {
+    position: relative;
+    flex-shrink: 0;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 50%;
+    background: var(--green);
+}
+
+/* Running: a pulsing dot, and colour sweeping across the live line */
+.progress.running summary {
+    border-color: color-mix(in srgb, var(--green) 35%, var(--surface));
+}
+
+.progress.running .progress-dot {
+    animation: progress-pulse 1.6s ease-out infinite;
+}
+
+.progress.running .progress-label {
+    background: linear-gradient(
+        90deg,
+        var(--green),
+        var(--teal),
+        var(--sapphire),
+        var(--teal),
+        var(--green)
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: progress-sweep 3s linear infinite;
+}
+
+@keyframes progress-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgb(166 227 161 / 0.55);
+    }
+    80%,
+    100% {
+        box-shadow: 0 0 0 0.6rem rgb(166 227 161 / 0);
+    }
+}
+
+@keyframes progress-sweep {
+    to {
+        background-position: 200% 0;
+    }
+}
+
+/* Done: solid green dot with a tick */
+.progress.done summary {
+    color: var(--subtext1);
+}
+
+.progress.done .progress-dot::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    width: 0.22rem;
+    height: 0.42rem;
+    border: solid var(--base);
+    border-width: 0 2px 2px 0;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* Failed: red, with a cross */
+.progress.failed summary {
+    border-color: color-mix(in srgb, var(--red) 45%, var(--surface));
+    color: var(--red);
+}
+
+.progress.failed .progress-dot {
+    background: var(--red);
+}
+
+.progress.failed .progress-dot::before,
+.progress.failed .progress-dot::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0.5rem;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--base);
+}
+
+.progress.failed .progress-dot::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.progress.failed .progress-dot::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* The expanded timeline */
+.progress-log {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0.25rem 0 0 2rem;
+    max-height: 14rem;
+    overflow-y: auto;
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+
+.progress-log li {
+    position: relative;
+    padding-bottom: 0.5rem;
+    overflow-wrap: anywhere;
+    color: var(--subtext);
+    animation: progress-in 0.35s ease both;
+}
+
+/* the dot, centred under the pill's own dot */
+.progress-log li::before {
+    content: "";
+    position: absolute;
+    left: calc(-1.1rem + 1px);
+    top: calc(0.7em - 0.25rem);
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--overlay0);
+}
+
+/* the rail joining this dot to the next one */
+.progress-log li::after {
+    content: "";
+    position: absolute;
+    left: -0.85rem;
+    top: calc(0.7em + 0.35rem);
+    bottom: calc(0.25rem - 0.7em);
+    width: 2px;
+    background: var(--surface1);
+}
+
+.progress-log li:last-child::after {
+    display: none;
+}
+
+.progress-log li.search {
+    color: var(--text);
+}
+
+.progress-log li.search::before {
+    background: var(--blue);
+}
+
+.progress-log li.read::before {
+    background: var(--teal);
+}
+
+@keyframes progress-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+@media (hover: hover) {
+    .progress summary:hover {
+        border-color: var(--blue);
+        color: var(--text);
+    }
+
+    .progress.failed summary:hover {
+        border-color: var(--red);
+    }
+}
+
+@media (max-width: 768px) {
+    .progress summary {
+        font-size: 0.85rem;
+    }
+
+    .progress-log {
+        max-height: 40vh;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .progress::details-content,
+    .progress summary,
+    .progress summary::after,
+    .progress-log li {
+        transition: none;
+        animation: none;
+    }
+
+    .progress.running .progress-dot {
+        animation: none;
+    }
+
+    .progress.running .progress-label {
+        animation: none;
+        background: none;
+        color: var(--green);
     }
 }
