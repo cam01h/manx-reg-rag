@@ -1,11 +1,16 @@
-import asyncio
 import logging
-from collections.abc import AsyncIterable
+from typing import cast
 
 import logfire
 from fastapi import FastAPI, Request
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.staticfiles import StaticFiles
+from pydantic_ai import (
+    AgentRunResultEvent,
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    ToolReturnPart,
+)
 
 from app.deps import AppDeps
 from app.lifespan import lifespan
@@ -20,6 +25,7 @@ from config import (
     setup_logging,
 )
 from core.sectors import SECTOR_LABELS
+from db_ops.models import ServedPayload
 
 setup_logging("app")
 configure_logfire()
@@ -42,7 +48,7 @@ def session_key(user_prompt: UserPrompt, request: Request) -> str:
     return request.headers.get(ACCESS_EMAIL_HEADER) or user_prompt.session_id
 
 
-@app.post("/query")
+@app.post("/query", response_class=EventSourceResponse)
 async def query(user_prompt: UserPrompt, request: Request):
     key = session_key(user_prompt, request)
     logger.info("query received [%s]: [%s]", key, user_prompt.prompt)
@@ -57,23 +63,42 @@ async def query(user_prompt: UserPrompt, request: Request):
     steps = CONVERSATIONS.get(key, [])
     prompt = build_prompt_with_sectors(user_prompt)
     try:
-        result = await agent.run(
+        async with agent.run_stream_events(
             prompt,
             message_history=to_message_history(steps),
             deps=deps,
-        )
+        ) as events:
+            async for event in events:
+                if isinstance(event, FunctionToolCallEvent):
+                    term = event.part.args_as_dict().get("query")
+                    if term:
+                        yield ServerSentEvent(
+                            event="progress", data=f"agent searching for: {term}"
+                        )
+                elif isinstance(event, FunctionToolResultEvent) and isinstance(
+                    event.part, ToolReturnPart
+                ):
+                    chunks = cast(tuple[list[ServedPayload], list], event.part.content)[
+                        0
+                    ]
+                    for chunk in chunks:
+                        document, headers = chunk.title.split("\n", 1)
+                        yield ServerSentEvent(
+                            event="progress", data=f"reading {headers} in {document}"
+                        )
+                elif isinstance(event, AgentRunResultEvent):
+                    output = event.result.output
+                    CONVERSATIONS[key] = steps + [
+                        ConversationStep(
+                            user_prompt=prompt, agent_response=output.answer
+                        )
+                    ]
+                    logger.info("query complete")
+                    logger.debug("model output: %s", output.model_dump_json())
+                    yield ServerSentEvent(event="answer", data=output)
     except Exception:
         logger.exception("agent.run failed during /query")
-        raise
-    CONVERSATIONS[key] = steps + [
-        ConversationStep(
-            user_prompt=prompt,
-            agent_response=result.output.answer,
-        )
-    ]
-    logger.info("query complete")
-    logger.debug("model output: %s", result.output.model_dump_json())
-    return result.output.model_dump()
+        yield ServerSentEvent(event="error", data="query failed")
 
 
 @app.post("/reset")
@@ -87,13 +112,6 @@ async def reset(user_prompt: UserPrompt, request: Request):
 @app.get("/sectors")
 async def get_sectors() -> dict[str, str]:
     return SECTOR_LABELS
-
-
-@app.get("/sse-updates", response_class=EventSourceResponse)
-async def stream_items() -> AsyncIterable[ServerSentEvent]:
-    for i in range(5):
-        yield ServerSentEvent(data=f"hello {i}")
-        await asyncio.sleep(1)
 
 
 app.mount("/", StaticFiles(directory="web", html=True), name="web")
