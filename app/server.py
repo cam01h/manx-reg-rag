@@ -1,7 +1,9 @@
 import logging
+from collections.abc import AsyncIterable
 
 import logfire
 from fastapi import FastAPI, Request
+from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.staticfiles import StaticFiles
 
 from app.deps import AppDeps
@@ -84,6 +86,11 @@ async def reset(user_prompt: UserPrompt, request: Request):
 @app.get("/sectors")
 async def get_sectors() -> dict[str, str]:
     return SECTOR_LABELS
+
+
+@app.get("sse-updates", response_class=EventSourceResponse)
+async def stream_items() -> AsyncIterable[ServerSentEvent]:
+    yield ServerSentEvent(comment="hello")
 
 
 app.mount("/", StaticFiles(directory="web", html=True), name="web")
