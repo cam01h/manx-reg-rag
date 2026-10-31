@@ -1,5 +1,5 @@
 from extraction_ops.models import SectionMarkers
-from extraction_ops.toolbelts.nra.nra_base import NRA_LANDING_PAGE, build_nra_toolbelt
+from extraction_ops.toolbelts.nra.nra_base import build_nra_toolbelt
 from extraction_ops.toolbelts.nra.nra_sectors import sectoral_chapter_sectors
 from extraction_ops.toolbelts.shared_funcs import starts_with
 
@@ -17,7 +17,7 @@ _Glossary = SectionMarkers(
 MlNra = build_nra_toolbelt(
     document="Money Laundering National Risk Assessment (March 2026)",
     short_name="ml_nra",
-    input_url=NRA_LANDING_PAGE,
+    input_url="https://counteringfinancialcrime.im/media/a2fnlfi0/money-laundering-nra-march26v3.pdf",
     trimmer=_Trimmer,
     # chapter 12 works through each sector in turn
     sectors=sectoral_chapter_sectors(r"ML Threat & Vulnerability at Sectoral Level"),
