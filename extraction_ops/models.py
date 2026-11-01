@@ -38,6 +38,7 @@ class Chunk:
     sectors: tuple[str, ...]
     headers: list[str]
     body: str
+    url: str
     terms_used: list[str] | None = None
 
 

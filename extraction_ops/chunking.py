@@ -159,6 +159,7 @@ def pack_chunk(tools: ToolBelt, section: CleanSection) -> Chunk:
         sectors=sectors,
         headers=headers,
         body=section.body,
+        url=tools.input_url,
     )
 
 
