@@ -777,7 +777,7 @@ function renderWelcome() {
     welcome.id = "welcome";
 
     welcome.append(
-        element("p", "welcome-kicker", "Isle of Man · AML/CFT"),
+        element("p", "welcome-kicker", "A solo developer, open source tool for proffesionals"),
         element("h2", "", "Ask a question about Manx financial services and designated businesses"),
         element("p", "welcome-intro",
             "Answers come from actual Manx legislation, regulations and guidance, not general knowledge, and every " +
