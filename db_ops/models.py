@@ -16,6 +16,7 @@ class Payload(BaseModel):
     sectors: tuple[str, ...]
     headers: list[str]
     body: str
+    url: str
     terms_used: list[str] | None = None
     score: float
     rank: int | None = None
@@ -23,6 +24,7 @@ class Payload(BaseModel):
 
 class ServedPayload(BaseModel):
     model_config = ConfigDict(frozen=True)
+    ref: str = ""
     title: str
     hierarchy: str
     body: str
