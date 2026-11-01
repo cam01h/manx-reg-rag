@@ -689,6 +689,22 @@ const SAMPLE_QUESTIONS = [
         text: "What simplified measures could I use as an estate agent and under what circumstances?",
         sectors: ["estate_agent"]
     },
+    {
+        text: "What tips would you give to a newly appointed financial adviser working at a stockbroking firm?",
+        sectors: ["class_2"]
+    },
+    {
+        text: "As an advocate, can I act as trustee without needing to register as a TSP?",
+        sectors: ["legal_professional"]
+    },
+    {
+        text: "What steps are required before we can pay out a life policy?",
+        sectors: ["insurer_life"]
+    },
+    {
+        text: "What internal documents need to be reviewed at board level in a non-life insurer?",
+        sectors: ["insurer_non_life"]
+    },
 ];
 
 // Plain-English names for the documents' legal standing, in reading order.
