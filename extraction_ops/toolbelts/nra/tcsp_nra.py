@@ -1,6 +1,6 @@
 from core.sectors import TCSP
 from extraction_ops.models import SectionMarkers
-from extraction_ops.toolbelts.nra.nra_base import NRA_LANDING_PAGE, build_nra_toolbelt
+from extraction_ops.toolbelts.nra.nra_base import build_nra_toolbelt
 from extraction_ops.toolbelts.shared_funcs import fixed_sectors, starts_with
 
 # the glossary is the last thing in the document, so its last term ends both
@@ -19,7 +19,7 @@ _Glossary = SectionMarkers(
 TcspNra = build_nra_toolbelt(
     document="Trust and Corporate Service Providers National Risk Assessment (March 2026)",
     short_name="tcsp_nra",
-    input_url=NRA_LANDING_PAGE,
+    input_url="https://counteringfinancialcrime.im/media/z0nnoehr/tcsps-nra.pdf",
     trimmer=_Trimmer,
     sectors=fixed_sectors(TCSP),
     glossary=_Glossary,

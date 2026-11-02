@@ -1,6 +1,6 @@
 from core.sectors import VASP
 from extraction_ops.models import SectionMarkers
-from extraction_ops.toolbelts.nra.nra_base import NRA_LANDING_PAGE, build_nra_toolbelt
+from extraction_ops.toolbelts.nra.nra_base import build_nra_toolbelt
 from extraction_ops.toolbelts.shared_funcs import fixed_sectors, starts_with
 
 # Endnotes (citations) end the document, after the abbreviations appendix
@@ -17,7 +17,7 @@ _Glossary = SectionMarkers(
 VaspNra = build_nra_toolbelt(
     document="Virtual Assets and Virtual Asset Service Providers National Risk Assessment (April 2026)",
     short_name="vasp_nra",
-    input_url=NRA_LANDING_PAGE,
+    input_url="https://counteringfinancialcrime.im/media/kieemgwm/vasps_nra-final2.pdf",
     trimmer=_Trimmer,
     sectors=fixed_sectors((VASP,)),
     glossary=_Glossary,

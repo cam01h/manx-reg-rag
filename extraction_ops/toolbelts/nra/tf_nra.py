@@ -1,5 +1,5 @@
 from extraction_ops.models import SectionMarkers
-from extraction_ops.toolbelts.nra.nra_base import NRA_LANDING_PAGE, build_nra_toolbelt
+from extraction_ops.toolbelts.nra.nra_base import build_nra_toolbelt
 from extraction_ops.toolbelts.nra.nra_sectors import sectoral_chapter_sectors
 from extraction_ops.toolbelts.shared_funcs import starts_with
 
@@ -19,7 +19,7 @@ _Glossary = SectionMarkers(
 TfNra = build_nra_toolbelt(
     document="Terrorist Financing National Risk Assessment (July 2025)",
     short_name="tf_nra",
-    input_url=NRA_LANDING_PAGE,
+    input_url="https://counteringfinancialcrime.im/media/nktj0030/iom-terrorist-financing-nra.pdf",
     trimmer=_Trimmer,
     # 6.3 works through each sector in turn
     sectors=sectoral_chapter_sectors(
