@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from core.sectors import ALL_SECTORS
 
@@ -18,13 +18,25 @@ class UserPrompt(BaseModel):
 
 
 class Citation(BaseModel):
-    chunk_id: str
+    ref: str = Field(description="The ref of a chunk you were shown, e.g. C001")
+    relevance: str
+
+
+class UiCitation(BaseModel):
+    document: str
+    headers: list[str]
+    url: str
     relevance: str
 
 
 class AgentResponse(BaseModel):
     answer: str
     citations: list[Citation]
+
+
+class UiResponse(BaseModel):
+    answer: str
+    citations: list[UiCitation]
 
 
 class DocumentInfo(BaseModel):
