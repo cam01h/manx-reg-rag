@@ -5,12 +5,14 @@ from extraction_ops.models import (
     SectionMarkers,
     ToolBelt,
 )
-from extraction_ops.toolbelts.shared_funcs import (
+from extraction_ops.toolbelts.defaults import (
     base_body_cleaner,
-    base_def_line,
     base_double_def_line,
     base_false_double_def,
     base_header_cleaner,
+)
+from extraction_ops.toolbelts.shared_funcs import (
+    base_def_line,
     base_text_cleaner,
     fixed_sectors,
     in_line,

@@ -2,6 +2,7 @@ from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
+    SectionMarkers,
     ToolBelt,
 )
 from extraction_ops.toolbelts.shared_funcs import (
@@ -9,6 +10,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     build_pdf_path,
     build_simple_markers,
     fixed_sectors,
+    in_line,
     replace_from_dict,
     replace_section,
     split_on_bracketed_amended_num,
@@ -69,8 +71,10 @@ _DefMarkersSchedule1A = build_simple_markers(
     '"Arrangement" includes', "- (b) any convention, custom"
 )
 
-_DefMarkersSchedule1 = build_simple_markers(
-    '- " **business relationship', "- (iii) proliferation or"
+# the end line is found part way through a line, not at its start
+_DefMarkersSchedule1 = SectionMarkers(
+    start=starts_with(['- " **business relationship']),
+    end=in_line(["- (iii) proliferation or"]),
 )
 
 _DefTools = DefinitionTools(

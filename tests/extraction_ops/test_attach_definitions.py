@@ -9,7 +9,9 @@ test_chunks_1 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="The Risk factors should be considered.",
         terms_used=[],
     )
@@ -26,7 +28,9 @@ expected_1 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="The Risk factors should be considered.",
         terms_used=["Risk Factors"],
     )
@@ -38,7 +42,9 @@ test_chunks_2 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="Any relevant Risk factor should be considered.",
         terms_used=[],
     )
@@ -57,7 +63,9 @@ expected_2 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="Any relevant Risk factor should be considered.",
         terms_used=["Risk Factors"],
     )
@@ -69,7 +77,9 @@ test_chunks_3 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="ID&V should be conducted on any beneficiaries",
         terms_used=[],
     )
@@ -93,7 +103,9 @@ expected_3 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="ID&V should be conducted on any beneficiaries",
         terms_used=["ID&V", "beneficiary"],
     )
@@ -105,7 +117,9 @@ test_chunks_4 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="MLROES is not a word and is overriden",
         terms_used=[],
     )
@@ -124,7 +138,9 @@ expected_4 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="MLROES is not a word and is overriden",
         terms_used=[],
     )
@@ -136,7 +152,9 @@ test_chunks_5 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="buying fresh PEPPERS from the shop",
         terms_used=[],
     )
@@ -155,7 +173,9 @@ expected_5 = [
         chunk_id="dummy_id",
         document="test",
         hierarchy="test",
+        sectors=(),
         headers=["test"],
+        url="https://example.im/test.pdf",
         body="buying fresh PEPPERS from the shop",
         terms_used=[],
     )

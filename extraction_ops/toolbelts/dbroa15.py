@@ -4,6 +4,7 @@ from core.sectors import DESIGNATED_BUSINESSES
 from extraction_ops.models import (
     ChunkSplitters,
     DefinitionTools,
+    SectionMarkers,
     ToolBelt,
 )
 from extraction_ops.toolbelts.custom_flatteners import flatten_dbroa_schedule_table
@@ -12,6 +13,7 @@ from extraction_ops.toolbelts.shared_funcs import (
     build_pdf_path,
     build_simple_markers,
     fixed_sectors,
+    in_line,
     rejoin_page_breaks,
     replace_from_dict,
     split_on_bracketed_letter,
@@ -52,12 +54,15 @@ _DbroaMarkers = build_simple_markers(
     "## **PART 1 - INTRODUCTORY**", "- (6) The factors set out"
 )
 
-_DbroaSec3DefMarkers = build_simple_markers(
-    '- " **applicant** "', "- (l) any legislation in any other country"
+# the end lines of these two are found part way through a line, not at its start
+_DbroaSec3DefMarkers = SectionMarkers(
+    start=starts_with(['- " **applicant** "']),
+    end=in_line(["- (l) any legislation in any other country"]),
 )
 
-_DbroaSchedule1DefMarkers = build_simple_markers(
-    '- " **estate agent**', "- (e) participation in"
+_DbroaSchedule1DefMarkers = SectionMarkers(
+    start=starts_with(['- " **estate agent**']),
+    end=in_line(["- (e) participation in"]),
 )
 
 _DbroaDefTools = DefinitionTools(

@@ -77,8 +77,10 @@ _PocaSec158P2Defs = build_simple_markers(
 
 _PocaSec222ADefs = build_simple_markers('- "FATF" means', '- "relevant international')
 
-_PocaSched4Defs = build_simple_markers(
-    '- the " **AML/CFT Code', "- (e) participation in"
+# the end line is found part way through a line, not at its start
+_PocaSched4Defs = SectionMarkers(
+    start=starts_with(['- the " **AML/CFT Code']),
+    end=in_line(["- (e) participation in"]),
 )
 
 POCA_DEF_MARKERS = [

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from extraction_ops import TOOLBELT_REGISTRY
 from extraction_ops.pdf_ops import get_pdf_from_url
-from tests.extraction_ops.diagnostics.retrieve_pdf import get_text_hash
+from tests.extraction_ops.diagnostics.utils import get_text_hash
 
 
 @pytest.mark.live
@@ -22,7 +22,7 @@ def test_document_url_and_hash(doc_key: str, tools):
     test_path.parent.mkdir(parents=True, exist_ok=True)
     get_pdf_from_url(tools.document, tools.input_url, test_path)
 
-    current_hash = get_text_hash(test_path)
+    current_hash = get_text_hash(test_path.read_bytes())
     golden_hash_path = Path(
         f"tests/extraction_ops/diagnostics/data/raw_pdf/{doc_key}_golden_hash.txt"
     )
