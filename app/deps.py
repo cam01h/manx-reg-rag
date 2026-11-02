@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
@@ -14,7 +14,7 @@ class AppDeps:
     sparse_model: SparseTextEmbedding
     reranker_model: TextCrossEncoder
     mode: str
-    served: dict[str, Payload]
+    served: dict[str, Payload] = field(default_factory=dict)
     sectors: tuple[str, ...] = ()
 
     def seen_ids(self) -> set[str]:

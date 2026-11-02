@@ -249,14 +249,15 @@ def _sparse_required(ctx: RunContext[AppDeps]) -> bool:
     return ctx.deps.mode in ("sparse", "hybrid")
 
 
-def repack_to_servable_chunk(chunks: list[Payload]) -> list[ServedPayload]:
+def repack_to_servable_chunk(batch: dict[str, Payload]) -> list[ServedPayload]:
     return [
         ServedPayload(
+            ref=ref,
             title=f"{c.document}\n{', '.join([h for h in c.headers if h])}",
             hierarchy=c.hierarchy,
             body=c.body,
         )
-        for c in chunks
+        for ref, c in batch.items()
     ]
 
 
@@ -281,19 +282,23 @@ def get_chunks_with_definitions(
             sparse_vector,
             ctx.deps.qdrant_client,
             mode=ctx.deps.mode,
-            seen=ctx.deps.seen_chunk_ids,
+            seen=ctx.deps.seen_ids(),
             sectors=ctx.deps.sectors,
         )
         chunks = return_payload(results)
     if USE_RERANKER:
         with logfire.span("rerank chunks"):
             chunks = rerank_chunks(query, chunks, ctx.deps.reranker_model)
-    if not ctx.deps.seen_chunk_ids:
+    if not ctx.deps.seen_ids():
         chunks = force_legislation_quota(chunks)
     chunks = normalise_ranks_and_trim(chunks)
-    ctx.deps.seen_chunk_ids.update(c.chunk_id for c in chunks)
+    batch: dict[str, Payload] = {}
+    for c in chunks:
+        ref = ctx.deps.next_ref()
+        ctx.deps.served[ref] = c
+        batch[ref] = c
     with logfire.span("attach denfinitions"):
         definitions_data = load_definitions()
         definitions = match_definitions(chunks, definitions_data)
-    chunks = repack_to_servable_chunk(chunks)
-    return chunks, sorted(definitions, key=lambda d: (d.document, d.term))
+    served = repack_to_servable_chunk(batch)
+    return served, sorted(definitions, key=lambda d: (d.document, d.term))
