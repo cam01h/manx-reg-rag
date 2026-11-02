@@ -1,6 +1,5 @@
 import re
 
-from config import PROJECT_ROOT
 from core.sectors import ALL_SECTORS
 from extraction_ops.models import (
     ChunkSplitters,
@@ -10,6 +9,7 @@ from extraction_ops.models import (
 )
 from extraction_ops.toolbelts.shared_funcs import (
     base_text_cleaner,
+    build_pdf_path,
     fixed_sectors,
     in_line,
     redact_md_tables,
@@ -201,7 +201,7 @@ AntiTerror = ToolBelt(
     hierarchy="primary legislation",
     sectors=fixed_sectors(ALL_SECTORS),
     input_url="https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2003/2003-0006/2003-0006_15.pdf",
-    pdf_path=PROJECT_ROOT / "data/raw/custom/anti_terror.pdf",
+    pdf_path=build_pdf_path("anti_terror"),
     trimmer=_Trimmer,
     header_matchers=[
         starts_with(["## **SCHEDULE"]),
