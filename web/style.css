@@ -345,14 +345,6 @@ body.citations-hidden #right-panel {
     }
 }
 
-.citation-id {
-    color: var(--subtext);
-    font-family: ui-monospace, monospace;
-    font-size: 0.8rem;
-    word-break: break-all;
-    margin-bottom: 0.5rem;
-}
-
 .citation-relevance {
     color: var(--text);
     line-height: 1.5;
@@ -1923,4 +1915,67 @@ body.querying .brand-mark {
     .welcome-kicker {
         display: none;
     }
+}
+
+
+/* 19. Citation links
+   A citation with a source is an <a>, so the whole card is clickable, tabbable
+   and opens in a new tab. One without is a plain <div> with the same look.
+   ========================================================================== */
+
+a.citation-card {
+    position: relative;
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* the arrow says "this leaves the page" */
+a.citation-card::after {
+    content: "↗";
+    position: absolute;
+    top: 0.65rem;
+    right: 0.9rem;
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--overlay0);
+    transition: color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+a.citation-card:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+a.citation-card:hover::after,
+a.citation-card:focus-visible::after {
+    color: var(--blue);
+    transform: translate(2px, -2px);
+}
+
+.citation-doc {
+    display: block;
+    padding-right: 1.6rem; /* keeps long names clear of the arrow */
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text);
+}
+
+.citation-trail {
+    margin: 0.25rem 0 0.6rem;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }

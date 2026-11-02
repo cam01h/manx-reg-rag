@@ -12,9 +12,10 @@ from pydantic_ai import (
     ToolReturnPart,
 )
 
+from app.citations import refs_in_text, resolve_citations
 from app.deps import AppDeps
 from app.lifespan import lifespan
-from app.models import ConversationStep, DocumentInfo, UserPrompt
+from app.models import ConversationStep, DocumentInfo, UiResponse, UserPrompt
 from app.observabilty import configure_logfire
 from app.sessions import (
     CONVERSATIONS,
@@ -95,9 +96,16 @@ async def query(user_prompt: UserPrompt, request: Request):
                             user_prompt=prompt, agent_response=output.answer
                         )
                     ]
+                    leaked = refs_in_text(output.answer, deps.served)
+                    if leaked:
+                        logger.warning("answer text mentions chunk refs %s", leaked)
+                    ui_response = UiResponse(
+                        answer=output.answer,
+                        citations=resolve_citations(output.citations, deps.served),
+                    )
                     logger.info("query complete")
                     logger.debug("model output: %s", output.model_dump_json())
-                    yield ServerSentEvent(event="answer", data=output)
+                    yield ServerSentEvent(event="answer", data=ui_response)
     except Exception:
         logger.exception("agent.run failed during /query")
         yield ServerSentEvent(event="error", data="query failed")

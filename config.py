@@ -32,6 +32,12 @@ DELETE_LEN = 40
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 
 # =========
+# Citations
+# =========
+# a citation whose chunk has no source URL links here instead
+FALLBACK_URL = "https://legislation.gov.im"
+
+# =========
 # DB ops
 # =========
 RETRIEVAL_MODE = "hybrid"  # "dense" | "sparse" | "hybrid"

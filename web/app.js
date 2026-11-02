@@ -97,22 +97,53 @@ function renderConversation(scrollTop) {
     response.scrollTop = scrollTop ?? response.scrollHeight;
 }
 
+// The server sends the link, but only https ones are made clickable here.
+// Anything else (or nothing) gives a plain card rather than a broken link.
+function safeUrl(value) {
+    try {
+        const url = new URL(value);
+        return url.protocol === "https:" ? url.href : null;
+    } catch {
+        return null;
+    }
+}
+
+// citation is { document, headers, url, relevance }. The document and headers
+// go through the same tidying as the progress log.
 function renderCitations(items) {
     citations.innerHTML = "";
     for (const [index, citation] of items.entries()) {
-        const card = document.createElement("div");
+        const href = safeUrl(citation.url);
+        const card = document.createElement(href ? "a" : "div");
         card.className = "citation-card";
         card.style.setProperty("--i", index); // style.css staggers the fade-in by this
+        if (href) {
+            card.href = href;
+            card.target = "_blank";
+            card.rel = "noopener noreferrer";
+        }
 
-        const id = document.createElement("div");
-        id.className = "citation-id";
-        id.textContent = citation.chunk_id;
+        const heading = span("citation-doc", tidyTitle(citation.document));
+
+        const trail = document.createElement("div");
+        trail.className = "citation-trail";
+        headerTrail(citation).forEach((header, i) => {
+            if (i > 0) {
+                const separator = span("crumb-sep", "›");
+                separator.setAttribute("aria-hidden", "true");
+                trail.append(separator);
+            }
+            trail.append(span(i === 0 ? "crumb-first" : "crumb-rest", header));
+        });
 
         const relevance = document.createElement("div");
         relevance.className = "citation-relevance";
         relevance.textContent = citation.relevance;
 
-        card.append(id, relevance);
+        card.append(heading);
+        if (trail.childElementCount > 0) card.append(trail);
+        card.append(relevance);
+        if (href) card.append(span("sr-only", " (opens the source document in a new tab)"));
         citations.appendChild(card);
     }
 }
@@ -177,10 +208,11 @@ function tidyTitle(text) {
 }
 
 // A "read" line arrives as a document plus one string of headers joined by
-// ", ". Returns the tidied headers as a list, outermost first.
+// ", ". A citation arrives with the headers already as a list. Returns the
+// tidied headers as a list, outermost first.
 function headerTrail(entry) {
-    return entry.headers
-        .split(", ")
+    const headers = Array.isArray(entry.headers) ? entry.headers : entry.headers.split(", ");
+    return headers
         .map((header) => header.trim())
         .filter(Boolean)
         .map(tidyTitle);
