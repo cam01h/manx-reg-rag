@@ -1,0 +1,28 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 5,
+      "chars_total": 4746,
+      "chars_max": 1484,
+      "chars_min": 415,
+      "chars_avg": 949.2
+    },
+    "entries": [
+      "Guidance on Rule 2.30 and Appendix 3 (Note 4) - Qualifying Subordinated Loans, STATUS OF GUIDANCE - 636f067b4ffdb7a6  #3a6b4f8e",
+      "Guidance on Rule 2.30 and Appendix 3 (Note 4) - Qualifying Subordinated Loans, Qualifying Subordinated Loans (\"QSL\") - 4925926828b004af  #222e9822",
+      "Guidance on Rule 2.30 and Appendix 3 (Note 4) - Qualifying Subordinated Loans, Background - 9c0bd98a6df23b89  #be456fc9",
+      "Guidance on Rule 2.30 and Appendix 3 (Note 4) - Qualifying Subordinated Loans, Background - 65420c31e59236cb  #4c331042",
+      "Guidance on Rule 2.30 and Appendix 3 (Note 4) - Qualifying Subordinated Loans, Proforma Subordinated Loan Agreement - c200955966733a6a  #0f2f3592"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 0,
+      "chars_total": 0,
+      "chars_max": 0,
+      "chars_min": 0,
+      "chars_avg": 0.0
+    },
+    "entries": []
+  }
+}

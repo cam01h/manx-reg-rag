@@ -11,6 +11,8 @@ PROJECT_ROOT = Path(__file__).parent
 # Intermediate
 CHUNKS_DIR = PROJECT_ROOT / "data/processed/chunks/"
 DEFINITIONS_DIR = PROJECT_ROOT / "data/processed/definitions/"
+# Golden stats describing the processed chunks and definitions
+GOLDEN_DIR = PROJECT_ROOT / "data/processed/golden/"
 # db path
 DB_PATH = PROJECT_ROOT / "data/qdrant"
 # Testing

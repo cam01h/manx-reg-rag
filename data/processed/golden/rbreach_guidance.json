@@ -1,0 +1,32 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 9,
+      "chars_total": 7464,
+      "chars_max": 1299,
+      "chars_min": 374,
+      "chars_avg": 829.3
+    },
+    "entries": [
+      "Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements, Status of guidance - 636f067b4ffdb7a6  #cb3316e6",
+      "Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements, Background - dded7e65d1be6df3  #7f0ec266",
+      "Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements, Recording a breach - ebbd5964e9f58e73  #d72dd7fa",
+      "Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements, Recording a breach - 3e91f3fce9103444  #e60b1ed4",
+      "Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements, What constitutes a \"material\" breach? - aef17369710192e3  #a073425e",
+      "Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements, Further consequences of a breach - 9a43a47f0f6b6941  #a98c290d",
+      "Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements, Actions to be taken following a breach, Breach identified by licenceholder - efcf02255d8d1298  #67dda5c7",
+      "Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements, Actions to be taken following a breach, Breach identified by the Authority - 2cf9c08c4e00da99  #ef82e391",
+      "Guidance Note - Rule 8.17 - Breaches of Regulatory Requirements, Examples of mitigating and aggravating factors - a646c3b23106a4b5  #4932f0c9"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 0,
+      "chars_total": 0,
+      "chars_max": 0,
+      "chars_min": 0,
+      "chars_avg": 0.0
+    },
+    "entries": []
+  }
+}

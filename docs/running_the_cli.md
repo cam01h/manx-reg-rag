@@ -82,7 +82,7 @@ The Cloudflare tunnel is only needed if you're publishing the app online. Withou
 Turns PDFs into chunk and definition files, one pair per document.
 
 ```bash
-mrr pd [--doc KEY] [--get-pdfs | --handle-pdfs | --ingest]
+mrr pd [--doc KEY] [--get-pdfs | --handle-pdfs | --ingest | --test-stats | --save-stats]
 ```
 
 | Flag            | What it does |
@@ -91,11 +91,17 @@ mrr pd [--doc KEY] [--get-pdfs | --handle-pdfs | --ingest]
 | `--get-pdfs`    | Download PDFs from each toolbelt's URL. |
 | `--handle-pdfs` | Apply each toolbelt's PDF handlers (page removal, redactions). |
 | `--ingest`      | Extract chunks and definitions and write them to `data/processed/`. |
-| *(no flag)*     | All three in order: get, handle, ingest. |
+| `--test-stats`  | Run the golden stats pytest (`tests/extraction_ops/test_jsonl_stats.py`): every document and the tests of the comparison itself, or just one document with `--doc`. Exits 1 on any failure. Needs pytest, which is a dev dependency, so on the server use `MRR_PYTHON=host`. |
+| `--save-stats`  | Write the golden stats from the processed files, for every document or just the `--doc` one. |
+| *(no flag)*     | All three in order: get, handle, ingest. Stats are never part of this. |
 
-**Document keys:** `code`, `handbook`, `supplemental`, `poca`, `fiu`, `tcivpen`, `antiterror`, `rao`, `terrorfr`, `dbroa`, `sanctions`.
+**Document keys:** run `mrr pd --help` for the full list.
 
 **Output:** `data/processed/chunks/<key>.jsonl` and `data/processed/definitions/<key>.jsonl`. Running with `--doc` only rewrites that document's two files. A document with no definitions gets an empty definitions file, so stale definitions can never hang around.
+
+**Golden stats:** `data/processed/golden/<key>.json` describes the processed files for one document, so an ingest that silently loses or changes chunks is caught. It holds, for chunks and for definitions, the count and the total, largest, smallest and average number of characters (chunks measure `body`, definitions measure `definition`), plus one entry per record in file order: the `chunk_id` (or the term) followed by a short hash of everything else in the record. The pytest `tests/extraction_ops/test_jsonl_stats.py` runs the same comparison for every document.
+
+After an intended change, run `mrr pd --ingest --doc KEY`, then `mrr pd --test-stats --doc KEY` and read what it reports. If that is what you meant, run `mrr pd --save-stats --doc KEY` and commit the golden file with the new processed files.
 
 **Watch out:**
 
@@ -108,6 +114,8 @@ mrr pd [--doc KEY] [--get-pdfs | --handle-pdfs | --ingest]
 mrr pd --ingest                       # re-ingest everything
 mrr pd --ingest --doc poca            # re-ingest just POCA
 mrr pd --handle-pdfs --doc handbook   # apply handlers to a freshly downloaded Handbook PDF
+mrr pd --test-stats                   # check every document against its golden stats
+mrr pd --save-stats --doc poca        # accept POCA's current output as the new golden
 ```
 
 ---

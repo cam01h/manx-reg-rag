@@ -1,0 +1,31 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 8,
+      "chars_total": 1829,
+      "chars_max": 482,
+      "chars_min": 142,
+      "chars_avg": 228.6
+    },
+    "entries": [
+      "Financial Services Rule Book 2016 - Obligations to keep registers, Financial Services Rule Book 2016 - Obligations to keep registers - d81f9b37aa5e31b4  #f5bd1436",
+      "Financial Services Rule Book 2016 - Obligations to keep registers, Financial Services Rule Book 2016 - Obligations to keep registers, Rule 8.10 - Conflicts of interest register - 3feffd93e3e77a4d  #bb5143c4",
+      "Financial Services Rule Book 2016 - Obligations to keep registers, Financial Services Rule Book 2016 - Obligations to keep registers, Rule 8.17(3) - Breaches of regulatory requirements - 0b613ce7b8725e9d  #fc05055e",
+      "Financial Services Rule Book 2016 - Obligations to keep registers, Financial Services Rule Book 2016 - Obligations to keep registers, Rule 8.32 - Complaints - 928659362aee768d  #e9698514",
+      "Financial Services Rule Book 2016 - Obligations to keep registers, Financial Services Rule Book 2016 - Obligations to keep registers, Rule 8.60(3) - Pricing errors (in relation to a collective investment scheme) - 728eec2340321f67  #cd2abdc7",
+      "Financial Services Rule Book 2016 - Obligations to keep registers, Financial Services Rule Book 2016 - Obligations to keep registers, Rule 9.21(5) - Conflicts of interest - 5bc938e048d84bc8  #6316f65e",
+      "Financial Services Rule Book 2016 - Obligations to keep registers, Financial Services Rule Book 2016 - Obligations to keep registers, Rule 9.22 - Complaints - 79dae1fc4abd29e0  #2cd34b52",
+      "Financial Services Rule Book 2016 - Obligations to keep registers, Financial Services Rule Book 2016 - Obligations to keep registers, Rule 9.25 - Breaches of regulatory requirements - c680977a1b112c6f  #bb99eac1"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 0,
+      "chars_total": 0,
+      "chars_max": 0,
+      "chars_min": 0,
+      "chars_avg": 0.0
+    },
+    "entries": []
+  }
+}

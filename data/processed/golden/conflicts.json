@@ -1,0 +1,34 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 11,
+      "chars_total": 5697,
+      "chars_max": 1119,
+      "chars_min": 124,
+      "chars_avg": 517.9
+    },
+    "entries": [
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, Introduction - 821e0ac305d8f405  #eef2fbb9",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, Benefits of a conflicts of interest policy - b19577e0090e852c  #26a83e9e",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, Scope of conflicts of interest policy - dc6257c031ae3528  #1381daa2",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, Segregation of duties - ef3bac760248743d  #3bc962fb",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, Internal reporting - c0dc9358e53e9c11  #d3c89bd4",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, Terms of business - b6609b29ab65f6e7  #5d2ee823",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, Own account dealing - 092d27dec5e0bbb9  #f7ae7735",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, Remuneration policy - 0a0e751fdd349951  #623f448b",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, Other legal requirements - a73c02928baafabc  #3b9dc44b",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, APPENDIX 1 - Suggested contents list for a simple conflicts of interest policy - 35ac086066a2b3d9  #63a3881c",
+      "Conflicts of Interest Policy - Guidance Note - Rule 8.9, APPENDIX 2 - Illustration - client to client conflicts - adbd1c4cb122b043  #9dc21de1"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 0,
+      "chars_total": 0,
+      "chars_max": 0,
+      "chars_min": 0,
+      "chars_avg": 0.0
+    },
+    "entries": []
+  }
+}

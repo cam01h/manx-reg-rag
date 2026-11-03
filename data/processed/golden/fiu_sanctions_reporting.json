@@ -1,0 +1,35 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 12,
+      "chars_total": 12541,
+      "chars_max": 1444,
+      "chars_min": 459,
+      "chars_avg": 1045.1
+    },
+    "entries": [
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Introduction - 85fa96596912d679  #cdbd5a95",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Financial Sanctions - c28c0abb5e464372  #31928340",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Financial Sanctions Reporting via Themis, Reporting Obligations under Sanctions Legislation - 068e64b975a98b21  #13cb979c",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Financial Sanctions Reporting via Themis, Reporting Obligations under Sanctions Legislation - 989089cc71df0c37  #e4263a80",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Financial Sanctions Reporting via Themis, Reporting via Themis - d412952b4aefda09  #8f97cb9c",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Financial Sanctions Breach Reporting: Suspected/Attempted/Actual - e19ef3389f9f83b0  #d783deac",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Financial Sanctions Breach Reporting: Suspected/Attempted/Actual - a071d477fc430a54  #ce27d09c",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Reporting Frozen Assets - fcdbc541bfe9b0ff  #80d9f1c4",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Reporting Frozen Assets - 967155dd62721601  #ea5a9ea1",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Reporting Related to Non-IOM/UK/UN Financial Sanctions - 9aa1f98ceec7af09  #264af2d0",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Reporting Related to Non-IOM/UK/UN Financial Sanctions - 415428f2b1056b65  #12a09109",
+      "FIU Guidance: Financial Sanctions Reporting (August 2026), Further Guidance and Contacts - b3a94d6328120e73  #89cc9147"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 0,
+      "chars_total": 0,
+      "chars_max": 0,
+      "chars_min": 0,
+      "chars_avg": 0.0
+    },
+    "entries": []
+  }
+}
