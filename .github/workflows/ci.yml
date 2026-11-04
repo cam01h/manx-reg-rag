@@ -1,0 +1,42 @@
+name: CI
+
+# Runs on every pull request and on pushes to main. Pushes to other branches do
+# nothing: open a (draft) pull request to get a branch checked.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# a new push cancels the still-running check for the previous one
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      # python version comes from .python-version, packages from uv.lock
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Formatting
+        run: uv run ruff format --check .
+
+      # the default run skips the live and qdrant tests (see pyproject.toml)
+      - name: Tests
+        run: uv run pytest

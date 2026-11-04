@@ -1,7 +1,7 @@
 import pytest
+
 from extraction_ops.definitions import attach_definitions
 from extraction_ops.models import Chunk, Definition
-
 
 """ <- TEST 1 -> """
 test_chunks_1 = [

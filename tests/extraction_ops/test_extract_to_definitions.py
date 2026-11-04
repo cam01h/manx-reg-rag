@@ -13,9 +13,9 @@ def base_false_double_def(segs: list[str]) -> bool:
 """
 
 import pytest
+
 from extraction_ops.definitions import extract_to_definitions
 from extraction_ops.models import Definition, ToolBelt
-
 
 input_1 = [
     '- **"thing"** means an item',

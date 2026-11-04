@@ -317,8 +317,10 @@ def _capital_row_lines(cells: list[str]) -> list[str]:
             )
         return lines
     return [
-        f"{lead}. Minimum share capital requirement (column 5): {share_capital}. "
-        f"Minimum net tangible asset requirement (column 6): {net_assets}."
+        (
+            f"{lead}. Minimum share capital requirement (column 5): {share_capital}. "
+            f"Minimum net tangible asset requirement (column 6): {net_assets}."
+        )
     ]
 
 

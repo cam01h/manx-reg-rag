@@ -12,6 +12,10 @@ wheels/
 data/qdrant/
 /.env
 /logs
-/tests/extraction_ops/diagnostics/data
+# diagnostics goldens stay local, except the source-pdf hashes the weekly live check compares against
+/tests/extraction_ops/diagnostics/data/*
+!/tests/extraction_ops/diagnostics/data/raw_pdf/
+/tests/extraction_ops/diagnostics/data/raw_pdf/*
+!/tests/extraction_ops/diagnostics/data/raw_pdf/*_golden_hash.txt
 /tests/db_ops/query_metrics/data
 /tests/app/agent_metrics/data

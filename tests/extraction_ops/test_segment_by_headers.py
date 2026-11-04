@@ -1,7 +1,7 @@
 import pytest
+
 from extraction_ops.chunking import segment_by_headers
 from extraction_ops.models import Section, ToolBelt
-
 
 unsegmented_1 = [
     "## header 1",

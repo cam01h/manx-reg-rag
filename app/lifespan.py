@@ -1,8 +1,11 @@
+import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import QdrantClient
+
 from app.documents import load_documents
 from app.startup_checks import run_startup_checks
 from config import (
@@ -12,7 +15,6 @@ from config import (
     RETRIEVAL_MODE,
     SPARSE_MODEL_NAME,
 )
-import logging
 
 logger = logging.getLogger(__name__)
 

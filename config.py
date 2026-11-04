@@ -70,7 +70,7 @@ SEND_TO_LOGFIRE = os.getenv("SEND_TO_LOGFIRE", "false").lower() == "true"
 
 
 def setup_logging(entry_point: str) -> None:
-    date = dt.datetime.today()
+    date = dt.datetime.now().astimezone()
     logfile = (
         PROJECT_ROOT
         / f"logs/{entry_point}-{date.year}-{date.month:02d}-{date.day:02d}.log"

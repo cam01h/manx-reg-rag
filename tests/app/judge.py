@@ -1,8 +1,10 @@
 import os
+
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.deepseek import DeepSeekProvider
+
 from tests.app.models import AnchorJudgement, GroundingJudgement
 
 load_dotenv()

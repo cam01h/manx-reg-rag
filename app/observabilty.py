@@ -1,5 +1,7 @@
 import logging
+
 import logfire
+
 from config import SEND_TO_LOGFIRE, SERVICE_NAME
 
 

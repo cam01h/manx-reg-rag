@@ -1,6 +1,5 @@
 import re
 
-
 BULLET = "\uf0b7"
 
 
