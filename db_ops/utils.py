@@ -7,6 +7,8 @@ from fastembed import SparseTextEmbedding, TextEmbedding
 from pydantic import TypeAdapter, ValidationError
 from qdrant_client import models
 
+from extraction_ops.models import Chunk
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +33,10 @@ def load_jsonl_dir(path: Path, model: type) -> list[Any]:
 
 def build_point_id(chunk_id: str) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_URL, chunk_id))
+
+
+def build_embedding_text(chunk: Chunk) -> str:
+    return f"{'\n'.join(h for h in chunk.headers if h)}\n{chunk.body}"
 
 
 def build_dense_vector(text: str, model: TextEmbedding) -> list[float]:

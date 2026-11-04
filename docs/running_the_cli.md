@@ -137,6 +137,20 @@ It starts Qdrant first if needed, and restarts the app at the end so it picks up
 
 The first full embed takes a while (possibly up to 20 minutes on a modest machine). Put the kettle on.
 
+**Checking the result:** the app refuses to start if Qdrant's point count does not match the chunks in `data/processed/chunks/`, or if the collection's vector settings are wrong, and tells you to run `mrr embed`. That is what you will see after a deploy that brought new chunks but no embed. For a deeper check, run the Qdrant tests on a machine that can reach Qdrant:
+
+```bash
+uv run pytest -m qdrant
+```
+
+The Qdrant tests check that every chunk has a point and every point a chunk, that every payload equals its chunk, and that the stored vectors still match a fresh embedding of five randomly chosen chunks (a changed model or a changed `build_embedding_text` is invisible to the incremental embed, so this is how you find out you need `--rebuild`). A failing vector check prints its seed; repeat the same sample with `VERIFY_SEED=<seed> uv run pytest -m qdrant -k vectors`. They skip themselves if Qdrant is not reachable.
+
+A missing `sectors` payload index only slows sector-filtered searches, so the app starts anyway and logs a warning. `mrr embed` only creates that index when it creates the collection. If you see the warning, add the index once:
+
+```bash
+uv run python -c "from qdrant_client import QdrantClient, models; QdrantClient(url='http://localhost:6333').create_payload_index('manx-reg-rag-db', 'sectors', models.PayloadSchemaType.KEYWORD)"
+```
+
 ---
 
 ## `mrr diag` — diagnostics

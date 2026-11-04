@@ -1,0 +1,1079 @@
+From 925e86e6b2ec729e5077cae7efd63beba3d67bd1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 3 Nov 2026 22:54:24 +0000
+Subject: [PATCH] Check Qdrant against the chunk jsonl: startup checks and
+ qdrant pytests
+
+db_ops/verify.py holds the checks (no models loaded, nothing exits): point
+counts (total, then per document on a mismatch), collection config, the
+sectors payload index, chunk id / point id sets, payload equality, and a
+vector freshness canary that re-embeds a random sample and compares it with
+what is stored. `mrr embed` only embeds ids it has not seen, so a changed
+model or build_embedding_text was previously invisible.
+
+The app now refuses to start when the point count or vector config does not
+match the chunk jsonl (and says to run mrr embed); a missing sectors index
+only warns. build_embedding_text moves to db_ops/utils.py so verify can share
+it without importing embed.py, which loads models at import.
+
+Tests: verify logic against an in-memory Qdrant with fake models, the
+startup check, and a `qdrant` marked file that checks the real collection
+(skipped by default and when Qdrant is unreachable; run with -m qdrant).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014fc5GybX3AmTTPdwTWEPdv
+---
+ app/lifespan.py                         |   2 +-
+ app/startup_checks.py                   |  37 +++-
+ db_ops/embed.py                         |   5 +-
+ db_ops/utils.py                         |   6 +
+ db_ops/verify.py                        | 277 ++++++++++++++++++++++++
+ docs/running_the_cli.md                 |  14 ++
+ pyproject.toml                          |   3 +-
+ tests/app/test_startup_checks.py        |  59 +++++
+ tests/db_ops/test_index_matches_data.py | 105 +++++++++
+ tests/db_ops/test_verify.py             | 255 ++++++++++++++++++++++
+ tests/db_ops/verify_helpers.py          | 133 ++++++++++++
+ 11 files changed, 888 insertions(+), 8 deletions(-)
+ create mode 100644 db_ops/verify.py
+ create mode 100644 tests/app/test_startup_checks.py
+ create mode 100644 tests/db_ops/test_index_matches_data.py
+ create mode 100644 tests/db_ops/test_verify.py
+ create mode 100644 tests/db_ops/verify_helpers.py
+
+diff --git a/app/lifespan.py b/app/lifespan.py
+index 1727978..289f5f2 100644
+--- a/app/lifespan.py
++++ b/app/lifespan.py
+@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
+     app.state.sparse_model = SparseTextEmbedding(SPARSE_MODEL_NAME)
+     app.state.reranker_model = TextCrossEncoder(model_name=RERANKING_MODEL_NAME)
+     app.state.mode = RETRIEVAL_MODE
+-    await run_startup_checks()
++    await run_startup_checks(app.state.dense_model.embedding_size)
+     app.state.documents = load_documents(app.state.qdrant_client)
+     yield
+     app.state.qdrant_client.close()
+diff --git a/app/startup_checks.py b/app/startup_checks.py
+index eb97757..848f1eb 100644
+--- a/app/startup_checks.py
++++ b/app/startup_checks.py
+@@ -1,16 +1,19 @@
+ import logging
++from pathlib import Path
+ 
+ from pydantic_ai.models import infer_model
+ from qdrant_client import QdrantClient
+ 
+ from config import (
++    CHUNKS_DIR,
+     COLLECTION,
+     DEFINITIONS_DIR,
+     MODEL,
+     QDRANT_URL,
+ )
+ from db_ops.utils import load_jsonl_dir
+-from extraction_ops.models import Definition
++from db_ops.verify import check_config, check_counts, check_indexes
++from extraction_ops.models import Chunk, Definition
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -47,6 +50,35 @@ async def check_definitions_file() -> None:
+     logger.info("definitions from %d documents reachable", len(definitions))
+ 
+ 
++async def check_index_matches_data(
++    dense_size: int,
++    client: QdrantClient | None = None,
++    chunk_dir: Path = CHUNKS_DIR,
++) -> None:
++    """Refuse to start when the collection and the chunk jsonl have drifted apart.
++
++    The usual cause is a deploy that pulled new jsonl without running `mrr embed`.
++    """
++    client = client or QdrantClient(url=QDRANT_URL)
++    chunks = load_jsonl_dir(chunk_dir, Chunk)
++    problems = check_counts(client, COLLECTION, chunks) + check_config(
++        client, COLLECTION, dense_size
++    )
++    if problems:
++        for problem in problems:
++            logger.critical("%s", problem)
++        logger.critical("qdrant does not match the chunk jsonl: run mrr embed")
++        raise RuntimeError(
++            f"collection [{COLLECTION}] does not match the chunk jsonl: run mrr embed"
++        )
++    # a missing index only slows sector-filtered searches, so it warns instead of stopping the app
++    for problem in check_indexes(client, COLLECTION):
++        logger.warning("%s (searches still work, they are just slower)", problem)
++    logger.info(
++        "collection [%s] matches the [%d] chunks in the jsonl", COLLECTION, len(chunks)
++    )
++
++
+ async def check_agent() -> None:
+     try:
+         infer_model(MODEL)
+@@ -56,9 +88,10 @@ async def check_agent() -> None:
+     logger.info("%s model constructed successfully", MODEL)
+ 
+ 
+-async def run_startup_checks() -> None:
++async def run_startup_checks(dense_size: int) -> None:
+     logger.info("running startup checks")
+     await check_qdrant()
++    await check_index_matches_data(dense_size)
+     await check_definitions_file()
+     await check_agent()
+     logger.info("all startup checks passed")
+diff --git a/db_ops/embed.py b/db_ops/embed.py
+index e50511b..838abc0 100644
+--- a/db_ops/embed.py
++++ b/db_ops/embed.py
+@@ -21,6 +21,7 @@ from extraction_ops.models import Chunk
+ 
+ from .utils import (
+     build_dense_vector,
++    build_embedding_text,
+     build_point_id,
+     build_sparse_vector,
+     load_jsonl_dir,
+@@ -50,10 +51,6 @@ def get_existing_point_ids(client: QdrantClient) -> set[str]:
+     return point_ids
+ 
+ 
+-def build_embedding_text(chunk: Chunk) -> str:
+-    return f"{'\n'.join(h for h in chunk.headers if h)}\n{chunk.body}"
+-
+-
+ def build_point(
+     chunk: Chunk,
+     dense_vec: list[float],
+diff --git a/db_ops/utils.py b/db_ops/utils.py
+index 16324ab..b08f8c1 100644
+--- a/db_ops/utils.py
++++ b/db_ops/utils.py
+@@ -7,6 +7,8 @@ from fastembed import SparseTextEmbedding, TextEmbedding
+ from pydantic import TypeAdapter, ValidationError
+ from qdrant_client import models
+ 
++from extraction_ops.models import Chunk
++
+ logger = logging.getLogger(__name__)
+ 
+ 
+@@ -33,6 +35,10 @@ def build_point_id(chunk_id: str) -> str:
+     return str(uuid.uuid5(uuid.NAMESPACE_URL, chunk_id))
+ 
+ 
++def build_embedding_text(chunk: Chunk) -> str:
++    return f"{'\n'.join(h for h in chunk.headers if h)}\n{chunk.body}"
++
++
+ def build_dense_vector(text: str, model: TextEmbedding) -> list[float]:
+     return next(iter(model.embed([text]))).tolist()
+ 
+diff --git a/db_ops/verify.py b/db_ops/verify.py
+new file mode 100644
+index 0000000..eb5117a
+--- /dev/null
++++ b/db_ops/verify.py
+@@ -0,0 +1,277 @@
++"""Checks that a Qdrant collection matches the chunk jsonl files.
++
++`mrr embed` only embeds chunk ids it has not seen, so nothing else notices when
++the collection and the jsonl drift apart (a half-finished embed, a deploy that
++pulled new jsonl but skipped the embed, a payload refresh that failed, a changed
++model or embedding text). Each check returns a list of problems, empty when all
++is well. None of them exit or raise, so the app's startup checks and the pytests
++can both use them. This module loads no models, so importing it is cheap.
++
++  check_counts    total points against total chunks; on a mismatch, per document
++  check_config    vector names, sizes, distance, sparse modifier
++  check_indexes   the payload index on sectors (only speeds up filtered searches)
++  check_ids       every chunk has a point and every point has a chunk
++  check_payloads  every point's payload equals its chunk
++  check_vectors   re-embeds a few random chunks and compares with what is stored
++"""
++
++import json
++import logging
++import random
++from collections import Counter
++from collections.abc import Iterator
++from dataclasses import asdict
++from typing import Any
++
++import numpy as np
++from qdrant_client import QdrantClient, models
++
++from config import DENSE_VECTOR_NAME, SPARSE_VECTOR_NAME
++from core.sectors import SECTORS_FIELD
++from extraction_ops.models import Chunk
++
++from .utils import (
++    build_dense_vector,
++    build_embedding_text,
++    build_point_id,
++    build_sparse_vector,
++)
++
++logger = logging.getLogger(__name__)
++
++SCROLL_BATCH = 1000
++SHOW_LIMIT = 5
++SAMPLE_SIZE = 5
++# cosine similarity between a stored vector and a fresh embedding of the same text
++MIN_SIMILARITY = 0.999
++# stored sparse weights are compared with a small relative tolerance
++SPARSE_RTOL = 1e-3
++
++
++def _all_points(
++    client: QdrantClient, collection: str, with_payload: bool = False
++) -> Iterator[models.Record]:
++    offset = None
++    while True:
++        records, offset = client.scroll(
++            collection_name=collection,
++            offset=offset,
++            limit=SCROLL_BATCH,
++            with_payload=with_payload,
++            with_vectors=False,
++        )
++        yield from records
++        if offset is None:
++            return
++
++
++def _expected_payload(chunk: Chunk) -> dict[str, Any]:
++    # the payload is stored as asdict(chunk) and comes back as json, so tuples are lists
++    return json.loads(json.dumps(asdict(chunk)))
++
++
++def _count_for_document(client: QdrantClient, collection: str, document: str) -> int:
++    return client.count(
++        collection_name=collection,
++        count_filter=models.Filter(
++            must=[
++                models.FieldCondition(
++                    key="document", match=models.MatchValue(value=document)
++                )
++            ]
++        ),
++        exact=True,
++    ).count
++
++
++def _list(heading: str, items: list[str], total: int | None = None) -> list[str]:
++    total = len(items) if total is None else total
++    lines = [f"{heading} [{total}], first {min(SHOW_LIMIT, len(items))}:"]
++    lines += [f"    {item}" for item in items[:SHOW_LIMIT]]
++    return lines
++
++
++def check_counts(
++    client: QdrantClient, collection: str, chunks: list[Chunk]
++) -> list[str]:
++    expected = len(chunks)
++    found = client.count(collection_name=collection, exact=True).count
++    if found == expected:
++        return []
++    problems = [
++        (
++            f"collection [{collection}] has [{found}] points but the chunk jsonl "
++            f"has [{expected}] chunks"
++        )
++    ]
++    accounted = 0
++    for document, wanted in sorted(Counter(c.document for c in chunks).items()):
++        got = _count_for_document(client, collection, document)
++        accounted += got
++        if got != wanted:
++            problems.append(f"    [{document}]: jsonl [{wanted}] | qdrant [{got}]")
++    if found > accounted:
++        problems.append(
++            f"    [{found - accounted}] points in qdrant belong to no document in the jsonl"
++        )
++    return problems
++
++
++def check_config(client: QdrantClient, collection: str, dense_size: int) -> list[str]:
++    info = client.get_collection(collection)
++    params = info.config.params
++    problems = []
++
++    vectors = params.vectors
++    dense = vectors.get(DENSE_VECTOR_NAME) if isinstance(vectors, dict) else None
++    if dense is None:
++        problems.append(f"no [{DENSE_VECTOR_NAME}] vector configured")
++    else:
++        if dense.size != dense_size:
++            problems.append(
++                f"[{DENSE_VECTOR_NAME}] vector size is [{dense.size}], "
++                f"the embedding model gives [{dense_size}]"
++            )
++        if dense.distance != models.Distance.COSINE:
++            problems.append(
++                f"[{DENSE_VECTOR_NAME}] distance is [{dense.distance}], expected cosine"
++            )
++
++    sparse = (params.sparse_vectors or {}).get(SPARSE_VECTOR_NAME)
++    if sparse is None:
++        problems.append(f"no [{SPARSE_VECTOR_NAME}] sparse vector configured")
++    elif sparse.modifier != models.Modifier.IDF:
++        problems.append(
++            f"[{SPARSE_VECTOR_NAME}] sparse modifier is [{sparse.modifier}], expected idf"
++        )
++
++    return problems
++
++
++def check_indexes(client: QdrantClient, collection: str) -> list[str]:
++    info = client.get_collection(collection)
++    index = (info.payload_schema or {}).get(SECTORS_FIELD)
++    if index is None:
++        return [f"no payload index on [{SECTORS_FIELD}]"]
++    if index.data_type != models.PayloadSchemaType.KEYWORD:
++        return [
++            f"payload index on [{SECTORS_FIELD}] is [{index.data_type}], expected keyword"
++        ]
++    return []
++
++
++def check_ids(client: QdrantClient, collection: str, chunks: list[Chunk]) -> list[str]:
++    expected = {build_point_id(c.chunk_id): c.chunk_id for c in chunks}
++    found = {str(record.id) for record in _all_points(client, collection)}
++    missing = [expected[i] for i in expected if i not in found]
++    extra = [i for i in found if i not in expected]
++
++    problems = []
++    if missing:
++        problems += _list("in the jsonl but not in qdrant (embed them)", missing)
++    if extra:
++        # name the extra points by chunk_id where their payload still has one
++        records = client.retrieve(
++            collection_name=collection,
++            ids=extra[:SHOW_LIMIT],
++            with_payload=["chunk_id"],
++            with_vectors=False,
++        )
++        names = {str(r.id): (r.payload or {}).get("chunk_id", "?") for r in records}
++        labels = [f"{names.get(i, '?')} (point {i})" for i in extra[:SHOW_LIMIT]]
++        problems += _list(
++            "in qdrant but not in the jsonl (stale)", labels, total=len(extra)
++        )
++    return problems
++
++
++def check_payloads(
++    client: QdrantClient, collection: str, chunks: list[Chunk]
++) -> list[str]:
++    expected = {build_point_id(c.chunk_id): _expected_payload(c) for c in chunks}
++    differing = []
++    for record in _all_points(client, collection, with_payload=True):
++        wanted = expected.get(str(record.id))
++        if wanted is None:
++            continue  # a stale point: check_ids reports it
++        actual = record.payload or {}
++        if actual != wanted:
++            fields = sorted(
++                k
++                for k in wanted.keys() | actual.keys()
++                if wanted.get(k) != actual.get(k)
++            )
++            differing.append(f"{wanted['chunk_id']} (differs in {', '.join(fields)})")
++    if not differing:
++        return []
++    return _list("payload differs from the jsonl", differing)
++
++
++def _cosine(a: list[float], b: list[float]) -> float:
++    x, y = np.asarray(a, dtype=float), np.asarray(b, dtype=float)
++    return float(x @ y / (np.linalg.norm(x) * np.linalg.norm(y)))
++
++
++def _sparse_matches(stored: models.SparseVector, fresh: models.SparseVector) -> bool:
++    a = dict(zip(stored.indices, stored.values))
++    b = dict(zip(fresh.indices, fresh.values))
++    if a.keys() != b.keys():
++        return False
++    return all(np.isclose(a[k], b[k], rtol=SPARSE_RTOL) for k in a)
++
++
++def check_vectors(
++    client: QdrantClient,
++    collection: str,
++    chunks: list[Chunk],
++    dense_model: Any,
++    sparse_model: Any,
++    sample_size: int = SAMPLE_SIZE,
++    seed: int | None = None,
++) -> tuple[list[str], int]:
++    """Re-embed a random sample and compare with the stored vectors.
++
++    Returns (problems, seed). Pass the seed back in to repeat the same sample.
++    This is a canary for a changed model or changed embedding text, which the
++    incremental embed would never notice because chunk ids do not change.
++    """
++    if seed is None:
++        seed = random.SystemRandom().randrange(2**32)
++    sample = random.Random(seed).sample(chunks, min(sample_size, len(chunks)))
++    records = client.retrieve(
++        collection_name=collection,
++        ids=[build_point_id(c.chunk_id) for c in sample],
++        with_payload=False,
++        with_vectors=True,
++    )
++    stored = {str(r.id): r.vector for r in records}
++
++    problems = []
++    for chunk in sample:
++        vectors = stored.get(build_point_id(chunk.chunk_id))
++        if not isinstance(vectors, dict):
++            problems.append(f"{chunk.chunk_id}: no vectors in qdrant")
++            continue
++        text = build_embedding_text(chunk)
++        similarity = _cosine(
++            vectors[DENSE_VECTOR_NAME], build_dense_vector(text, dense_model)
++        )
++        if similarity < MIN_SIMILARITY:
++            problems.append(
++                f"{chunk.chunk_id}: dense vector is stale (similarity {similarity:.4f})"
++            )
++        if not _sparse_matches(
++            vectors[SPARSE_VECTOR_NAME], build_sparse_vector(text, sparse_model)
++        ):
++            problems.append(f"{chunk.chunk_id}: sparse vector is stale")
++    if problems:
++        problems.insert(
++            0,
++            f"re-embedded [{len(sample)}] chunks with seed [{seed}] "
++            "(pass the same seed to repeat this sample)",
++        )
++        problems.append(
++            "the model or build_embedding_text changed since these were embedded: "
++            "run mrr embed --rebuild"
++        )
++    return problems, seed
+diff --git a/docs/running_the_cli.md b/docs/running_the_cli.md
+index db43fac..d62d339 100644
+--- a/docs/running_the_cli.md
++++ b/docs/running_the_cli.md
+@@ -137,6 +137,20 @@ It starts Qdrant first if needed, and restarts the app at the end so it picks up
+ 
+ The first full embed takes a while (possibly up to 20 minutes on a modest machine). Put the kettle on.
+ 
++**Checking the result:** the app refuses to start if Qdrant's point count does not match the chunks in `data/processed/chunks/`, or if the collection's vector settings are wrong, and tells you to run `mrr embed`. That is what you will see after a deploy that brought new chunks but no embed. For a deeper check, run the Qdrant tests on a machine that can reach Qdrant:
++
++```bash
++uv run pytest -m qdrant
++```
++
++The Qdrant tests check that every chunk has a point and every point a chunk, that every payload equals its chunk, and that the stored vectors still match a fresh embedding of five randomly chosen chunks (a changed model or a changed `build_embedding_text` is invisible to the incremental embed, so this is how you find out you need `--rebuild`). A failing vector check prints its seed; repeat the same sample with `VERIFY_SEED=<seed> uv run pytest -m qdrant -k vectors`. They skip themselves if Qdrant is not reachable.
++
++A missing `sectors` payload index only slows sector-filtered searches, so the app starts anyway and logs a warning. `mrr embed` only creates that index when it creates the collection. If you see the warning, add the index once:
++
++```bash
++uv run python -c "from qdrant_client import QdrantClient, models; QdrantClient(url='http://localhost:6333').create_payload_index('manx-reg-rag-db', 'sectors', models.PayloadSchemaType.KEYWORD)"
++```
++
+ ---
+ 
+ ## `mrr diag` — diagnostics
+diff --git a/pyproject.toml b/pyproject.toml
+index 300ae09..7ddf62f 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -25,9 +25,10 @@ dependencies = [
+ package = false
+ 
+ [tool.pytest.ini_options]
+-addopts = "-m 'not live'"
++addopts = "-m 'not live and not qdrant'"
+ markers = [
+   "live: marks tests that hit live external URLs (deselect with '-m \"not live\"')",
++  "qdrant: marks tests that check a running Qdrant against the chunk jsonl (run with '-m qdrant')",
+ ]
+ 
+ [dependency-groups]
+diff --git a/tests/app/test_startup_checks.py b/tests/app/test_startup_checks.py
+new file mode 100644
+index 0000000..a40c448
+--- /dev/null
++++ b/tests/app/test_startup_checks.py
+@@ -0,0 +1,59 @@
++import asyncio
++import json
++from dataclasses import asdict
++
++import pytest
++from qdrant_client import QdrantClient, models
++
++from app.startup_checks import check_index_matches_data
++from config import COLLECTION
++from db_ops.utils import build_point_id
++from tests.db_ops.verify_helpers import DIM, make_chunks, populate
++
++
++@pytest.fixture
++def chunk_dir(tmp_path):
++    directory = tmp_path / "chunks"
++    directory.mkdir()
++    chunks = make_chunks()
++    for document in {c.document for c in chunks}:
++        lines = [json.dumps(asdict(c)) for c in chunks if c.document == document]
++        (directory / f"{document}.jsonl").write_text("\n".join(lines) + "\n")
++    return directory
++
++
++@pytest.fixture
++def client():
++    client = QdrantClient(":memory:")
++    populate(client, COLLECTION, make_chunks())
++    return client
++
++
++def run_check(client, chunk_dir, dense_size=DIM):
++    asyncio.run(
++        check_index_matches_data(dense_size, client=client, chunk_dir=chunk_dir)
++    )
++
++
++def test_a_matching_collection_starts_and_a_missing_index_only_warns(
++    client, chunk_dir, caplog
++):
++    # the in-memory client never has a payload index, which makes it a handy "missing index"
++    run_check(client, chunk_dir)
++    assert "no payload index on" in caplog.text
++
++
++def test_a_missing_point_stops_startup_and_says_to_embed(client, chunk_dir, caplog):
++    chunk = make_chunks()[0]
++    client.delete(
++        COLLECTION, models.PointIdsList(points=[build_point_id(chunk.chunk_id)])
++    )
++    with pytest.raises(RuntimeError, match="run mrr embed"):
++        run_check(client, chunk_dir)
++    assert "[Doc A]: jsonl [4] | qdrant [3]" in caplog.text
++
++
++def test_a_config_mismatch_stops_startup(client, chunk_dir):
++    # the collection holds 8-wide dense vectors, the model says 1024
++    with pytest.raises(RuntimeError, match="run mrr embed"):
++        run_check(client, chunk_dir, dense_size=1024)
+diff --git a/tests/db_ops/test_index_matches_data.py b/tests/db_ops/test_index_matches_data.py
+new file mode 100644
+index 0000000..669180d
+--- /dev/null
++++ b/tests/db_ops/test_index_matches_data.py
+@@ -0,0 +1,105 @@
++"""Checks the real Qdrant collection against the chunk jsonl in data/processed/.
++
++These need a running Qdrant with the collection embedded, so they are marked
++`qdrant` and skipped by default. Run them after an embed, on the machine whose
++Qdrant you want to check:
++
++    pytest -m qdrant                       # all of them
++    VERIFY_SEED=123 pytest -m qdrant -k vectors   # repeat a vector sample
++
++They skip themselves when Qdrant is unreachable or the collection does not exist.
++The logic lives in db_ops/verify.py, which is tested without a server in
++test_verify.py.
++"""
++
++import os
++
++import pytest
++from fastembed import SparseTextEmbedding, TextEmbedding
++from qdrant_client import QdrantClient
++
++from config import (
++    CHUNKS_DIR,
++    COLLECTION,
++    DENSE_MODEL_NAME,
++    QDRANT_URL,
++    SPARSE_MODEL_NAME,
++)
++from db_ops.utils import load_jsonl_dir
++from db_ops.verify import (
++    check_config,
++    check_counts,
++    check_ids,
++    check_indexes,
++    check_payloads,
++    check_vectors,
++)
++from extraction_ops.models import Chunk
++
++pytestmark = pytest.mark.qdrant
++
++EMBED_HINT = "run mrr embed"
++
++
++def fail_if(problems: list[str], hint: str) -> None:
++    if problems:
++        pytest.fail("\n".join([*problems, hint]), pytrace=False)
++
++
++@pytest.fixture(scope="module")
++def client() -> QdrantClient:
++    client = QdrantClient(url=QDRANT_URL, timeout=30)
++    try:
++        exists = client.collection_exists(COLLECTION)
++    except Exception as e:  # noqa: BLE001 - any connection failure means skip
++        pytest.skip(f"qdrant not reachable at {QDRANT_URL}: {e}")
++    if not exists:
++        pytest.skip(f"collection [{COLLECTION}] does not exist at {QDRANT_URL}")
++    return client
++
++
++@pytest.fixture(scope="module")
++def chunks() -> list[Chunk]:
++    return load_jsonl_dir(CHUNKS_DIR, Chunk)
++
++
++def test_point_count_matches_the_jsonl(client, chunks):
++    fail_if(check_counts(client, COLLECTION, chunks), EMBED_HINT)
++
++
++def test_collection_config_is_as_expected(client):
++    sizes = {m["model"]: m["dim"] for m in TextEmbedding.list_supported_models()}
++    if DENSE_MODEL_NAME not in sizes:
++        pytest.skip(f"fastembed does not list the size of [{DENSE_MODEL_NAME}]")
++    fail_if(
++        check_config(client, COLLECTION, sizes[DENSE_MODEL_NAME]),
++        "run mrr embed --rebuild",
++    )
++
++
++def test_sectors_payload_index_exists(client):
++    fail_if(
++        check_indexes(client, COLLECTION),
++        "create the index (see docs/running_the_cli.md)",
++    )
++
++
++def test_every_chunk_has_a_point_and_every_point_a_chunk(client, chunks):
++    fail_if(check_ids(client, COLLECTION, chunks), EMBED_HINT)
++
++
++def test_every_payload_matches_its_chunk(client, chunks):
++    fail_if(check_payloads(client, COLLECTION, chunks), EMBED_HINT)
++
++
++def test_stored_vectors_match_a_fresh_embedding_of_random_chunks(client, chunks):
++    seed = int(os.environ["VERIFY_SEED"]) if "VERIFY_SEED" in os.environ else None
++    problems, _ = check_vectors(
++        client,
++        COLLECTION,
++        chunks,
++        TextEmbedding(DENSE_MODEL_NAME),
++        SparseTextEmbedding(SPARSE_MODEL_NAME),
++        seed=seed,
++    )
++    fail_if(problems, "")
+diff --git a/tests/db_ops/test_verify.py b/tests/db_ops/test_verify.py
+new file mode 100644
+index 0000000..27fc03a
+--- /dev/null
++++ b/tests/db_ops/test_verify.py
+@@ -0,0 +1,255 @@
++import pytest
++from qdrant_client import QdrantClient, models
++
++from core.sectors import SECTORS_FIELD
++from db_ops import verify
++from db_ops.utils import build_point_id
++from db_ops.verify import (
++    check_config,
++    check_counts,
++    check_ids,
++    check_indexes,
++    check_payloads,
++    check_vectors,
++)
++from tests.db_ops.verify_helpers import (
++    DIM,
++    FakeDense,
++    FakeSparse,
++    fake_client,
++    make_chunk,
++    make_chunks,
++    make_point,
++    populate,
++)
++
++COLLECTION = "test"
++
++
++@pytest.fixture
++def chunks():
++    return make_chunks()
++
++
++@pytest.fixture
++def client(chunks):
++    client = QdrantClient(":memory:")
++    populate(client, COLLECTION, chunks)
++    return client
++
++
++def text(problems: list[str]) -> str:
++    return "\n".join(problems)
++
++
++# --- counts ---------------------------------------------------------------
++
++
++def test_counts_match(client, chunks):
++    assert check_counts(client, COLLECTION, chunks) == []
++
++
++def test_a_missing_point_is_reported_with_the_document(client, chunks):
++    client.delete(
++        COLLECTION,
++        models.PointIdsList(points=[build_point_id(chunks[1].chunk_id)]),
++    )
++    problems = text(check_counts(client, COLLECTION, chunks))
++    assert "has [6] points but the chunk jsonl has [7] chunks" in problems
++    assert "[Doc A]: jsonl [4] | qdrant [3]" in problems
++    assert "Doc B" not in problems
++
++
++def test_extra_points_that_belong_to_no_document_are_reported(client, chunks):
++    client.upsert(
++        COLLECTION, [make_point(make_chunk(99, "Gone Doc"), FakeDense(), FakeSparse())]
++    )
++    problems = text(check_counts(client, COLLECTION, chunks))
++    assert "has [8] points but the chunk jsonl has [7] chunks" in problems
++    assert "[1] points in qdrant belong to no document in the jsonl" in problems
++
++
++# --- ids ------------------------------------------------------------------
++
++
++def test_ids_match(client, chunks):
++    assert check_ids(client, COLLECTION, chunks) == []
++
++
++def test_missing_and_stale_points_are_named(client, chunks):
++    client.delete(
++        COLLECTION,
++        models.PointIdsList(points=[build_point_id(chunks[0].chunk_id)]),
++    )
++    stale = make_chunk(99, "Gone Doc")
++    client.upsert(COLLECTION, [make_point(stale, FakeDense(), FakeSparse())])
++    problems = text(check_ids(client, COLLECTION, chunks))
++    assert "in the jsonl but not in qdrant (embed them) [1]" in problems
++    assert chunks[0].chunk_id in problems
++    assert "in qdrant but not in the jsonl (stale) [1]" in problems
++    assert stale.chunk_id in problems
++
++
++# --- payloads -------------------------------------------------------------
++
++
++def test_payloads_match(client, chunks):
++    assert check_payloads(client, COLLECTION, chunks) == []
++
++
++def test_a_changed_payload_names_the_chunk_and_the_fields(client, chunks):
++    client.set_payload(
++        COLLECTION,
++        payload={"url": "https://example.com/other.pdf", "sectors": ["class_1"]},
++        points=[build_point_id(chunks[2].chunk_id)],
++    )
++    problems = text(check_payloads(client, COLLECTION, chunks))
++    assert "payload differs from the jsonl [1]" in problems
++    assert chunks[2].chunk_id in problems
++    assert "differs in sectors, url" in problems
++
++
++@pytest.mark.parametrize(
++    "changed",
++    [
++        {"sectors": ["class_1"]},
++        {"terms_used": ["customer"]},
++        {"hierarchy": "guidance"},
++        {"body": "a different body"},
++        {"url": "https://example.com/other.pdf"},
++        {"headers": ["Part 0", "Extra"]},
++    ],
++)
++def test_a_single_changed_field_is_reported(client, chunks, changed):
++    client.set_payload(
++        COLLECTION, payload=changed, points=[build_point_id(chunks[0].chunk_id)]
++    )
++    problems = text(check_payloads(client, COLLECTION, chunks))
++    assert f"differs in {next(iter(changed))})" in problems
++
++
++def test_stale_points_are_left_to_the_id_check(client, chunks):
++    client.upsert(
++        COLLECTION, [make_point(make_chunk(99, "Gone Doc"), FakeDense(), FakeSparse())]
++    )
++    assert check_payloads(client, COLLECTION, chunks) == []
++
++
++# --- config ---------------------------------------------------------------
++
++
++def test_good_config_passes():
++    assert check_config(fake_client(), COLLECTION, DIM) == []
++
++
++def test_real_collection_vectors_are_read_correctly(client):
++    assert check_config(client, COLLECTION, DIM) == []
++
++
++@pytest.mark.parametrize(
++    "client_kwargs, expected",
++    [
++        ({"size": 384}, "vector size is [384], the embedding model gives [8]"),
++        ({"distance": models.Distance.DOT}, "expected cosine"),
++        ({"dense_name": "other"}, "no [dense] vector configured"),
++        ({"sparse_name": None}, "no [bm25] sparse vector configured"),
++        ({"modifier": models.Modifier.NONE}, "expected idf"),
++    ],
++)
++def test_bad_config_is_reported(client_kwargs, expected):
++    problems = text(check_config(fake_client(**client_kwargs), COLLECTION, DIM))
++    assert expected in problems
++
++
++def test_a_good_sectors_index_passes():
++    assert check_indexes(fake_client(), COLLECTION) == []
++
++
++@pytest.mark.parametrize(
++    "index, expected",
++    [
++        (None, f"no payload index on [{SECTORS_FIELD}]"),
++        (models.PayloadSchemaType.TEXT, "expected keyword"),
++    ],
++)
++def test_a_missing_or_wrong_sectors_index_is_reported(index, expected):
++    assert expected in text(check_indexes(fake_client(index=index), COLLECTION))
++
++
++# --- vectors --------------------------------------------------------------
++
++
++def test_current_vectors_pass(client, chunks):
++    problems, seed = check_vectors(
++        client, COLLECTION, chunks, FakeDense(), FakeSparse(), seed=1
++    )
++    assert problems == []
++    assert seed == 1
++
++
++def test_a_changed_dense_model_is_caught_and_the_seed_is_reported(client, chunks):
++    problems, _ = check_vectors(
++        client, COLLECTION, chunks, FakeDense("other"), FakeSparse(), seed=7
++    )
++    joined = text(problems)
++    assert "dense vector is stale" in joined
++    assert "sparse vector is stale" not in joined
++    assert "seed [7]" in joined
++    assert "mrr embed --rebuild" in joined
++
++
++def test_a_changed_sparse_model_is_caught(client, chunks):
++    problems, _ = check_vectors(
++        client, COLLECTION, chunks, FakeDense(), FakeSparse("other"), seed=7
++    )
++    joined = text(problems)
++    assert "sparse vector is stale" in joined
++    assert "dense vector is stale" not in joined
++
++
++def test_changed_embedding_text_is_caught(client, chunks, monkeypatch):
++    monkeypatch.setattr(verify, "build_embedding_text", lambda c: f"changed {c.body}")
++    problems, _ = check_vectors(
++        client, COLLECTION, chunks, FakeDense(), FakeSparse(), seed=3
++    )
++    assert "dense vector is stale" in text(problems)
++
++
++def test_the_same_seed_picks_the_same_chunks(client, chunks):
++    kwargs = {
++        "dense_model": FakeDense("other"),
++        "sparse_model": FakeSparse(),
++        "sample_size": 3,
++    }
++    first, _ = check_vectors(client, COLLECTION, chunks, seed=11, **kwargs)
++    again, _ = check_vectors(client, COLLECTION, chunks, seed=11, **kwargs)
++    different, _ = check_vectors(client, COLLECTION, chunks, seed=12, **kwargs)
++    assert first == again
++    assert [p for p in first if "stale" in p] and len(
++        [p for p in first if "stale" in p]
++    ) == 3
++    assert first != different or len(chunks) <= 3
++
++
++def test_a_sample_larger_than_the_collection_checks_everything(client, chunks):
++    problems, _ = check_vectors(
++        client,
++        COLLECTION,
++        chunks,
++        FakeDense("other"),
++        FakeSparse(),
++        sample_size=50,
++        seed=1,
++    )
++    assert len([p for p in problems if "dense vector is stale" in p]) == len(chunks)
++
++
++def test_a_chunk_with_no_point_is_reported(client, chunks):
++    client.delete(
++        COLLECTION,
++        models.PointIdsList(points=[build_point_id(chunks[0].chunk_id)]),
++    )
++    problems, _ = check_vectors(
++        client, COLLECTION, chunks, FakeDense(), FakeSparse(), sample_size=50, seed=1
++    )
++    assert f"{chunks[0].chunk_id}: no vectors in qdrant" in problems
+diff --git a/tests/db_ops/verify_helpers.py b/tests/db_ops/verify_helpers.py
+new file mode 100644
+index 0000000..e29ca6e
+--- /dev/null
++++ b/tests/db_ops/verify_helpers.py
+@@ -0,0 +1,133 @@
++"""Fakes for testing db_ops.verify without a Qdrant server or real embedding models."""
++
++import zlib
++from dataclasses import asdict
++from types import SimpleNamespace
++
++import numpy as np
++from qdrant_client import QdrantClient, models
++
++from config import DENSE_VECTOR_NAME, SPARSE_VECTOR_NAME
++from core.sectors import SECTORS_FIELD
++from db_ops.utils import (
++    build_dense_vector,
++    build_embedding_text,
++    build_point_id,
++    build_sparse_vector,
++)
++from extraction_ops.models import Chunk
++
++DIM = 8
++
++
++class FakeDense:
++    """Gives the same vector for the same text and salt, a different one for a new salt."""
++
++    def __init__(self, salt: str = "a"):
++        self.salt = salt
++
++    def embed(self, texts):
++        for text in texts:
++            rng = np.random.default_rng(zlib.crc32(f"{self.salt}{text}".encode()))
++            yield rng.normal(size=DIM).astype(np.float32)
++
++
++class FakeSparse:
++    def __init__(self, salt: str = "a"):
++        self.salt = salt
++
++    def embed(self, texts):
++        for text in texts:
++            indices = sorted(
++                {zlib.crc32(f"{self.salt}{w}".encode()) % 1000 for w in text.split()}
++            )
++            yield SimpleNamespace(
++                indices=np.array(indices, dtype=np.int64),
++                values=np.array([1.0 + i % 3 for i in range(len(indices))], np.float32),
++            )
++
++
++def make_chunk(i: int, document: str = "Doc A", **overrides) -> Chunk:
++    fields = {
++        "chunk_id": f"{document}, Part {i} - hash{i:04d}",
++        "document": document,
++        "hierarchy": "primary legislation",
++        "sectors": ("class_1", "class_2"),
++        "headers": [f"Part {i}"],
++        "body": f"body of part {i} with some words in it",
++        "url": "https://example.com/doc.pdf",
++        "terms_used": None,
++    }
++    fields.update(overrides)
++    return Chunk(**fields)
++
++
++def make_chunks() -> list[Chunk]:
++    return [make_chunk(i, "Doc A") for i in range(4)] + [
++        make_chunk(i, "Doc B") for i in range(10, 13)
++    ]
++
++
++def make_point(
++    chunk: Chunk, dense: FakeDense, sparse: FakeSparse
++) -> models.PointStruct:
++    text = build_embedding_text(chunk)
++    return models.PointStruct(
++        id=build_point_id(chunk.chunk_id),
++        vector={
++            DENSE_VECTOR_NAME: build_dense_vector(text, dense),
++            SPARSE_VECTOR_NAME: build_sparse_vector(text, sparse),
++        },
++        payload=asdict(chunk),
++    )
++
++
++def populate(
++    client: QdrantClient,
++    collection: str,
++    chunks: list[Chunk],
++    dense: FakeDense | None = None,
++    sparse: FakeSparse | None = None,
++) -> None:
++    """Build a collection shaped like the one db_ops/embed.py creates, and fill it."""
++    dense, sparse = dense or FakeDense(), sparse or FakeSparse()
++    client.create_collection(
++        collection_name=collection,
++        vectors_config={
++            DENSE_VECTOR_NAME: models.VectorParams(
++                size=DIM, distance=models.Distance.COSINE
++            )
++        },
++        sparse_vectors_config={
++            SPARSE_VECTOR_NAME: models.SparseVectorParams(modifier=models.Modifier.IDF)
++        },
++    )
++    client.upsert(collection, [make_point(c, dense, sparse) for c in chunks])
++
++
++def fake_client(
++    size: int = DIM,
++    distance: models.Distance = models.Distance.COSINE,
++    dense_name: str = DENSE_VECTOR_NAME,
++    sparse_name: str | None = SPARSE_VECTOR_NAME,
++    modifier: models.Modifier = models.Modifier.IDF,
++    index: models.PayloadSchemaType | None = models.PayloadSchemaType.KEYWORD,
++):
++    """Just enough of a client for check_config. The in-memory client has no payload indexes."""
++    sparse_vectors = (
++        {sparse_name: models.SparseVectorParams(modifier=modifier)}
++        if sparse_name
++        else None
++    )
++    info = SimpleNamespace(
++        config=SimpleNamespace(
++            params=SimpleNamespace(
++                vectors={dense_name: models.VectorParams(size=size, distance=distance)},
++                sparse_vectors=sparse_vectors,
++            )
++        ),
++        payload_schema={SECTORS_FIELD: SimpleNamespace(data_type=index)}
++        if index
++        else {},
++    )
++    return SimpleNamespace(get_collection=lambda name: info)
+-- 
+2.43.0
+

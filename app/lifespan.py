@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
     app.state.sparse_model = SparseTextEmbedding(SPARSE_MODEL_NAME)
     app.state.reranker_model = TextCrossEncoder(model_name=RERANKING_MODEL_NAME)
     app.state.mode = RETRIEVAL_MODE
-    await run_startup_checks()
+    await run_startup_checks(app.state.dense_model.embedding_size)
     app.state.documents = load_documents(app.state.qdrant_client)
     yield
     app.state.qdrant_client.close()

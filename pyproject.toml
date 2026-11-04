@@ -25,9 +25,10 @@ dependencies = [
 package = false
 
 [tool.pytest.ini_options]
-addopts = "-m 'not live'"
+addopts = "-m 'not live and not qdrant'"
 markers = [
   "live: marks tests that hit live external URLs (deselect with '-m \"not live\"')",
+  "qdrant: marks tests that check a running Qdrant against the chunk jsonl (run with '-m qdrant')",
 ]
 
 [dependency-groups]
