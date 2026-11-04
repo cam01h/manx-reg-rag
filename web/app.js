@@ -59,10 +59,12 @@ function renderConversation(scrollTop) {
         // would otherwise render as broken markup.
         const userTurn = document.createElement("div");
         userTurn.className = "user-turn";
+        userTurn.dataset.testid = "user-turn";
         userTurn.textContent = turn.prompt;
 
         const assistantTurn = document.createElement("div");
         assistantTurn.className = "assistant-turn";
+        assistantTurn.dataset.testid = "assistant-turn";
         assistantTurn.innerHTML = marked.parse(turn.answer);
         // every new answer redraws the whole conversation, so only the
         // newest one gets the fade-in or the older ones would replay it too
@@ -116,6 +118,7 @@ function renderCitations(items) {
         const href = safeUrl(citation.url);
         const card = document.createElement(href ? "a" : "div");
         card.className = "citation-card";
+        card.dataset.testid = "citation";
         card.style.setProperty("--i", index); // style.css staggers the fade-in by this
         if (href) {
             card.href = href;
@@ -151,6 +154,7 @@ function renderCitations(items) {
 function renderError(message) {
     const block = document.createElement("div");
     block.className = "turn";
+    block.dataset.testid = "error";
     block.textContent = message;
     response.appendChild(block);
     response.scrollTop = response.scrollHeight;
@@ -270,6 +274,7 @@ function appendLogItem(list, entry) {
 function buildProgressBox(state, label, log) {
     const box = document.createElement("details");
     box.className = `progress ${state}`;
+    box.dataset.testid = "progress";
 
     const summary = document.createElement("summary");
     const dot = document.createElement("span");
@@ -320,6 +325,7 @@ function startPending(prompt) {
 
     const userTurn = document.createElement("div");
     userTurn.className = "user-turn";
+    userTurn.dataset.testid = "user-turn";
     userTurn.textContent = prompt;
 
     progressLog = [];

@@ -19,3 +19,6 @@ data/qdrant/
 !/tests/extraction_ops/diagnostics/data/raw_pdf/*_golden_hash.txt
 /tests/db_ops/query_metrics/data
 /tests/app/agent_metrics/data
+
+# playwright failure screenshots and traces
+/test-results/

@@ -25,16 +25,18 @@ dependencies = [
 package = false
 
 [tool.pytest.ini_options]
-addopts = "-m 'not live and not qdrant'"
+addopts = "-m 'not live and not qdrant and not browser'"
 markers = [
   "live: marks tests that hit live external URLs (deselect with '-m \"not live\"')",
   "qdrant: marks tests that check a running Qdrant against the chunk jsonl (run with '-m qdrant')",
+  "browser: marks tests that drive web/ in a real browser (needs 'playwright install chromium'; run with '-m browser')",
 ]
 
 [dependency-groups]
 dev = [
   "pyright>=1.1.411",
   "pytest>=9.1.1",
+  "pytest-playwright>=0.10.0",
   "pytest-timeout>=2.4.0",
   "ruff>=0.16.4",
 ]

@@ -4,11 +4,12 @@
 
 | Command | What runs | Needs |
 | --- | --- | --- |
-| `uv run pytest` | everything except the `live` and `qdrant` tests (set in `pyproject.toml`) | nothing: no API key, no Qdrant, no model downloads |
+| `uv run pytest` | everything except the `live`, `qdrant` and `browser` tests (set in `pyproject.toml`) | nothing: no API key, no Qdrant, no model downloads |
 | `uv run pytest -m qdrant` | checks the running Qdrant against the chunk jsonl | Qdrant running with the collection embedded |
+| `uv run pytest -m browser` | the `web/` front end in a real headless Chromium, against canned server replies | `uv run playwright install chromium` once |
 | `uv run pytest -m live` | checks every source url still works and the pdf behind it has not changed | internet, and the golden pdf hashes (see below) |
 
-`-m` on the command line replaces the `not live and not qdrant` in `addopts`, so `-m live` runs only the live tests.
+`-m` on the command line replaces the `not live and not qdrant and not browser` in `addopts`, so `-m live` runs only the live tests.
 
 The `mrr pd --test-stats` flag runs just the golden stats tests (see `running_the_cli.md`).
 
@@ -19,11 +20,30 @@ The `mrr pd --test-stats` flag runs just the golden stats tests (see `running_th
 
 When you add a document or a new version of one, expect the stats test to ask for `mrr pd --save-stats --doc <key>` and the invariants test to tell you if the new data breaks a rule.
 
+## Browser tests (`tests/browser`)
+
+These load the real `web/index.html` and `web/app.js` in a headless Chromium and use the page the way a person does: type a question, tick sectors, click Reset, resize to a phone. The server is not started. `tests/browser/fake_api.py` answers the four requests the page makes (`/query`, `/reset`, `/sectors`, `/documents`) with canned replies and records what the page sent, and anything else the page tries to load is blocked. So they need no API key, Qdrant or models, and the whole set takes under a minute.
+
+```bash
+uv run playwright install chromium     # once per machine, about 150 MB
+uv run pytest -m browser               # headless
+uv run pytest -m browser --headed -k reset --slowmo 500   # watch one test
+```
+
+What they cover: the streamed progress lines and answer, markdown rendering, the request body (prompt, session id, ticked sectors), citation links (https only, new tab, `noopener noreferrer`), tidied citation titles, error and half-finished replies, the busy state and the double-send guard, Reset, the citations toggle, remembered sectors, and horizontal overflow on a phone-sized screen.
+
+Things to know:
+
+- **Hooks.** Elements are found by the ids in `index.html` or by `data-testid` attributes (`user-turn`, `assistant-turn`, `citation`, `progress`, `error`) that `app.js` now sets, not by styling classes, so a restyle does not break the tests. If you rebuild the page (htmx, say), keep those attributes and the tests still apply.
+- **`marked` is vendored.** The page loads the markdown library from a CDN. The tests serve `tests/browser/vendor/marked.umd.js` (MIT, version in its header) instead, so results do not depend on what the CDN serves. The CDN link in `index.html` is not pinned to a version; the tests cannot see a change in what it serves.
+- **Known gap, marked `xfail`.** `test_html_in_an_answer_does_not_run` shows that HTML in an answer runs, because `app.js` sets `innerHTML` from `marked.parse(...)` without sanitising it. The test is `xfail(strict=True)`: it reports as expected-failure now, and fails loudly once the page is fixed so that the marker gets removed.
+- **After editing `app.js`**, bump the `?v=` on its script tag in `index.html` as usual; the tests do not care.
+
 ## CI (GitHub Actions)
 
 The workflows are in `.github/workflows/`.
 
-**`ci.yml`** runs `ruff check`, `ruff format --check` and the default `pytest` on a fresh Linux machine. It runs:
+**`ci.yml`** has two jobs that run side by side on fresh Linux machines. `checks` runs `ruff check`, `ruff format --check` and the default `pytest`. `browser` installs Chromium and runs `pytest -m browser`; when it fails, the run page keeps screenshots and Playwright traces of the failures for 14 days (download the `browser-test-results` artifact, and open a trace at <https://trace.playwright.dev> to replay what the page did). It runs:
 
 - on every pull request (each push to the PR's branch runs it again)
 - on every push to `main`, which also covers a local merge pushed straight to `main`
@@ -31,7 +51,7 @@ The workflows are in `.github/workflows/`.
 
 Pushes to other branches run nothing, so half-finished work can be pushed freely. To get a branch checked early, open it as a draft pull request. Adding `[skip ci]` to a commit message skips the run for that commit.
 
-The result is a green tick or red cross on the commit and on the pull request. Click it, then the failed step, for the same output you get locally. A failed run emails you. It does not stop a push, and it only stops a merge if you turn on branch protection and require the `checks` job (Settings, Rules or Branches; the check only appears in that list after it has run once).
+The result is a green tick or red cross on the commit and on the pull request. Click it, then the failed step, for the same output you get locally. A failed run emails you. It does not stop a push, and it only stops a merge if you turn on branch protection and require the `checks` and `browser` jobs (Settings, Rules or Branches; the check only appears in that list after it has run once).
 
 **`live.yml`** runs the `live` tests every Monday at 06:17 UTC and on demand. A red result means a source url has died or a source pdf has changed upstream. It needs two things:
 

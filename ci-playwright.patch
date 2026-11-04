@@ -1,0 +1,1196 @@
+From 161b0e7205b0fc26e0d081eb94d41955e5d1e6d8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 4 Nov 2026 09:24:11 +0000
+Subject: [PATCH] Add Playwright browser tests for the web front end
+
+tests/browser drives the real web/index.html and web/app.js in headless
+Chromium. The server is not started: tests/browser/fake_api.py answers /query,
+/reset, /sectors and /documents with canned replies (including a held /query
+for the busy state), records what the page sent, and blocks every other
+request. No API key, Qdrant or models are needed.
+
+27 tests plus one strict xfail cover: streamed progress and answer, markdown,
+the request body (prompt, session id, ticked sectors), citation links (https
+only, target and rel), tidied titles, error / empty / failed replies, the busy
+state and double-send guard, Reset, the citations toggle, remembered sectors,
+text-not-markup for questions and citation fields, and phone-width overflow.
+Each test was checked by breaking app.js on purpose and confirming it fails.
+
+test_html_in_an_answer_does_not_run is xfail(strict=True): app.js sets
+innerHTML from marked.parse(answer) without sanitising it, so HTML in an
+answer runs. The marker comes off when that is fixed.
+
+Supporting changes:
+- app.js sets data-testid on user turn, assistant turn, citation card,
+  progress box and error block (index.html cache-buster bumped to v=13)
+- tests/browser/vendor holds marked 18.1.3 (MIT) so tests do not depend on
+  the CDN the page loads it from
+- pytest-playwright added to the dev group (uv.lock updated, nothing else
+  bumped); new `browser` marker, excluded from the default run
+- ci.yml gets a second job: install Chromium, run -m browser, keep
+  screenshots and traces of failures as an artifact
+- docs/testing_and_ci.md covers running them and the known gap
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014fc5GybX3AmTTPdwTWEPdv
+---
+ .github/workflows/ci.yml               |  33 ++
+ .gitignore                             |   3 +
+ docs/testing_and_ci.md                 |  28 +-
+ pyproject.toml                         |   4 +-
+ tests/browser/__init__.py              |   0
+ tests/browser/conftest.py              |  40 +++
+ tests/browser/fake_api.py              | 146 +++++++++
+ tests/browser/test_frontend.py         | 405 +++++++++++++++++++++++++
+ tests/browser/vendor/marked.LICENSE.md |  44 +++
+ tests/browser/vendor/marked.umd.js     |  86 ++++++
+ uv.lock                                | 125 ++++++++
+ web/app.js                             |   6 +
+ web/index.html                         |   2 +-
+ 13 files changed, 916 insertions(+), 6 deletions(-)
+ create mode 100644 tests/browser/__init__.py
+ create mode 100644 tests/browser/conftest.py
+ create mode 100644 tests/browser/fake_api.py
+ create mode 100644 tests/browser/test_frontend.py
+ create mode 100644 tests/browser/vendor/marked.LICENSE.md
+ create mode 100644 tests/browser/vendor/marked.umd.js
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index c7ce641..a81d549 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -40,3 +40,36 @@ jobs:
+       # the default run skips the live and qdrant tests (see pyproject.toml)
+       - name: Tests
+         run: uv run pytest
++
++  # the front end in a real browser, against canned server replies (tests/browser)
++  browser:
++    runs-on: ubuntu-latest
++    timeout-minutes: 15
++    steps:
++      - uses: actions/checkout@v4
++
++      - uses: astral-sh/setup-uv@v6
++        with:
++          enable-cache: true
++
++      - name: Install dependencies
++        run: uv sync --frozen
++
++      - name: Install Chromium
++        run: uv run playwright install --with-deps chromium
++
++      - name: Browser tests
++        run: >-
++          uv run pytest -m browser
++          --screenshot only-on-failure
++          --tracing retain-on-failure
++          --output test-results
++
++      # open a trace at trace.playwright.dev to replay what the page did
++      - name: Keep screenshots and traces of failures
++        if: failure()
++        uses: actions/upload-artifact@v4
++        with:
++          name: browser-test-results
++          path: test-results/
++          retention-days: 14
+diff --git a/.gitignore b/.gitignore
+index 0ec0693..5ce94c3 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -19,3 +19,6 @@ data/qdrant/
+ !/tests/extraction_ops/diagnostics/data/raw_pdf/*_golden_hash.txt
+ /tests/db_ops/query_metrics/data
+ /tests/app/agent_metrics/data
++
++# playwright failure screenshots and traces
++/test-results/
+diff --git a/docs/testing_and_ci.md b/docs/testing_and_ci.md
+index 25c48c5..baae180 100644
+--- a/docs/testing_and_ci.md
++++ b/docs/testing_and_ci.md
+@@ -4,11 +4,12 @@
+ 
+ | Command | What runs | Needs |
+ | --- | --- | --- |
+-| `uv run pytest` | everything except the `live` and `qdrant` tests (set in `pyproject.toml`) | nothing: no API key, no Qdrant, no model downloads |
++| `uv run pytest` | everything except the `live`, `qdrant` and `browser` tests (set in `pyproject.toml`) | nothing: no API key, no Qdrant, no model downloads |
+ | `uv run pytest -m qdrant` | checks the running Qdrant against the chunk jsonl | Qdrant running with the collection embedded |
++| `uv run pytest -m browser` | the `web/` front end in a real headless Chromium, against canned server replies | `uv run playwright install chromium` once |
+ | `uv run pytest -m live` | checks every source url still works and the pdf behind it has not changed | internet, and the golden pdf hashes (see below) |
+ 
+-`-m` on the command line replaces the `not live and not qdrant` in `addopts`, so `-m live` runs only the live tests.
++`-m` on the command line replaces the `not live and not qdrant and not browser` in `addopts`, so `-m live` runs only the live tests.
+ 
+ The `mrr pd --test-stats` flag runs just the golden stats tests (see `running_the_cli.md`).
+ 
+@@ -19,11 +20,30 @@ The `mrr pd --test-stats` flag runs just the golden stats tests (see `running_th
+ 
+ When you add a document or a new version of one, expect the stats test to ask for `mrr pd --save-stats --doc <key>` and the invariants test to tell you if the new data breaks a rule.
+ 
++## Browser tests (`tests/browser`)
++
++These load the real `web/index.html` and `web/app.js` in a headless Chromium and use the page the way a person does: type a question, tick sectors, click Reset, resize to a phone. The server is not started. `tests/browser/fake_api.py` answers the four requests the page makes (`/query`, `/reset`, `/sectors`, `/documents`) with canned replies and records what the page sent, and anything else the page tries to load is blocked. So they need no API key, Qdrant or models, and the whole set takes under a minute.
++
++```bash
++uv run playwright install chromium     # once per machine, about 150 MB
++uv run pytest -m browser               # headless
++uv run pytest -m browser --headed -k reset --slowmo 500   # watch one test
++```
++
++What they cover: the streamed progress lines and answer, markdown rendering, the request body (prompt, session id, ticked sectors), citation links (https only, new tab, `noopener noreferrer`), tidied citation titles, error and half-finished replies, the busy state and the double-send guard, Reset, the citations toggle, remembered sectors, and horizontal overflow on a phone-sized screen.
++
++Things to know:
++
++- **Hooks.** Elements are found by the ids in `index.html` or by `data-testid` attributes (`user-turn`, `assistant-turn`, `citation`, `progress`, `error`) that `app.js` now sets, not by styling classes, so a restyle does not break the tests. If you rebuild the page (htmx, say), keep those attributes and the tests still apply.
++- **`marked` is vendored.** The page loads the markdown library from a CDN. The tests serve `tests/browser/vendor/marked.umd.js` (MIT, version in its header) instead, so results do not depend on what the CDN serves. The CDN link in `index.html` is not pinned to a version; the tests cannot see a change in what it serves.
++- **Known gap, marked `xfail`.** `test_html_in_an_answer_does_not_run` shows that HTML in an answer runs, because `app.js` sets `innerHTML` from `marked.parse(...)` without sanitising it. The test is `xfail(strict=True)`: it reports as expected-failure now, and fails loudly once the page is fixed so that the marker gets removed.
++- **After editing `app.js`**, bump the `?v=` on its script tag in `index.html` as usual; the tests do not care.
++
+ ## CI (GitHub Actions)
+ 
+ The workflows are in `.github/workflows/`.
+ 
+-**`ci.yml`** runs `ruff check`, `ruff format --check` and the default `pytest` on a fresh Linux machine. It runs:
++**`ci.yml`** has two jobs that run side by side on fresh Linux machines. `checks` runs `ruff check`, `ruff format --check` and the default `pytest`. `browser` installs Chromium and runs `pytest -m browser`; when it fails, the run page keeps screenshots and Playwright traces of the failures for 14 days (download the `browser-test-results` artifact, and open a trace at <https://trace.playwright.dev> to replay what the page did). It runs:
+ 
+ - on every pull request (each push to the PR's branch runs it again)
+ - on every push to `main`, which also covers a local merge pushed straight to `main`
+@@ -31,7 +51,7 @@ The workflows are in `.github/workflows/`.
+ 
+ Pushes to other branches run nothing, so half-finished work can be pushed freely. To get a branch checked early, open it as a draft pull request. Adding `[skip ci]` to a commit message skips the run for that commit.
+ 
+-The result is a green tick or red cross on the commit and on the pull request. Click it, then the failed step, for the same output you get locally. A failed run emails you. It does not stop a push, and it only stops a merge if you turn on branch protection and require the `checks` job (Settings, Rules or Branches; the check only appears in that list after it has run once).
++The result is a green tick or red cross on the commit and on the pull request. Click it, then the failed step, for the same output you get locally. A failed run emails you. It does not stop a push, and it only stops a merge if you turn on branch protection and require the `checks` and `browser` jobs (Settings, Rules or Branches; the check only appears in that list after it has run once).
+ 
+ **`live.yml`** runs the `live` tests every Monday at 06:17 UTC and on demand. A red result means a source url has died or a source pdf has changed upstream. It needs two things:
+ 
+diff --git a/pyproject.toml b/pyproject.toml
+index 7ddf62f..f19a2c7 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -25,16 +25,18 @@ dependencies = [
+ package = false
+ 
+ [tool.pytest.ini_options]
+-addopts = "-m 'not live and not qdrant'"
++addopts = "-m 'not live and not qdrant and not browser'"
+ markers = [
+   "live: marks tests that hit live external URLs (deselect with '-m \"not live\"')",
+   "qdrant: marks tests that check a running Qdrant against the chunk jsonl (run with '-m qdrant')",
++  "browser: marks tests that drive web/ in a real browser (needs 'playwright install chromium'; run with '-m browser')",
+ ]
+ 
+ [dependency-groups]
+ dev = [
+   "pyright>=1.1.411",
+   "pytest>=9.1.1",
++  "pytest-playwright>=0.10.0",
+   "pytest-timeout>=2.4.0",
+   "ruff>=0.16.4",
+ ]
+diff --git a/tests/browser/__init__.py b/tests/browser/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/tests/browser/conftest.py b/tests/browser/conftest.py
+new file mode 100644
+index 0000000..65bce29
+--- /dev/null
++++ b/tests/browser/conftest.py
+@@ -0,0 +1,40 @@
++"""Fixtures for the browser tests: the real web/ files served to a real
++(headless) Chromium from a tiny local web server, with the server's API
++replaced by tests/browser/fake_api.py. Nothing here reaches the internet."""
++
++import functools
++import http.server
++import threading
++from collections.abc import Iterator
++from typing import Any
++
++import pytest
++from playwright.sync_api import BrowserContext, Page
++
++from config import PROJECT_ROOT
++from tests.browser.fake_api import FakeApi
++
++WEB_DIR = PROJECT_ROOT / "web"
++
++
++class QuietHandler(http.server.SimpleHTTPRequestHandler):
++    def log_message(self, format: str, *args: Any) -> None:
++        pass
++
++
++@pytest.fixture(scope="session")
++def site_url() -> Iterator[str]:
++    handler = functools.partial(QuietHandler, directory=str(WEB_DIR))
++    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
++    thread = threading.Thread(target=server.serve_forever, daemon=True)
++    thread.start()
++    yield f"http://127.0.0.1:{server.server_port}"
++    server.shutdown()
++    server.server_close()
++
++
++@pytest.fixture
++def api(page: Page, context: BrowserContext, site_url: str) -> FakeApi:
++    fake = FakeApi(page=page, site_url=site_url)
++    context.route("**/*", fake.handle)
++    return fake
+diff --git a/tests/browser/fake_api.py b/tests/browser/fake_api.py
+new file mode 100644
+index 0000000..3e5a1cf
+--- /dev/null
++++ b/tests/browser/fake_api.py
+@@ -0,0 +1,146 @@
++"""A stand-in for the server's API, used by the browser tests.
++
++The real files in web/ are served to a real (headless) Chromium from a tiny
++local web server. The FastAPI app is not started: every request the page makes
++to /query, /reset, /sectors and /documents is answered by the FakeApi below, so
++the tests need no API key, no Qdrant and no models, and each one runs in about
++a second. Any other request is aborted, so a test can never reach the internet.
++
++The page loads `marked` from a CDN. The same library is served from
++tests/browser/vendor instead (see its version in the file header), so a test
++result never depends on what the CDN is serving that day.
++"""
++
++import json
++from dataclasses import dataclass, field
++from pathlib import Path
++from typing import Any
++from urllib.parse import urlsplit
++
++from playwright.sync_api import Page, Route
++
++MARKED_JS = Path(__file__).parent / "vendor/marked.umd.js"
++
++SECTORS = {
++    "class_1": "Class 1 – Deposit taking",
++    "class_4": "Class 4 – Corporate services",
++    "class_5": "Class 5 – Trust services",
++    "estate_agent": "Estate agent",
++}
++
++DOCUMENTS = [
++    {"name": "Proceeds of Crime Act 2008", "hierarchy": "Primary legislation"},
++    {"name": "The AML/CFT Code 2019", "hierarchy": "Secondary legislation"},
++    {"name": "Business Risk Assessment guidance", "hierarchy": "Guidance"},
++]
++
++
++def sse(*events: tuple[str, Any]) -> str:
++    """Build a /query reply body: an event name and a json (or plain text) payload each."""
++    body = ""
++    for name, payload in events:
++        data = payload if isinstance(payload, str) else json.dumps(payload)
++        body += f"event: {name}\ndata: {data}\n\n"
++    return body
++
++
++def citation(**overrides: Any) -> dict[str, Any]:
++    cited = {
++        "document": "The AML/CFT Code 2019",
++        "headers": ["PART 4 - CUSTOMER DUE DILIGENCE", "Enhanced measures"],
++        "url": "https://www.iomfsa.im/code.pdf",
++        "relevance": "Sets out when enhanced due diligence applies.",
++    }
++    cited.update(overrides)
++    return cited
++
++
++def answer_event(
++    answer: str = "Enhanced due diligence applies to **higher risk** customers.",
++    citations: list[dict[str, Any]] | None = None,
++) -> tuple[str, Any]:
++    return ("answer", {"answer": answer, "citations": citations or [citation()]})
++
++
++@dataclass
++class FakeApi:
++    """What the page's requests are answered with, and what it asked."""
++
++    page: Page
++    site_url: str
++    sectors: dict[str, str] | None = field(default_factory=lambda: dict(SECTORS))
++    documents: list[dict[str, str]] | None = field(
++        default_factory=lambda: list(DOCUMENTS)
++    )
++    query_status: int = 200
++    query_body: str = ""
++    queries: list[dict[str, Any]] = field(default_factory=list)
++    resets: list[dict[str, Any]] = field(default_factory=list)
++    # with hold set, a /query request waits (the page shows its "working" state)
++    # until release() is called
++    hold: bool = False
++    held: Route | None = None
++
++    def reply_with(self, *events: tuple[str, Any], status: int = 200) -> None:
++        self.query_body = sse(*events)
++        self.query_status = status
++
++    def release(self) -> None:
++        route, self.held = self.held, None
++        assert route is not None, "no /query request is being held"
++        self.fulfill_query(route)
++
++    def open(self) -> None:
++        self.page.goto(self.site_url)
++        # the welcome screen is drawn once the sector list and document list have loaded
++        self.page.locator("#welcome").wait_for()
++
++    def ask(self, question: str) -> None:
++        self.page.locator("#prompt-input").fill(question)
++        self.page.locator("#prompt-form button[type=submit]").click()
++
++    def handle(self, route: Route) -> None:
++        request = route.request
++        url = urlsplit(request.url)
++        host = urlsplit(self.site_url).netloc
++        if url.netloc == host:
++            self.handle_local(route, url.path)
++        elif url.netloc == "cdn.jsdelivr.net" and "marked" in url.path:
++            route.fulfill(
++                body=MARKED_JS.read_text(encoding="utf-8"),
++                content_type="application/javascript",
++            )
++        else:
++            route.abort()
++
++    def handle_local(self, route: Route, path: str) -> None:
++        request = route.request
++        if path == "/sectors":
++            self.fulfill_json(route, self.sectors)
++        elif path == "/documents":
++            self.fulfill_json(route, self.documents)
++        elif path == "/reset":
++            self.resets.append(request.post_data_json)
++            self.fulfill_json(route, {"status": "ok"})
++        elif path == "/query":
++            self.queries.append(request.post_data_json)
++            if self.hold:
++                self.held = route
++            else:
++                self.fulfill_query(route)
++        else:
++            route.continue_()
++
++    def fulfill_query(self, route: Route) -> None:
++        route.fulfill(
++            status=self.query_status,
++            body=self.query_body,
++            content_type="text/event-stream",
++        )
++
++    @staticmethod
++    def fulfill_json(route: Route, payload: Any) -> None:
++        if payload is None:
++            route.fulfill(status=500, body="down")
++        else:
++            route.fulfill(status=200, json=payload)
+diff --git a/tests/browser/test_frontend.py b/tests/browser/test_frontend.py
+new file mode 100644
+index 0000000..67edf98
+--- /dev/null
++++ b/tests/browser/test_frontend.py
+@@ -0,0 +1,405 @@
++"""The web/ front end, driven in a real browser against canned server replies.
++
++Run with `uv run pytest -m browser` (needs `uv run playwright install chromium`
++once). See conftest.py for how the server is faked. The tests find things by
++`data-testid` or by the element ids in web/index.html, not by styling classes,
++so a restyle does not break them.
++"""
++
++import re
++
++import pytest
++from playwright.sync_api import Page, expect
++
++from tests.browser.fake_api import FakeApi, answer_event, citation
++
++pytestmark = pytest.mark.browser
++
++BASIC_PROGRESS = [
++    ("search", {"term": "enhanced due diligence"}),
++    (
++        "read",
++        {
++            "document": "The AML/CFT Code 2019",
++            "headers": "PART 4 - CUSTOMER DUE DILIGENCE, Enhanced measures",
++        },
++    ),
++]
++
++
++def tick(page: Page, *labels: str) -> None:
++    if not page.locator("#sector-picker").evaluate("el => el.open"):
++        page.locator("#sector-summary").click()
++    for label in labels:
++        page.get_by_label(label).check()
++
++
++# ---- start-up --------------------------------------------------------------
++
++
++def test_welcome_lists_documents_and_sectors_from_the_server(page: Page, api: FakeApi):
++    api.open()
++    expect(page.locator(".welcome-docs-count")).to_have_text("3 documents")
++    expect(page.locator("#sector-options input[type=checkbox]")).to_have_count(4)
++    expect(page.locator("#sector-summary")).to_have_text("Sectors: all")
++
++
++def test_a_failed_sector_list_still_lets_questions_through(page: Page, api: FakeApi):
++    api.sectors = None
++    api.reply_with(answer_event())
++    api.open()
++    expect(page.locator("#sector-options")).to_contain_text(
++        "Couldn't load the sector list"
++    )
++    api.ask("What is CDD?")
++    expect(page.get_by_test_id("assistant-turn")).to_be_visible()
++    assert api.queries[0]["sectors"] == []
++
++
++def test_a_failed_document_list_just_leaves_it_out(page: Page, api: FakeApi):
++    api.documents = None
++    api.open()
++    expect(page.locator(".welcome-docs")).to_have_count(0)
++    expect(page.locator("#welcome")).to_be_visible()
++
++
++# ---- asking a question -----------------------------------------------------
++
++
++def test_answer_streams_in_with_progress_markdown_and_citations(
++    page: Page, api: FakeApi
++):
++    api.reply_with(*BASIC_PROGRESS, answer_event())
++    api.open()
++    api.ask("When is enhanced due diligence needed?")
++
++    expect(page.get_by_test_id("user-turn")).to_have_text(
++        "When is enhanced due diligence needed?"
++    )
++    # markdown becomes markup
++    expect(page.get_by_test_id("assistant-turn").locator("strong")).to_have_text(
++        "higher risk"
++    )
++    expect(page.get_by_test_id("progress").locator(".progress-label")).to_have_text(
++        "Query complete · 1 search, 1 section read"
++    )
++    expect(page.get_by_test_id("citation")).to_have_count(1)
++    # the welcome screen goes away once a question is sent, and the box empties
++    expect(page.locator("#welcome")).to_have_count(0)
++    expect(page.locator("#prompt-input")).to_have_value("")
++
++
++def test_while_a_query_runs_the_question_shows_and_a_second_send_is_ignored(
++    page: Page, api: FakeApi
++):
++    api.reply_with(answer_event())
++    api.hold = True
++    api.open()
++    api.ask("Is <b>this</b> text?")
++
++    question = page.get_by_test_id("user-turn")
++    expect(question).to_have_text("Is <b>this</b> text?")
++    expect(question.locator("b")).to_have_count(0)
++    expect(page.get_by_test_id("progress").locator(".progress-label")).to_have_text(
++        "Searching the legislation…"
++    )
++    expect(page.locator("#prompt-form button[type=submit]")).to_be_disabled()
++    expect(page.locator("#reset-button")).to_be_disabled()
++
++    # Enter in the box must not start a second run of the agent
++    page.locator("#prompt-input").fill("Again")
++    page.locator("#prompt-input").press("Enter")
++    page.wait_for_timeout(200)
++    assert len(api.queries) == 1
++
++    api.release()
++    expect(page.get_by_test_id("assistant-turn")).to_be_visible()
++    expect(page.locator("#prompt-form button[type=submit]")).to_be_enabled()
++    assert len(api.queries) == 1
++
++
++def test_request_carries_the_prompt_session_and_ticked_sectors(
++    page: Page, api: FakeApi
++):
++    api.reply_with(answer_event())
++    api.open()
++    tick(page, "Class 4 – Corporate services", "Class 5 – Trust services")
++    expect(page.locator("#sector-summary")).to_have_text("Sectors: 2 selected")
++    api.ask("What is a PEP?")
++    expect(page.get_by_test_id("assistant-turn")).to_be_visible()
++
++    body = api.queries[0]
++    assert body["prompt"] == "What is a PEP?"
++    assert sorted(body["sectors"]) == ["class_4", "class_5"]
++    assert body["session_id"] == page.evaluate("localStorage.getItem('session_id')")
++
++
++def test_no_ticked_sectors_sends_an_empty_list(page: Page, api: FakeApi):
++    api.reply_with(answer_event())
++    api.open()
++    api.ask("What is a PEP?")
++    expect(page.get_by_test_id("assistant-turn")).to_be_visible()
++    assert api.queries[0]["sectors"] == []
++
++
++def test_ticked_sectors_are_remembered_after_a_reload(page: Page, api: FakeApi):
++    api.open()
++    tick(page, "Estate agent")
++    page.reload()
++    page.locator("#welcome").wait_for()
++    expect(page.locator("#sector-summary")).to_have_text("Sectors: 1 selected")
++    expect(page.get_by_label("Estate agent")).to_be_checked()
++
++
++def test_sample_question_fills_the_box_and_ticks_its_sectors(page: Page, api: FakeApi):
++    api.open()
++    page.locator(".sample", has_text="proliferation typologies").click()
++    expect(page.locator("#prompt-input")).to_have_value(
++        "What are the key proliferation typologies facing the TCSP sector?"
++    )
++    expect(page.locator("#sector-summary")).to_have_text("Sectors: 2 selected")
++    expect(page.get_by_label("Class 4 – Corporate services")).to_be_checked()
++    expect(page.get_by_label("Class 5 – Trust services")).to_be_checked()
++    expect(page.get_by_label("Estate agent")).not_to_be_checked()
++
++
++def test_a_question_containing_markup_is_shown_as_text(page: Page, api: FakeApi):
++    api.reply_with(answer_event())
++    api.open()
++    api.ask("Is <b>bold</b> & <script>alert(1)</script> ok?")
++    turn = page.get_by_test_id("user-turn")
++    expect(turn).to_have_text("Is <b>bold</b> & <script>alert(1)</script> ok?")
++    expect(turn.locator("b, script")).to_have_count(0)
++
++
++def test_server_sent_line_endings_of_either_kind_are_understood(
++    page: Page, api: FakeApi
++):
++    api.reply_with(*BASIC_PROGRESS, answer_event())
++    api.query_body = api.query_body.replace("\n", "\r\n")
++    api.open()
++    api.ask("Anything")
++    expect(page.get_by_test_id("assistant-turn")).to_be_visible()
++    expect(page.get_by_test_id("citation")).to_have_count(1)
++
++
++# ---- citations -------------------------------------------------------------
++
++
++def test_https_citation_is_a_link_that_opens_safely_in_a_new_tab(
++    page: Page, api: FakeApi
++):
++    api.reply_with(answer_event(citations=[citation()]))
++    api.open()
++    api.ask("Anything")
++    card = page.get_by_test_id("citation")
++    expect(card).to_have_js_property("tagName", "A")
++    expect(card).to_have_attribute("href", "https://www.iomfsa.im/code.pdf")
++    expect(card).to_have_attribute("target", "_blank")
++    expect(card).to_have_attribute("rel", "noopener noreferrer")
++
++
++@pytest.mark.parametrize(
++    "url",
++    [
++        "javascript:alert(document.domain)",
++        "http://www.iomfsa.im/code.pdf",
++        "data:text/html,<script>alert(1)</script>",
++        "not a url",
++        "",
++    ],
++)
++def test_citation_without_an_https_url_is_a_plain_card_not_a_link(
++    page: Page, api: FakeApi, url: str
++):
++    api.reply_with(answer_event(citations=[citation(url=url)]))
++    api.open()
++    api.ask("Anything")
++    card = page.get_by_test_id("citation")
++    expect(card).to_have_js_property("tagName", "DIV")
++    assert card.get_attribute("href") is None
++
++
++def test_citation_titles_in_capitals_are_tidied_but_normal_case_is_left_alone(
++    page: Page, api: FakeApi
++):
++    api.reply_with(
++        answer_event(
++            citations=[
++                citation(
++                    document="THE AML/CFT CODE 2019",
++                    headers=["PART II - CUSTOMER DUE DILIGENCE", "Enhanced measures"],
++                )
++            ]
++        )
++    )
++    api.open()
++    api.ask("Anything")
++    card = page.get_by_test_id("citation")
++    expect(card.locator(".citation-doc")).to_have_text("The AML/CFT Code 2019")
++    expect(card.locator(".crumb-first")).to_have_text(
++        "Part II - Customer Due Diligence"
++    )
++    expect(card.locator(".crumb-rest")).to_have_text("Enhanced measures")
++
++
++def test_citations_can_be_hidden_and_shown(page: Page, api: FakeApi):
++    api.reply_with(answer_event())
++    api.open()
++    api.ask("Anything")
++    panel = page.locator("#right-panel")
++    button = page.locator("#toggle-citations")
++    expect(panel).to_be_visible()
++    button.click()
++    expect(panel).to_be_hidden()
++    expect(button).to_have_text("Show citations")
++    button.click()
++    expect(panel).to_be_visible()
++    expect(button).to_have_text("Hide citations")
++
++
++# ---- failures --------------------------------------------------------------
++
++
++def test_an_error_event_shows_a_message_and_puts_the_question_back(
++    page: Page, api: FakeApi
++):
++    api.reply_with(*BASIC_PROGRESS, ("error", "query failed"))
++    api.open()
++    api.ask("A question worth keeping")
++    expect(page.get_by_test_id("error")).to_contain_text("That request didn't complete")
++    expect(page.locator("#prompt-input")).to_have_value("A question worth keeping")
++    expect(page.locator("#prompt-form button[type=submit]")).to_be_enabled()
++    expect(page.locator("#reset-button")).to_be_enabled()
++    # how far the agent got stays visible, marked as failed
++    progress = page.get_by_test_id("progress")
++    expect(progress.locator(".progress-label")).to_have_text(
++        "Query failed · 1 search, 1 section read"
++    )
++    expect(progress).to_have_class(re.compile(r"\bfailed\b"))
++
++
++def test_a_server_error_status_shows_the_same_message(page: Page, api: FakeApi):
++    api.reply_with(status=500)
++    api.open()
++    api.ask("Anything")
++    expect(page.get_by_test_id("error")).to_contain_text("That request didn't complete")
++    expect(page.locator("#prompt-input")).to_have_value("Anything")
++
++
++def test_a_reply_that_ends_without_an_answer_is_treated_as_a_failure(
++    page: Page, api: FakeApi
++):
++    api.reply_with(*BASIC_PROGRESS)
++    api.open()
++    api.ask("Anything")
++    expect(page.get_by_test_id("error")).to_contain_text("That request didn't complete")
++    expect(page.get_by_test_id("assistant-turn")).to_have_count(0)
++
++
++# ---- reset -----------------------------------------------------------------
++
++
++def test_reset_clears_the_server_session_and_the_page(page: Page, api: FakeApi):
++    api.reply_with(answer_event())
++    api.open()
++    api.ask("Anything")
++    expect(page.get_by_test_id("citation")).to_have_count(1)
++    resets_before = len(api.resets)
++
++    page.locator("#reset-button").click()
++
++    expect(page.get_by_test_id("citation")).to_have_count(0)
++    expect(page.get_by_test_id("user-turn")).to_have_count(0)
++    expect(page.locator("#welcome")).to_be_visible()
++    assert len(api.resets) == resets_before + 1
++    assert api.resets[-1]["session_id"] == page.evaluate(
++        "localStorage.getItem('session_id')"
++    )
++
++
++def test_a_second_question_keeps_the_first_on_the_page(page: Page, api: FakeApi):
++    api.reply_with(answer_event("First answer."))
++    api.open()
++    api.ask("First question")
++    expect(page.get_by_test_id("assistant-turn")).to_have_text("First answer.")
++    api.reply_with(answer_event("Second answer."))
++    api.ask("Second question")
++    expect(page.get_by_test_id("assistant-turn")).to_have_count(2)
++    expect(page.get_by_test_id("user-turn")).to_have_text(
++        ["First question", "Second question"]
++    )
++
++
++# ---- safety ----------------------------------------------------------------
++
++
++@pytest.mark.xfail(
++    strict=True,
++    reason=(
++        "known gap: web/app.js puts marked.parse(answer) into innerHTML with no "
++        "sanitiser, so HTML in an answer runs. Remove this marker once the answer "
++        "is sanitised (for example with DOMPurify) and this test passes."
++    ),
++)
++def test_html_in_an_answer_does_not_run(page: Page, api: FakeApi):
++    api.reply_with(
++        answer_event(
++            'Look: <img src="x" onerror="window.__ran = true"> and '
++            "<script>window.__ran = true</script>"
++        )
++    )
++    api.open()
++    api.ask("Anything")
++    expect(page.get_by_test_id("assistant-turn")).to_be_visible()
++    page.wait_for_timeout(300)  # an onerror handler fires as soon as the image fails
++    assert page.evaluate("window.__ran === true") is False
++
++
++def test_html_in_a_citation_is_shown_as_text(page: Page, api: FakeApi):
++    markup = '<img src="x" onerror="window.__ran = true">'
++    api.reply_with(
++        answer_event(
++            citations=[citation(document=markup, headers=[markup], relevance=markup)]
++        )
++    )
++    api.open()
++    api.ask("Anything")
++    card = page.get_by_test_id("citation")
++    expect(card).to_contain_text(markup)
++    expect(card.locator("img")).to_have_count(0)
++    page.wait_for_timeout(300)
++    assert page.evaluate("window.__ran === true") is False
++
++
++# ---- small screens ---------------------------------------------------------
++
++
++def test_nothing_forces_sideways_scrolling_on_a_phone(page: Page, api: FakeApi):
++    wide_table = (
++        "| Requirement | Detail | Reference | Notes |\n"
++        "| --- | --- | --- | --- |\n"
++        "| Customer due diligence measures | Identify and verify the customer | "
++        "Paragraph 12 of the Code | Applies to every business relationship |\n"
++    )
++    long_word = "x" * 200
++    page.set_viewport_size({"width": 375, "height": 700})
++    api.reply_with(answer_event(f"{wide_table}\n{long_word}"))
++    api.open()
++    api.ask("Anything")
++    expect(page.get_by_test_id("assistant-turn")).to_be_visible()
++    overflow = page.evaluate(
++        "document.documentElement.scrollWidth - document.documentElement.clientWidth"
++    )
++    assert overflow <= 0, f"page is [{overflow}]px wider than the screen"
++
++
++def test_citations_start_hidden_on_a_phone_and_can_be_shown(page: Page, api: FakeApi):
++    page.set_viewport_size({"width": 375, "height": 700})
++    api.reply_with(answer_event())
++    api.open()
++    expect(page.locator("#toggle-citations")).to_have_text("Show citations")
++    api.ask("Anything")
++    expect(page.locator("#right-panel")).to_be_hidden()
++    page.locator("#toggle-citations").click()
++    expect(page.get_by_test_id("citation")).to_be_visible()
+diff --git a/tests/browser/vendor/marked.LICENSE.md b/tests/browser/vendor/marked.LICENSE.md
+new file mode 100644
+index 0000000..4bd2d4a
+--- /dev/null
++++ b/tests/browser/vendor/marked.LICENSE.md
+@@ -0,0 +1,44 @@
++# License information
++
++## Contribution License Agreement
++
++If you contribute code to this project, you are implicitly allowing your code
++to be distributed under the MIT license. You are also implicitly verifying that
++all code is your original work. `</legalese>`
++
++## Marked
++
++Copyright (c) 2018+, MarkedJS (https://github.com/markedjs/)
++Copyright (c) 2011-2018, Christopher Jeffrey (https://github.com/chjj/)
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in
++all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++THE SOFTWARE.
++
++## Markdown
++
++Copyright © 2004, John Gruber
++http://daringfireball.net/
++All rights reserved.
++
++Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
++
++* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
++* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
++* Neither the name “Markdown” nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
++
++This software is provided by the copyright holders and contributors “as is” and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall the copyright owner or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage.
+diff --git a/tests/browser/vendor/marked.umd.js b/tests/browser/vendor/marked.umd.js
+new file mode 100644
+index 0000000..636f697
+--- /dev/null
++++ b/tests/browser/vendor/marked.umd.js
+@@ -0,0 +1,86 @@
++/**
++ * marked v18.1.3 - a markdown parser
++ * Copyright (c) 2018-2026, MarkedJS. (MIT License)
++ * Copyright (c) 2011-2018, Christopher Jeffrey. (MIT License)
++ * https://github.com/markedjs/marked
++ */
++
++/**
++ * DO NOT EDIT THIS FILE
++ * The code in this file is generated from files in ./src/
++ */
++(function(g,f){if(typeof exports=="object"&&typeof module<"u"){module.exports=f()}else if("function"==typeof define && define.amd){define("marked",f)}else {g["marked"]=f()}}(typeof globalThis < "u" ? globalThis : typeof self < "u" ? self : this,function(){var exports={};var __exports=exports;var module={exports};
++"use strict";var se=Object.defineProperty;var He=Object.getOwnPropertyDescriptor;var je=Object.getOwnPropertyNames;var Ge=Object.prototype.hasOwnProperty;var Ne=(a,e)=>{for(var t in e)se(a,t,{get:e[t],enumerable:!0})},Fe=(a,e,t,n)=>{if(e&&typeof e=="object"||typeof e=="function")for(let s of je(e))!Ge.call(a,s)&&s!==t&&se(a,s,{get:()=>e[s],enumerable:!(n=He(e,s))||n.enumerable});return a};var Qe=a=>Fe(se({},"__esModule",{value:!0}),a);var Jt={};Ne(Jt,{Hooks:()=>L,Lexer:()=>O,Marked:()=>Q,Parser:()=>w,Renderer:()=>$,TextRenderer:()=>A,Tokenizer:()=>_,defaults:()=>P,getDefaults:()=>D,lexer:()=>Vt,marked:()=>m,options:()=>Ft,parse:()=>Kt,parseInline:()=>Wt,parser:()=>Xt,setOptions:()=>Qt,use:()=>ve,walkTokens:()=>Ut});module.exports=Qe(Jt);function D(){return{async:!1,breaks:!1,extensions:null,gfm:!0,hooks:null,pedantic:!1,renderer:null,silent:!1,tokenizer:null,walkTokens:null}}var P=D();function ie(a){P=a}var q={exec:()=>null};function B(a){let e=[];return t=>{let n=Math.max(0,Math.min(3,t-1)),s=e[n];return s||(s=a(n),e[n]=s),s}}function c(a,e=""){let t=typeof a=="string"?a:a.source,n={replace:(s,r)=>{let o=typeof r=="string"?r:r.source;return o=o.replace(T.caret,"$1"),t=t.replace(s,o),n},getRegex:()=>new RegExp(t,e)};return n}var Oe=((a="")=>{try{return!!new RegExp("(?<=1)(?<!1)"+a)}catch{return!1}})(),T={codeRemoveIndent:/^(?: {0,3}\t| {1,4})/gm,outputLinkReplace:/\\([\[\]])/g,indentCodeCompensation:/^(\s+)(?:```)/,beginningSpace:/^\s+/,endingHash:/#$/,startingSpaceChar:/^ /,endingSpaceChar:/ $/,endingSpaceTabChar:/[ \t]$/,nonSpaceChar:/[^ ]/,newLineCharGlobal:/\n/g,tabCharGlobal:/\t/g,leadingSpaceTab:/^[ \t]+/,multipleSpaceGlobal:/\s+/g,blankLine:/^[ \t]*$/,doubleBlankLine:/\n[ \t]*\n[ \t]*$/,blockquoteStart:/^ {0,3}>/,blockquoteSetextReplace:/\n {0,3}((?:=+|-+)[ \t]*)(?=\n|$)/g,blockquoteSetextReplace2:/^ {0,3}>[ \t]?/gm,blockquoteMarkerWhitespace:/^( {0,3}>)([ \t]+)/gm,listReplaceNesting:/^ {1,4}(?=( {4})*[^ ])/g,listIsTask:/^\[[ xX]\][ \t]+\S/,listReplaceTask:/^\[[ xX]\][ \t]+/,listTaskCheckbox:/\[[ xX]\]/,anyLine:/\n.*\n/,hrefBrackets:/^<(.*)>$/,tableDelimiter:/[:|]/,tableAlignChars:/^\||\| *$/g,tableRowBlankLine:/\n[ \t]*$/,tableAlignRight:/^ *-+: *$/,tableAlignCenter:/^ *:-+: *$/,tableAlignLeft:/^ *:-+ *$/,startATag:/^<a /i,endATag:/^<\/a>/i,startPreScriptTag:/^<(pre|code|kbd|script)(\s|>)/i,endPreScriptTag:/^<\/(pre|code|kbd|script)(\s|>)/i,startAngleBracket:/^</,endAngleBracket:/>$/,pedanticHrefTitle:/^([^'"]*[^\s])\s+(['"])(.*)\2/,unicodeAlphaNumeric:/[\p{L}\p{N}]/u,numericCharacterReference:/&#(?:(\d{1,7})|[Xx]([A-Fa-f0-9]{1,6}));/,numericCharacterReferenceOrAmpersand:/&#(?:(\d{1,7})|[Xx]([A-Fa-f0-9]{1,6}));|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/g,escapeTest:/[&<>"']/,escapeReplace:/[&<>"']/g,escapeTestNoEncode:/[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/,escapeReplaceNoEncode:/[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/g,caret:/(^|[^\[])\^/g,percentDecode:/%25/g,findPipe:/\|/g,splitPipe:/ \|/,slashPipe:/\\\|/g,carriageReturn:/\r\n|\r/g,spaceLine:/^ +$/gm,notSpaceStart:/^\S*/,endingNewline:/\n$/,listItemRegex:a=>new RegExp(`^( {0,3}${a})((?:[	 ][^\\n]*)?(?:\\n|$))`),nextBulletRegex:B(a=>new RegExp(`^ {0,${a}}(?:[*+-]|\\d{1,9}[.)])((?:[ 	][^\\n]*)?(?:\\n|$))`)),hrRegex:B(a=>new RegExp(`^ {0,${a}}((?:-[ 	]*){3,}|(?:_[ 	]*){3,}|(?:\\*[ 	]*){3,})(?:\\n+|$)`)),fencesBeginRegex:B(a=>new RegExp(`^ {0,${a}}(?:\`\`\`|~~~)`)),headingBeginRegex:B(a=>new RegExp(`^ {0,${a}}#{1,6}(?:\\s|$)`)),pedanticHeadingBeginRegex:B(a=>new RegExp(`^ {0,${a}}#`)),htmlBeginRegex:B(a=>new RegExp(`^ {0,${a}}(?:</?(?:${X})(?: +|$|/?>)|<(?:(?:script|pre|style|textarea)(?:[\\s>]|$)|!--)|<\\?|<![A-Za-z]|<!\\[CDATA\\[)`,"i")),blockquoteBeginRegex:B(a=>new RegExp(`^ {0,${a}}>`))},Ue=/^(?:[ \t]*(?:\n|$))+/,We=/^((?: {4}| {0,3}\t)[^\n]+(?:\n(?:[ \t]*(?:\n|$))*)?)+/,Ke=/^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}(?:(?=`)\1`*|(?=~)\1~*) *(?=\n|$)|$)/,K=/^ {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/,Xe=/^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)/,ae=/ {0,3}(?:[*+-]|\d{1,9}[.)])/,we=/^(?!bull |blockCode|fences|blockquote|heading|html|table)((?:.|\n(?!\s*?\n|bull |fences|blockquote|heading|hr|html|table))+?)\n {0,3}(=+|-+)[ \t]*(?:\n+|$)/,Pe=c(we).replace(/bull/g,ae).replace(/blockCode/g,/(?: {4}| {0,3}\t)/).replace(/fences/g,/ {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g,/ {0,3}>/).replace(/heading/g,/ {0,3}#{1,6}(?:\s|$)/).replace(/hr/g,/ {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g,/ {0,3}<[^\n>]+>\n/).replace(/\|table/g,"").getRegex(),Ve=c(we).replace(/bull/g,ae).replace(/blockCode/g,/(?: {4}| {0,3}\t)/).replace(/fences/g,/ {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g,/ {0,3}>/).replace(/heading/g,/ {0,3}#{1,6}(?:\s|$)/).replace(/hr/g,/ {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g,/ {0,3}<[^\n>]+>\n/).replace(/table/g,/ {0,3}\|?(?:[:\- ]*\|)+[\:\- ]*\n/).getRegex(),le=/^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html|table|[ \t]+\n)[^\n]+)*)/,Je=/^[^\n]+/,ue=/(?!\s*\])(?:\\[\s\S]|[^\[\]\\\n]|\n(?![ \t]*\n))+/,Ye=c(/^ {0,3}\[(label)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)(title))? *(?:\n+|$)/).replace("label",ue).replace("title",/(?:"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\\n]|\n(?!\n))*'|\((?:\\[\s\S]|[^()\\])*\))/).getRegex(),et=c(/^(bull)([ \t][^\n]*?)?(?:\n|$)/).replace(/bull/g,ae).getRegex(),X="address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul",pe=/<!--(?:-?>|[\s\S]*?(?:-->|$))/,tt=c("^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n*|$)|comment[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>[^\\n]*\\n*|$)|<![A-Z][\\s\\S]*?(?:>[^\\n]*\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>[^\\n]*\\n*|$)|</?(tag)(?:[ \\t]+|\\n|/?>|$)[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|<(?!(?:script|pre|style|textarea)(?![a-z0-9-]))([a-z][a-z0-9-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|</[a-z][a-z0-9-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$))","i").replace("comment",pe).replace("tag",X).replace("attribute",/ +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/).getRegex(),Se=a=>c(le).replace("hr",K).replace("heading"," {0,3}#{1,6}(?:\\s|$)").replace("|lheading","").replace("|table","").replace("blockquote"," {0,3}>").replace("fences"," {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list",a).replace("html"," {0,3}(?:</?(?:tag)(?: +|\\n|/?>)|<(?:(?:script|pre|style|textarea)(?:[\\s>]|$)|!--)|<\\?|<![A-Za-z]|<!\\[CDATA\\[)").replace("tag",X).getRegex(),nt=Se(/ {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]/),rt=Se(/ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]|\n|$)/),st=c(/^( {0,3}> ?(?:(?![ \t]*(?:\n|$))(paragraph)|[^\n]*)(?:\n|$))+/).replace("paragraph",rt).getRegex(),ce={blockquote:st,code:We,def:Ye,fences:Ke,heading:Xe,hr:K,html:tt,lheading:Pe,list:et,newline:Ue,paragraph:nt,table:q,text:Je},be=c("^ *([^\\n ].*)\\n {0,3}((?:\\| *)?:?-+:? *(?:\\| *:?-+:? *)*(?:\\| *)?)(?:\\n((?:(?! *\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)").replace("hr",K).replace("heading"," {0,3}#{1,6}(?:\\s|$)").replace("blockquote"," {0,3}>").replace("code","(?: {4}| {0,3}	)[^\\n]").replace("fences"," {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list"," {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html"," {0,3}(?:</?(?:tag)(?: +|\\n|/?>)|<(?:(?:script|pre|style|textarea)(?:[\\s>]|$)|!--)|<\\?|<![A-Za-z]|<!\\[CDATA\\[)").replace("tag",X).getRegex(),it={...ce,lheading:Ve,table:be,paragraph:c(le).replace("hr",K).replace("heading"," {0,3}#{1,6}(?:\\s|$)").replace("|lheading","").replace("table",be).replace("blockquote"," {0,3}>").replace("fences"," {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list"," {0,3}(?:[*+-]|1[.)])[ \\t]+[^ \\t\\n]").replace("html"," {0,3}(?:</?(?:tag)(?: +|\\n|/?>)|<(?:(?:script|pre|style|textarea)(?:[\\s>]|$)|!--)|<\\?|<![A-Za-z]|<!\\[CDATA\\[)").replace("tag",X).getRegex()},ot={...ce,html:c(`^ *(?:comment(?: *\\n|\\s*$)|<(tag)[\\s\\S]+?</\\1>(?: *\\n{2,}|\\s*$)|<tag(?:"[^"]*"|'[^']*'|\\s[^'"/>\\s]*)*?/?>(?: *\\n{2,}|\\s*$))`).replace("comment",pe).replace(/tag/g,"(?!(?:a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)\\b)\\w+(?!:|[^\\w\\s@]*@)\\b").getRegex(),def:/^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/,heading:/^(#{1,6})(.*)(?:\n+|$)/,fences:q,lheading:/^(.+?)\n {0,3}(=+|-+) *(?:\n+|$)/,paragraph:c(le).replace("hr",K).replace("heading",` *#{1,6} *[^
++]`).replace("lheading",Pe).replace("|table","").replace("blockquote"," {0,3}>").replace("|fences","").replace("|list","").replace("|html","").replace("|tag","").getRegex()},at=/^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/,lt=/^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/,ye=/^( {2,}|\\)\n(?!\s*$)[ \t]*/,ut=/^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*_]|\b_|$)|[^ ](?= {2,}\n)))/,C=/[\p{P}\p{S}]/u,j=/[\s\p{P}\p{S}]/u,V=/[^\s\p{P}\p{S}]/u,pt=c(/^((?![*_])punctSpace)/,"u").replace(/punctSpace/g,j).getRegex(),ct=/[\p{Pi}\p{Ps}"']/u,_e=/(?!~)[\p{P}\p{S}]/u,ht=/(?!~)[\s\p{P}\p{S}]/u,dt=/(?:[^\s\p{P}\p{S}]|~)/u,gt=c(/link|precode-code|html/,"g").replace("link",/\[(?:[^\[\]`]|(?<a>`+)[^`]+\k<a>(?!`))*?\]\((?:\\[\s\S]|[^\\\(\)]|\((?:\\[\s\S]|[^\\\(\)])*\))*\)/).replace("precode-",Oe?"(?<!`)()":"(^^|[^`])").replace("code",/(?<b>`+)[^`]+\k<b>(?!`)/).replace("html",/<(?! )[^<>]*?>/).getRegex(),$e=/^(?:\*+(?:((?!\*)punct)|([^\s*]))?)|^_+(?:((?!_)punct)|([^\s_]))?/,kt=c($e,"u").replace(/punct/g,C).getRegex(),ft=c($e,"u").replace(/punct/g,_e).getRegex(),mt=/^(?:\*+(?:((?!\*)(?!openQuote)punct)|([^\s*]))?)|^_+(?:((?!_)(?!openQuote)punct)|([^\s_]))?/,xt=c(mt,"u").replace(/openQuote/g,ct).replace(/punct/g,C).getRegex(),Le="^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)punctSpace(\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|notPunctSpace(\\*+)(?=notPunctSpace)",bt=c(Le,"gu").replace(/notPunctSpace/g,V).replace(/punctSpace/g,j).replace(/punct/g,C).getRegex(),Rt=c(Le,"gu").replace(/notPunctSpace/g,dt).replace(/punctSpace/g,ht).replace(/punct/g,_e).getRegex(),Tt="^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)[\\s](\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|(?:(?!\\*)punct|notPunctSpace)(\\*+)(?!\\*)(?=notPunctSpace)",Ot=c(Tt,"gu").replace(/notPunctSpace/g,V).replace(/punctSpace/g,j).replace(/punct/g,C).getRegex(),wt=c("^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)punctSpace(_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)","gu").replace(/notPunctSpace/g,V).replace(/punctSpace/g,j).replace(/punct/g,C).getRegex(),Pt="^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)[\\s](_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)|(?:(?!_)punct|notPunctSpace)(_+)(?!_)(?=notPunctSpace)",St=c(Pt,"gu").replace(/notPunctSpace/g,V).replace(/punctSpace/g,j).replace(/punct/g,C).getRegex(),yt=c(/^~~?(?:((?!~)punct)|[^\s~])/,"u").replace(/punct/g,C).getRegex(),_t="^[^~]+(?=[^~])|(?!~)punct(~~?)(?=[\\s]|$)|notPunctSpace(~~?)(?!~)(?=punctSpace|$)|(?!~)punctSpace(~~?)(?=notPunctSpace)|[\\s](~~?)(?!~)(?=punct)|(?!~)punct(~~?)(?!~)(?=punct)|notPunctSpace(~~?)(?=notPunctSpace)",$t=c(_t,"gu").replace(/notPunctSpace/g,V).replace(/punctSpace/g,j).replace(/punct/g,C).getRegex(),Lt=c(/\\(punct)/,"gu").replace(/punct/g,C).getRegex(),Ct=c(/(`+)(?:[^`]|[^`][\s\S]*?[^`])\1(?!`)|`+|\\(punct)/,"gu").replace(/punct/g,C).getRegex(),It=c(/^<(scheme:[^\s\x00-\x1f<>]*|email)>/).replace("scheme",/[a-zA-Z][a-zA-Z0-9+.-]{1,31}/).replace("email",/[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/).getRegex(),At=c(pe).replace("(?:-->|$)","-->").getRegex(),Et=c("^comment|^</[a-zA-Z][a-zA-Z0-9-]*\\s*>|^<[a-zA-Z][a-zA-Z0-9-]*(?:attribute)*?\\s*/?>|^<\\?[\\s\\S]*?\\?>|^<![a-zA-Z]+\\s[\\s\\S]*?>|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>").replace("comment",At).replace("attribute",/\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/).getRegex(),Ce=/\[(?:\\[\s\S]|[^\[\]\\])*\]/,re=c(/(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\])|[^\[\]\\`])*?/).replace("brackets",Ce).getRegex(),zt=c(/^!?\[(label)\]\([ \t\n]*(href)(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(title))?[ \t\n]*\)/).replace("label",re).replace("href",/<(?:\\.|[^\n<>\\])+>|[^ \t\n\x00-\x1f]+|(?=\))/).replace("title",/"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|\((?:\\[\s\S]|[^)\\])*\)/).getRegex(),Mt=c(/^!?\[(label)\]\[(ref)\]/).replace("label",re).replace("ref",ue).getRegex(),Dt=c(/^!?\[(ref)\](?:\[\])?/).replace("ref",ue).getRegex(),Re=/(?!\s*\])(?:\\[\s\S]|[^\[\]\\]){1,999}/,Bt=c(/(?:[^\[\]\\`]*(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\]))){0,999}?[^\[\]\\`]*?/).replace("brackets",Ce).getRegex(),qt=c("reflink|nolink(?!\\()","g").replace("reflink",c(/^!?\[(label)\]\[(ref)\]/).replace("label",Bt).replace("ref",Re).getRegex()).replace("nolink",c(/^!?\[(ref)\](?:\[\])?/).replace("ref",Re).getRegex()).getRegex(),Te=/[hH][tT][tT][pP][sS]?|[fF][tT][pP]/,vt=/[A-Za-z0-9._+-]+@[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/,Zt=c(/(?:mailto:email|xmpp:email(?:\/[A-Za-z0-9@.]+)?)/).replace(/email/g,vt).getRegex(),he={_backpedal:q,anyPunctuation:Lt,anyPunctuationOutsideCode:Ct,autolink:It,blockSkip:gt,br:ye,code:lt,del:q,delLDelim:q,delRDelim:q,emStrongLDelim:kt,emStrongRDelimAst:bt,emStrongRDelimUnd:wt,escape:at,link:zt,nolink:Dt,punctuation:pt,reflink:Mt,reflinkSearch:qt,tag:Et,text:ut,url:q},Ht={...he,emStrongLDelim:xt,emStrongRDelimAst:Ot,emStrongRDelimUnd:St,link:c(/^!?\[(label)\]\((.*?)\)/).replace("label",re).getRegex(),reflink:c(/^!?\[(label)\]\s*\[([^\]]*)\]/).replace("label",re).getRegex()},oe={...he,emStrongRDelimAst:Rt,emStrongLDelim:ft,delLDelim:yt,delRDelim:$t,url:c(/^emailProtocol|^((?:protocol):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/).replace("emailProtocol",Zt).replace("protocol",Te).replace("email",/[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/).getRegex(),_backpedal:/(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/,del:/^(~~?)(?=[^\s~])((?:\\[\s\S]|[^\\])*?(?:\\[\s\S]|[^\s~\\]))\1(?=[^~]|$)/,text:c(/^(?:[^a-zA-Z0-9](?=emailProtocol)|(`+|~+|[^`~])(?:(?=[`~])|(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|protocol:\/\/|wwwStart|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9](?=emailProtocol)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))))/).replace("protocol",Te).replace(/emailProtocol/g,/(?:mailto|xmpp):/).replace("wwwStart",Oe?"(?<![^\\s*_~(])www\\.":"www\\.").getRegex()},jt={...oe,br:c(ye).replace("{2,}","*").getRegex(),text:c(oe.text).replace("\\b_","\\b_| {2,}\\n").replace(/\{2,\}/g,"*").getRegex()},J={normal:ce,gfm:it,pedantic:ot},G={normal:he,gfm:oe,breaks:jt,pedantic:Ht};var Gt={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"},Ie=a=>Gt[a];function S(a,e){if(e){if(T.escapeTest.test(a))return a.replace(T.escapeReplace,Ie)}else if(T.escapeTestNoEncode.test(a))return a.replace(T.escapeReplaceNoEncode,Ie);return a}function Ae(a){return T.numericCharacterReference.test(a)?a.replace(T.numericCharacterReferenceOrAmpersand,(e,t,n)=>{if(t===void 0&&n===void 0)return"&amp;";let s=t===void 0?Number.parseInt(n,16):Number.parseInt(t,10);return s===0||s>1114111||s>=55296&&s<=57343?"\uFFFD":s===38?"&amp;":String.fromCodePoint(s)}):a}function de(a){try{a=encodeURI(a).replace(T.percentDecode,"%")}catch{return null}return a}function ge(a,e){let t=a.replace(T.findPipe,(r,o,i)=>{let l=!1,p=o;for(;--p>=0&&i[p]==="\\";)l=!l;return l?"|":" |"}),n=t.split(T.splitPipe),s=0;if(n[0].trim()||n.shift(),n.length>0&&!n.at(-1)?.trim()&&n.pop(),e)if(n.length>e)n.splice(e);else for(;n.length<e;)n.push("");for(;s<n.length;s++)n[s]=n[s].trim().replace(T.slashPipe,"|");return n}function I(a,e,t){let n=a.length;if(n===0)return"";let s=0;for(;s<n;){let r=a.charAt(n-s-1);if(r===e&&!t)s++;else if(r!==e&&t)s++;else break}return a.slice(0,n-s)}function ke(a){let e=a.split(`
++`),t=e.length-1;for(;t>=0&&T.blankLine.test(e[t]);)t--;return e.length-t<=2?a:e.slice(0,t+1).join(`
++`)}function F(a){return a.trim().replace(T.multipleSpaceGlobal," ").toLowerCase().toUpperCase().toLowerCase()}function fe(a,e){if(a.indexOf(e[0])===-1&&a.indexOf(e[1])===-1)return-1;let t=0;for(let n=0;n<a.length;n++)if(a[n]==="\\")n++;else if(a[n]===e[0])t++;else if(a[n]===e[1]&&(t--,t<0))return n;return t>0?-2:-1}var N=new WeakMap;function me(a){let e={"*":-1,_:-1},t=-1,n=a.length;for(let s=0;s<n;s++){let r=a[s];if(r!=="*"&&r!=="_"&&r!=="~")continue;let o=s===0?`
++`:a[s-1],i=s+1;for(;i<n&&a[i]===r;)i++;o!==" "&&o!=="	"&&o!==`
++`&&o!=="\r"&&o!=="\f"&&(r==="~"?t=s:e[r]=s),s=i-1}return{maskedSrc:a,lastPossibleEmStrongCloserIndex:e,lastPossibleDelCloserIndex:t}}function Ee(a,e){let t=me(e),n=N.get(a);n?n.push(t):N.set(a,[t])}function ze(a){let e=N.get(a);e&&(e.pop(),e.length===0&&N.delete(a))}function Me(a,e,t){let n=N.get(a)?.at(-1);return n&&n.maskedSrc===e?n.lastPossibleEmStrongCloserIndex[t]:me(e).lastPossibleEmStrongCloserIndex[t]}function De(a,e){let t=N.get(a)?.at(-1);return t&&t.maskedSrc===e?t.lastPossibleDelCloserIndex:me(e).lastPossibleDelCloserIndex}function Y(a,e=0){let t=e,n="";for(let s of a)if(s==="	"){let r=4-t%4;n+=" ".repeat(r),t+=r}else n+=s,t++;return n}function Be(a,e,t,n,s){let r=e.href,o=e.title||null,i=a[1].replace(s.other.outputLinkReplace,"$1"),l=a[0].charAt(0)==="!",p=n.state.inLink,h=n.state.linkEmitted,u=n.state.inRawBlock;n.state.inLink=!0,n.state.linkEmitted=!1;let d=n.inlineTokens(i),k=n.state.linkEmitted;if(n.state.linkEmitted=h,n.state.inLink=p,!l){if(k){n.state.inRawBlock=u;return}n.state.linkEmitted=!0}return{type:l?"image":"link",raw:t,href:r,title:o,text:i,tokens:d}}function Nt(a,e,t){let n=a.match(t.other.indentCodeCompensation);if(n===null)return e;let s=n[1];return e.split(`
++`).map(r=>{let o=r.match(t.other.beginningSpace);if(o===null)return r;let[i]=o;return r.slice(Math.min(i.length,s.length))}).join(`
++`)}function qe(a,e,t,n){if(!e.includes("<"))return!1;for(let s=0;s<e.length;s++){if(e[s]==="\\"){s++;continue}if(e[s]==="`"){let i=n.inline.code.exec(e.slice(s));if(i){s+=i[0].length-1;continue}}if(e[s]!=="<")continue;let r=a.slice(t+s),o=n.inline.tag.exec(r)||n.inline.autolink.exec(r);if(o){if(o[0].length>e.length-s)return!0;s+=o[0].length-1}}return!1}var _=class{options;rules;lexer;constructor(e){this.options=e||P}space(e){let t=this.rules.block.newline.exec(e);if(t&&t[0].length>0)return{type:"space",raw:t[0]}}code(e){let t=this.rules.block.code.exec(e);if(t){let n=this.options.pedantic?t[0]:ke(t[0]),s=n.replace(this.rules.other.codeRemoveIndent,"");return{type:"code",raw:n,codeBlockStyle:"indented",text:s}}}fences(e){let t=this.rules.block.fences.exec(e);if(t){let n=t[0],s=Nt(n,t[3]||"",this.rules);return{type:"code",raw:n,lang:t[2]?t[2].trim().replace(this.rules.inline.anyPunctuation,"$1"):t[2],text:s}}}heading(e){let t=this.rules.block.heading.exec(e);if(t){let n=t[2].trim();if(this.rules.other.endingHash.test(n)){let s=I(n,"#");(this.options.pedantic||!s||this.rules.other.endingSpaceTabChar.test(s))&&(n=s.trim())}return{type:"heading",raw:I(t[0],`
++`),depth:t[1].length,text:n,tokens:this.lexer.inline(n)}}}hr(e){let t=this.rules.block.hr.exec(e);if(t)return{type:"hr",raw:I(t[0],`
++`)}}blockquote(e){let t=this.rules.block.blockquote.exec(e);if(t){let n=I(t[0],`
++`).split(`
++`),s="",r="",o=[];for(;n.length>0;){let i=!1,l=[],p;for(p=0;p<n.length;p++)if(this.rules.other.blockquoteStart.test(n[p]))l.push(n[p]),i=!0;else if(!i)l.push(n[p]);else break;n=n.slice(p);let h=l.join(`
++`),u=h.replace(this.rules.other.blockquoteMarkerWhitespace,(g,b,x)=>b+Y(x,b.length)).replace(this.rules.other.blockquoteSetextReplace,`
++    $1`).replace(this.rules.other.blockquoteSetextReplace2,"");s=s?`${s}
++${h}`:h,r=r?`${r}
++${u}`:u;let d=this.lexer.state.top;if(this.lexer.state.top=!0,this.lexer.blockTokens(u,o,!0),this.lexer.state.top=d,n.length===0)break;let k=o.at(-1);if(k?.type==="code"||k?.type==="heading"||k?.type==="hr"||k?.type==="html"||k?.type==="table")break;if(k?.type==="blockquote"){let g=k,b=n.join(`
++`),x=g.raw+`
++`+b.replace(this.rules.other.blockquoteSetextReplace2,""),f=this.blockquote(x);o[o.length-1]=f;let y=x.substring(f.raw.length).replace(/^\n/,""),R=y?y.split(`
++`).length:0,E=R?n.slice(0,-R):n;if(E.length>0&&(s=`${s}
++${E.join(`
++`)}`),r=r.substring(0,r.length-g.text.length)+f.text,n=n.slice(E.length),n.length>0&&this.rules.other.blockquoteStart.test(n[0]))continue;break}else if(k?.type==="list"){let g=k,b=g.raw+`
++`+n.join(`
++`),x=this.list(b);o[o.length-1]=x;let f=x.raw.length>g.raw.length?b.slice(g.raw.length+1,x.raw.length).split(`
++`).length:0;if(f>0){let y=n.slice(0,f).join(`
++`);s=`${s}
++${y}`,r=`${r}
++${y}`}n=n.slice(f);continue}}return{type:"blockquote",raw:s,tokens:o,text:r}}}list(e){let t=this.rules.block.list.exec(e);if(t){let n=e,s=()=>n.length-e.length,r=t[1].trim(),o=r.length>1,i={type:"list",raw:"",ordered:o,start:o?+r.slice(0,-1):"",loose:!1,items:[]};r=o?`\\d{1,9}\\${r.slice(-1)}`:`\\${r}`,this.options.pedantic&&(r=o?r:"[*+-]");let l=this.rules.other.listItemRegex(r),p=!1;for(;e;){let u=!1,d="";if(!(t=l.exec(e))||this.rules.block.hr.test(e))break;let k=s();e=e.substring(t[0].length);let g=t[2].split(`
++`,1)[0],b=t[1].length,x=this.options.pedantic?Y(g,b):g.replace(this.rules.other.leadingSpaceTab,Z=>Y(Z,b)),f=e.split(`
++`,1)[0],y=!x.trim(),R=0;if(this.options.pedantic?(R=2,d=x.trimStart()):y?R=b+1:(R=x.search(this.rules.other.nonSpaceChar),R=R>4?1:R,d=x.slice(R),R+=b),y&&this.rules.other.blankLine.test(f)&&(e=e.substring(f.length+1),u=!0),!u){let Z=this.rules.other.nextBulletRegex(R),U=this.rules.other.hrRegex(R),ee=this.rules.other.fencesBeginRegex(R),te=this.options.pedantic?this.rules.other.pedanticHeadingBeginRegex(R):this.rules.other.headingBeginRegex(R),M=this.rules.other.htmlBeginRegex(R),ne=this.rules.other.blockquoteBeginRegex(R);for(;e;){let W=e.split(`
++`,1)[0],H;if(f=W,this.options.pedantic?(f=f.replace(this.rules.other.listReplaceNesting,"  "),H=f):H=f.replace(this.rules.other.leadingSpaceTab,xe=>Y(xe)),ee.test(f)||te.test(f)||M.test(f)||ne.test(f)||Z.test(f)||U.test(f))break;if(H.search(this.rules.other.nonSpaceChar)>=R||!f.trim())d+=`
++`+H.slice(R);else{if(y||x.replace(this.rules.other.tabCharGlobal,"    ").search(this.rules.other.nonSpaceChar)>=4||ee.test(x)||te.test(x)||M.test(x)||U.test(x))break;let Ze=!this.options.pedantic&&/^ {0,3}(?:=+|-+) *$/.test(f)&&this.rules.block.lheading.test(`${x}
++${f}`)?`    ${H.replace(/^ {0,3}/,"")}`:f;d+=`
++`+Ze}y=!f.trim(),e=e.substring(W.length+1),x=H.slice(R)}}let E=n.slice(k,s());i.loose||(p?i.loose=!0:this.rules.other.doubleBlankLine.test(E)&&(p=!0)),i.items.push({type:"list_item",raw:E,task:!!this.options.gfm&&this.rules.other.listIsTask.test(d),loose:!1,text:d,tokens:[]})}let h=i.items.at(-1);if(h)h.raw=h.raw.trimEnd(),h.text=h.text.trimEnd();else return;i.raw=n.slice(0,s()).trimEnd();for(let u of i.items)if(this.lexer.state.top=!1,u.tokens=this.lexer.blockTokens(u.text,[]),!i.loose){let d=u.tokens.filter(g=>g.type==="space"),k=d.length>0&&d.some(g=>this.rules.other.anyLine.test(g.raw));i.loose=k}for(let u of i.items){let d=u.tokens[0];if(u.task&&(d?.type==="text"||d?.type==="paragraph")){u.text=u.text.replace(this.rules.other.listReplaceTask,""),d.raw=d.raw.replace(this.rules.other.listReplaceTask,""),d.text=d.text.replace(this.rules.other.listReplaceTask,"");for(let g=this.lexer.inlineQueue.length-1;g>=0;g--)if(this.rules.other.listIsTask.test(this.lexer.inlineQueue[g].src)){this.lexer.inlineQueue[g].src=this.lexer.inlineQueue[g].src.replace(this.rules.other.listReplaceTask,"");break}let k=this.rules.other.listTaskCheckbox.exec(u.raw);if(k){let g={type:"checkbox",raw:k[0]+" ",checked:k[0]!=="[ ]"};u.checked=g.checked,i.loose?u.tokens[0]&&["paragraph","text"].includes(u.tokens[0].type)&&"tokens"in u.tokens[0]&&u.tokens[0].tokens?(u.tokens[0].raw=g.raw+u.tokens[0].raw,u.tokens[0].text=g.raw+u.tokens[0].text,u.tokens[0].tokens.unshift(g)):u.tokens.unshift({type:"paragraph",raw:g.raw,text:g.raw,tokens:[g]}):u.tokens.unshift(g)}}else u.task&&(u.task=!1)}if(i.loose)for(let u of i.items){u.loose=!0;for(let d of u.tokens)d.type==="text"&&(d.type="paragraph")}return i}}html(e){let t=this.rules.block.html.exec(e);if(t){let n=ke(t[0]);return{type:"html",block:!0,raw:n,pre:t[1]==="pre"||t[1]==="script"||t[1]==="style",text:n}}}def(e){let t=this.rules.block.def.exec(e);if(t){if(!this.rules.other.startAngleBracket.test(t[2])&&fe(t[2],"()")!==-1)return;let n=F(t[1]),s=t[2]?t[2].replace(this.rules.other.hrefBrackets,"$1").replace(this.rules.inline.anyPunctuation,"$1"):"",r=t[3]?t[3].substring(1,t[3].length-1).replace(this.rules.inline.anyPunctuation,"$1"):t[3];return{type:"def",tag:n,raw:I(t[0],`
++`),href:s,title:r}}}table(e){let t=this.rules.block.table.exec(e);if(!t||!this.rules.other.tableDelimiter.test(t[2]))return;let n=ge(t[1]),s=t[2].replace(this.rules.other.tableAlignChars,"").split("|"),r=t[3]?.trim()?t[3].replace(this.rules.other.tableRowBlankLine,"").split(`
++`):[],o={type:"table",raw:I(t[0],`
++`),header:[],align:[],rows:[]};if(n.length===s.length){for(let i of s)this.rules.other.tableAlignRight.test(i)?o.align.push("right"):this.rules.other.tableAlignCenter.test(i)?o.align.push("center"):this.rules.other.tableAlignLeft.test(i)?o.align.push("left"):o.align.push(null);for(let i=0;i<n.length;i++)o.header.push({text:n[i],tokens:this.lexer.inline(n[i]),header:!0,align:o.align[i]});for(let i of r)o.rows.push(ge(i,o.header.length).map((l,p)=>({text:l,tokens:this.lexer.inline(l),header:!1,align:o.align[p]})));return o}}lheading(e){let t=this.rules.block.lheading.exec(e);if(t){let n=t[1].trim();return{type:"heading",raw:I(t[0],`
++`),depth:t[2].charAt(0)==="="?1:2,text:n,tokens:this.lexer.inline(n)}}}paragraph(e){let t=this.rules.block.paragraph.exec(e);if(t){let n=t[1].charAt(t[1].length-1)===`
++`?t[1].slice(0,-1):t[1];return{type:"paragraph",raw:t[0],text:n,tokens:this.lexer.inline(n)}}}text(e){let t=this.rules.block.text.exec(e);if(t)return{type:"text",raw:t[0],text:t[0],tokens:this.lexer.inline(t[0])}}escape(e){let t=this.rules.inline.escape.exec(e);if(t)return{type:"escape",raw:t[0],text:t[1]}}tag(e){let t=this.rules.inline.tag.exec(e);if(t)return!this.lexer.state.inLink&&this.rules.other.startATag.test(t[0])?this.lexer.state.inLink=!0:this.lexer.state.inLink&&this.rules.other.endATag.test(t[0])&&(this.lexer.state.inLink=!1),!this.lexer.state.inRawBlock&&this.rules.other.startPreScriptTag.test(t[0])?this.lexer.state.inRawBlock=!0:this.lexer.state.inRawBlock&&this.rules.other.endPreScriptTag.test(t[0])&&(this.lexer.state.inRawBlock=!1),{type:"html",raw:t[0],inLink:this.lexer.state.inLink,inRawBlock:this.lexer.state.inRawBlock,block:!1,text:t[0]}}link(e){if(this.lexer.state.linkParenPossible===!1)return;let t=this.rules.inline.link.exec(e);if(t){let n=t[0].charAt(0)==="!"?2:1;if(!this.options.pedantic&&qe(e,t[1],n,this.rules))return;let s=t[2].trim();if(!this.options.pedantic&&this.rules.other.startAngleBracket.test(s)){if(!this.rules.other.endAngleBracket.test(s))return;let l=I(s.slice(0,-1),"\\");if((s.length-l.length)%2===0)return}else{let l=fe(t[2],"()");if(l===-2)return;if(l>-1){let h=(t[0].indexOf("!")===0?5:4)+t[1].length+l;t[2]=t[2].substring(0,l),t[0]=t[0].substring(0,h).trim(),t[3]=""}}let r=I(t[0].slice(0,-1),"\\");if((t[0].length-r.length)%2===0)return;let o=t[2],i="";if(this.options.pedantic){let l=this.rules.other.pedanticHrefTitle.exec(o);l&&(o=l[1],i=l[3])}else i=t[3]?t[3].slice(1,-1):"";return o=o.trim(),this.rules.other.startAngleBracket.test(o)&&(this.options.pedantic&&!this.rules.other.endAngleBracket.test(s)?o=o.slice(1):o=o.slice(1,-1)),Be(t,{href:o&&o.replace(this.rules.inline.anyPunctuation,"$1"),title:i&&i.replace(this.rules.inline.anyPunctuation,"$1")},t[0],this.lexer,this.rules)}}reflink(e,t){let n;if((n=this.rules.inline.reflink.exec(e))||(n=this.rules.inline.nolink.exec(e))){let s=n[0].charAt(0)==="!"?2:1;if(!this.options.pedantic&&qe(e,n[1],s,this.rules))return;let r=t[F(n[2]||n[1])];if(!r){let o=n[0].charAt(0);return{type:"text",raw:o,text:o}}return Be(n,r,n[0],this.lexer,this.rules)}}emStrong(e,t,n=""){let s=this.rules.inline.emStrongLDelim.exec(e);if(!s||!s[1]&&!s[2]&&!s[3]&&!s[4])return;let r=s[0][0],o=n===r,i=t.length-e.length,l=i;for(;!this.options.pedantic&&l>0&&t[l-1]===r;)l--;let p=[...t.slice(Math.max(0,l-2),l)].at(-1)??"",h=p==="*"||p==="_"||!!this.rules.inline.punctuation.exec(p);l<i&&(n=p);let u=l<i?h:!!this.rules.inline.punctuation.exec(n);if(s[4]&&n.match(this.rules.other.unicodeAlphaNumeric))return;let d=s[1]||s[3]||"";if(!d||!n||u){let k=[...s[0]].length-1,g,b,x=k,f=0,y=i-l+k,R=!this.options.pedantic&&!!p.trim()&&(!!d||r==="*"&&!h);if(r!=="*"&&r!=="_")return;let E=r==="*"?this.rules.inline.emStrongRDelimAst:this.rules.inline.emStrongRDelimUnd,Z=Me(this,t,r),U=t.length-e.length+k;if(Z<U)return;t=t.slice(-1*e.length+k);let ee=Z-U;for(E.lastIndex=0;(s=E.exec(t))!==null&&!(s.index>ee);){if(g=s[1]||s[2]||s[3]||s[4]||s[5]||s[6],!g)continue;if(b=[...g].length,s[3]||s[4]){x+=b;continue}else if(s[5]||s[6]||R){if(o&&(s[5]||s[6]))break;if(y%3&&!((y+b)%3)){f+=b;continue}}if(x-=b,x>0)continue;b=Math.min(b,b+x+f);let te=[...s[0]][0].length,M=e.slice(0,k+s.index+te+b);if(Math.min(k,b)%2){let W=M.slice(1,-1);return{type:"em",raw:M,text:W,tokens:this.lexer.inlineTokens(W)}}let ne=M.slice(2,-2);return{type:"strong",raw:M,text:ne,tokens:this.lexer.inlineTokens(ne)}}}}codespan(e){let t=this.rules.inline.code.exec(e);if(t){let n=t[2].replace(this.rules.other.newLineCharGlobal," "),s=this.rules.other.nonSpaceChar.test(n),r=this.rules.other.startingSpaceChar.test(n)&&this.rules.other.endingSpaceChar.test(n);return s&&r&&(n=n.substring(1,n.length-1)),{type:"codespan",raw:t[0],text:n}}}br(e){let t=this.rules.inline.br.exec(e);if(t)return{type:"br",raw:t[0]}}del(e,t,n=""){let s=this.rules.inline.delLDelim.exec(e);if(!s)return;if(!(s[1]||"")||!n||this.rules.inline.punctuation.exec(n)){let o=[...s[0]].length-1,i,l,p=o,h=this.rules.inline.delRDelim,u=De(this,t),d=t.length-e.length+o;if(u<d)return;t=t.slice(-1*e.length+o);let k=u-d;for(h.lastIndex=0;(s=h.exec(t))!==null&&!(s.index>k);){if(i=s[1]||s[2]||s[3]||s[4]||s[5]||s[6],!i||(l=[...i].length,l!==o))continue;if(s[3]||s[4]){p+=l;continue}if(p-=l,p>0)continue;l=Math.min(l,l+p);let g=[...s[0]][0].length,b=e.slice(0,o+s.index+g+l),x=b.slice(o,-o);return{type:"del",raw:b,text:x,tokens:this.lexer.inlineTokens(x)}}}}autolink(e){let t=this.rules.inline.autolink.exec(e);if(t){let n,s;return t[2]==="@"?(n=t[1],s="mailto:"+n):(n=t[1],s=n),{type:"link",raw:t[0],text:n,href:s,autolink:!0,tokens:[{type:"text",raw:n,text:n}]}}}url(e){let t;if(t=this.rules.inline.url.exec(e)){let n,s;if(t[2]==="@")n=t[0],s="mailto:"+n;else{let r;do r=t[0],t[0]=this.rules.inline._backpedal.exec(t[0])?.[0]??"";while(r!==t[0]);n=t[0],t[1]==="www."?s="http://"+t[0]:s=t[0]}return{type:"link",raw:t[0],text:n,href:s,autolink:!0,tokens:[{type:"text",raw:n,text:n}]}}}inlineText(e){let t=this.rules.inline.text.exec(e);if(t){let n=this.lexer.state.inRawBlock;return{type:"text",raw:t[0],text:n?t[0]:Ae(t[0]),escaped:n}}}};var O=class a{tokens;options;state;inlineQueue;tokenizer;constructor(e){this.tokens=[],this.tokens.links=Object.create(null),this.options=e||P,this.options.tokenizer=this.options.tokenizer||new _,this.tokenizer=this.options.tokenizer,this.tokenizer.options=this.options,this.tokenizer.lexer=this,this.inlineQueue=[],this.state={inLink:!1,inRawBlock:!1,linkEmitted:!1,linkParenPossible:!0,top:!0};let t={other:T,block:J.normal,inline:G.normal};this.options.pedantic?(t.block=J.pedantic,t.inline=G.pedantic):this.options.gfm&&(t.block=J.gfm,this.options.breaks?t.inline=G.breaks:t.inline=G.gfm),this.tokenizer.rules=t}static get rules(){return{block:J,inline:G}}static lex(e,t){return new a(t).lex(e)}static lexInline(e,t){return new a(t).inlineTokens(e)}lex(e){e=e.replace(T.carriageReturn,`
++`),this.blockTokens(e,this.tokens);for(let t=0;t<this.inlineQueue.length;t++){let n=this.inlineQueue[t];this.state.inRawBlock=!1,this.inlineTokens(n.src,n.tokens)}return this.inlineQueue=[],this.tokens}blockTokens(e,t=[],n=!1){this.tokenizer.lexer=this,this.options.pedantic&&(e=e.replace(T.tabCharGlobal,"    ").replace(T.spaceLine,""));let s=1/0;for(;e;){if(e.length<s)s=e.length;else{this.infiniteLoopError(e.charCodeAt(0));break}let r;if(this.options.extensions?.block?.some(i=>(r=i.call({lexer:this},e,t))?(e=e.substring(r.raw.length),t.push(r),!0):!1))continue;if(r=this.tokenizer.space(e)){e=e.substring(r.raw.length);let i=t.at(-1);r.raw.length===1&&i!==void 0?i.raw+=`
++`:t.push(r);continue}if(r=this.tokenizer.code(e)){e=e.substring(r.raw.length);let i=t.at(-1);i?.type==="paragraph"||i?.type==="text"?(i.raw+=(i.raw.endsWith(`
++`)?"":`
++`)+r.raw,i.text+=`
++`+r.text,this.inlineQueue.at(-1).src=i.text):t.push(r);continue}if(r=this.tokenizer.fences(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.heading(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.hr(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.blockquote(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.list(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.html(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.def(e)){e=e.substring(r.raw.length);let i=t.at(-1);i?.type==="paragraph"||i?.type==="text"?(i.raw+=(i.raw.endsWith(`
++`)?"":`
++`)+r.raw,i.text+=`
++`+r.raw,this.inlineQueue.at(-1).src=i.text):(this.tokens.links[r.tag]||(this.tokens.links[r.tag]={href:r.href,title:r.title}),t.push(r));continue}if(r=this.tokenizer.table(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.lheading(e)){e=e.substring(r.raw.length),t.push(r);continue}let o=e;if(this.options.extensions?.startBlock){let i=1/0,l=e.slice(1),p;this.options.extensions.startBlock.forEach(h=>{p=h.call({lexer:this},l),typeof p=="number"&&p>=0&&(i=Math.min(i,p))}),i<1/0&&i>=0&&(o=e.substring(0,i+1))}if(this.state.top&&(r=this.tokenizer.paragraph(o))){let i=t.at(-1);n&&i?.type==="paragraph"?(i.raw+=(i.raw.endsWith(`
++`)?"":`
++`)+r.raw,i.text+=`
++`+r.text,this.inlineQueue.pop(),this.inlineQueue.at(-1).src=i.text):t.push(r),n=o.length!==e.length,e=e.substring(r.raw.length);continue}if(r=this.tokenizer.text(e)){e=e.substring(r.raw.length);let i=t.at(-1);i?.type==="text"?(i.raw+=(i.raw.endsWith(`
++`)?"":`
++`)+r.raw,i.text+=`
++`+r.text,this.inlineQueue.pop(),this.inlineQueue.at(-1).src=i.text):t.push(r);continue}if(e){this.infiniteLoopError(e.charCodeAt(0));break}}return this.state.top=!0,t}inline(e,t=[]){return this.inlineQueue.push({src:e,tokens:t}),t}linkInText(e){if(!e.includes("["))return!1;let t=this.tokenizer.rules.inline.link;for(let n of e.matchAll(this.tokenizer.rules.inline.blockSkip))if(t.test(n[0])&&e.charAt(n.index-1)!=="!")return!0;for(let n of e.matchAll(this.tokenizer.rules.inline.reflinkSearch)){let s=n[0],r=s.lastIndexOf("[");if(!(s.charAt(0)==="!"||!Object.hasOwn(this.tokens.links,F(s.slice(r+1,-1))))&&!(r>1&&this.linkInText(s.slice(1,r-1))))return!0}return!1}inlineTokens(e,t=[]){this.tokenizer.lexer=this;let n=this.state.linkParenPossible;this.state.linkParenPossible=n&&e.includes(")");try{return this.#e(e,t)}finally{this.state.linkParenPossible=n}}#e(e,t){let n=e.includes("*")||e.includes("_")||e.includes("~")||this.options.hooks?.emStrongMask||this.tokenizer.emStrong!==_.prototype.emStrong||this.tokenizer.del!==_.prototype.del?this.#n(e):e;Ee(this.tokenizer,n);try{return this.#t(e,n,t)}finally{ze(this.tokenizer)}}#t(e,t,n){let s=!1,r="",o=1/0;for(;e;){if(e.length<o)o=e.length;else{this.infiniteLoopError(e.charCodeAt(0));break}s||(r=""),s=!1;let i;if(this.options.extensions?.inline?.some(p=>(i=p.call({lexer:this},e,n))?(e=e.substring(i.raw.length),n.push(i),!0):!1))continue;if(i=this.tokenizer.escape(e)){e=e.substring(i.raw.length),n.push(i);continue}if(i=this.tokenizer.tag(e)){e=e.substring(i.raw.length),n.push(i);continue}if(i=this.tokenizer.link(e)){e=e.substring(i.raw.length),n.push(i);continue}if(i=this.tokenizer.reflink(e,this.tokens.links)){e=e.substring(i.raw.length);let p=n.at(-1);i.type==="text"&&p?.type==="text"?(p.raw+=i.raw,p.text+=i.text):n.push(i);continue}if(i=this.tokenizer.emStrong(e,t,r)){e=e.substring(i.raw.length),n.push(i);continue}if(i=this.tokenizer.codespan(e)){e=e.substring(i.raw.length),n.push(i);continue}if(i=this.tokenizer.br(e)){e=e.substring(i.raw.length),n.push(i);continue}if(i=this.tokenizer.del(e,t,r)){e=e.substring(i.raw.length),n.push(i);continue}if(i=this.tokenizer.autolink(e)){e=e.substring(i.raw.length),n.push(i);continue}if(!this.state.inLink&&(i=this.tokenizer.url(e))){e=e.substring(i.raw.length),n.push(i);continue}let l=e;if(this.options.extensions?.startInline){let p=1/0,h=e.slice(1),u;this.options.extensions.startInline.forEach(d=>{u=d.call({lexer:this},h),typeof u=="number"&&u>=0&&(p=Math.min(p,u))}),p<1/0&&p>=0&&(l=e.substring(0,p+1))}if(i=this.tokenizer.inlineText(l)){e=e.substring(i.raw.length),i.raw.slice(-1)!=="_"&&(r=i.raw.slice(-1)),s=!0;let p=n.at(-1);p?.type==="text"?(p.raw+=i.raw,p.text+=i.text):n.push(i);continue}if(e){this.infiniteLoopError(e.charCodeAt(0));break}}return n}#n(e){let t=e;if(this.tokens.links&&e.includes("[")){let n=this.tokenizer.rules.inline.reflinkSearch,s=r=>{let o=r.lastIndexOf("[");if(!Object.hasOwn(this.tokens.links,F(r.slice(o+1,-1))))return r;if(o>1&&r.charAt(0)!=="!"){let i=r.slice(1,o-1);if(this.linkInText(i))return"["+i.replace(n,s)+"]["+"a".repeat(r.length-o-2)+"]"}return"["+"a".repeat(r.length-2)+"]"};t=t.replace(n,s)}return t=t.replace(this.tokenizer.rules.inline.anyPunctuationOutsideCode,(n,s,r)=>r?"+".repeat(n.length):s?s+n.slice(s.length,-s.length).replace(/`/g,"+")+s:n),t=t.replace(this.tokenizer.rules.inline.blockSkip,(n,s,r)=>{let o=r?r.length:0;return n.slice(0,o)+"["+"a".repeat(n.length-o-2)+"]"}),t=this.options.hooks?.emStrongMask?.call({lexer:this},t)??t,t}infiniteLoopError(e){let t="Infinite loop on byte: "+e;if(this.options.silent)console.error(t);else throw new Error(t)}};var $=class{options;parser;constructor(e){this.options=e||P}space(e){return""}code({text:e,lang:t,escaped:n}){let s=(t||"").match(T.notSpaceStart)?.[0],r=e?e.replace(T.endingNewline,"")+`
++`:"";return s?'<pre><code class="language-'+S(s)+'">'+(n?r:S(r,!0))+`</code></pre>
++`:"<pre><code>"+(n?r:S(r,!0))+`</code></pre>
++`}blockquote({tokens:e}){return`<blockquote>
++${this.parser.parse(e)}</blockquote>
++`}html({text:e}){return e}def(e){return""}heading({tokens:e,depth:t}){return`<h${t}>${this.parser.parseInline(e)}</h${t}>
++`}hr(e){return`<hr>
++`}list(e){let t=e.ordered,n=e.start,s="";for(let i=0;i<e.items.length;i++){let l=e.items[i];s+=this.listitem(l)}let r=t?"ol":"ul",o=t&&n!==1?' start="'+n+'"':"";return"<"+r+o+`>
++`+s+"</"+r+`>
++`}listitem(e){return`<li>${this.parser.parse(e.tokens)}</li>
++`}checkbox({checked:e}){return"<input "+(e?'checked="" ':"")+'disabled="" type="checkbox"> '}paragraph({tokens:e}){return`<p>${this.parser.parseInline(e)}</p>
++`}table(e){let t="",n="";for(let r=0;r<e.header.length;r++)n+=this.tablecell(e.header[r]);t+=this.tablerow({text:n});let s="";for(let r=0;r<e.rows.length;r++){let o=e.rows[r];n="";for(let i=0;i<o.length;i++)n+=this.tablecell(o[i]);s+=this.tablerow({text:n})}return s&&(s=`<tbody>${s}</tbody>`),`<table>
++<thead>
++`+t+`</thead>
++`+s+`</table>
++`}tablerow({text:e}){return`<tr>
++${e}</tr>
++`}tablecell(e){let t=this.parser.parseInline(e.tokens),n=e.header?"th":"td";return(e.align?`<${n} align="${e.align}">`:`<${n}>`)+t+`</${n}>
++`}strong({tokens:e}){return`<strong>${this.parser.parseInline(e)}</strong>`}em({tokens:e}){return`<em>${this.parser.parseInline(e)}</em>`}codespan({text:e}){return`<code>${S(e,!0)}</code>`}br(e){return"<br>"}del({tokens:e}){return`<del>${this.parser.parseInline(e)}</del>`}link({href:e,title:t,text:n,tokens:s,autolink:r}){let o=r?S(n,!0):this.parser.parseInline(s),i=de(e);if(i===null)return o;e=S(i,r);let l='<a href="'+e+'"';return t&&(l+=' title="'+S(t)+'"'),l+=">"+o+"</a>",l}image({href:e,title:t,text:n,tokens:s}){s&&(n=this.parser.parseInline(s,this.parser.textRenderer));let r=de(e);if(r===null)return S(n);e=r;let o=`<img src="${S(e)}" alt="${S(n)}"`;return t&&(o+=` title="${S(t)}"`),o+=">",o}text(e){return"tokens"in e&&e.tokens?this.parser.parseInline(e.tokens):"escaped"in e&&e.escaped?e.text:S(e.text)}};var A=class{parser;strong({text:e,tokens:t}){return t?this.parser.parseInline(t,this):e}em({text:e,tokens:t}){return t?this.parser.parseInline(t,this):e}codespan({text:e}){return e}del({text:e,tokens:t}){return t?this.parser.parseInline(t,this):e}html({text:e}){return e}text({text:e}){return e}link({text:e,tokens:t}){return t?this.parser.parseInline(t,this):e}image({text:e,tokens:t}){return t?this.parser.parseInline(t,this):e}br(){return""}checkbox({raw:e}){return e}};var w=class a{options;renderer;textRenderer;constructor(e){this.options=e||P,this.options.renderer=this.options.renderer||new $,this.renderer=this.options.renderer,this.renderer.options=this.options,this.renderer.parser=this,this.textRenderer=new A,this.textRenderer.parser=this}static parse(e,t){return new a(t).parse(e)}static parseInline(e,t){return new a(t).parseInline(e)}parse(e){this.renderer.parser=this;let t="";for(let n=0;n<e.length;n++){let s=e[n];if(this.options.extensions?.renderers?.[s.type]){let o=s,i=this.options.extensions.renderers[o.type].call({parser:this},o);if(i!==!1||!["space","hr","heading","code","table","blockquote","list","checkbox","html","def","paragraph","text"].includes(o.type)){t+=i||"";continue}}let r=s;switch(r.type){case"space":{t+=this.renderer.space(r);break}case"hr":{t+=this.renderer.hr(r);break}case"heading":{t+=this.renderer.heading(r);break}case"code":{t+=this.renderer.code(r);break}case"table":{t+=this.renderer.table(r);break}case"blockquote":{t+=this.renderer.blockquote(r);break}case"list":{t+=this.renderer.list(r);break}case"checkbox":{t+=this.renderer.checkbox(r);break}case"html":{t+=this.renderer.html(r);break}case"def":{t+=this.renderer.def(r);break}case"paragraph":{t+=this.renderer.paragraph(r);break}case"text":{t+=this.renderer.text(r);break}default:{let o='Token with "'+r.type+'" type was not found.';if(this.options.silent)return console.error(o),"";throw new Error(o)}}}return t}parseInline(e,t=this.renderer){this.renderer.parser=this;let n="";for(let s=0;s<e.length;s++){let r=e[s];if(this.options.extensions?.renderers?.[r.type]){let i=this.options.extensions.renderers[r.type].call({parser:this},r);if(i!==!1||!["escape","html","link","image","checkbox","strong","em","codespan","br","del","text"].includes(r.type)){n+=i||"";continue}}let o=r;switch(o.type){case"escape":{n+=t.text(o);break}case"html":{n+=t.html(o);break}case"link":{n+=t.link(o);break}case"image":{n+=t.image(o);break}case"checkbox":{n+=t.checkbox(o);break}case"strong":{n+=t.strong(o);break}case"em":{n+=t.em(o);break}case"codespan":{n+=t.codespan(o);break}case"br":{n+=t.br(o);break}case"del":{n+=t.del(o);break}case"text":{n+=t.text(o);break}default:{let i='Token with "'+o.type+'" type was not found.';if(this.options.silent)return console.error(i),"";throw new Error(i)}}}return n}};var L=class{options;block;constructor(e){this.options=e||P}static passThroughHooks=new Set(["preprocess","postprocess","processAllTokens","emStrongMask"]);static passThroughHooksRespectAsync=new Set(["preprocess","postprocess","processAllTokens"]);preprocess(e){return e}postprocess(e){return e}processAllTokens(e){return e}emStrongMask(e){return e}provideLexer(e=this.block){return e?O.lex:O.lexInline}provideParser(e=this.block){return e?w.parse:w.parseInline}};function z(a,e){if(Array.isArray(e))for(let t=0;t<e.length;t++)a.push(e[t]);else a.push(e)}var Q=class{defaults=D();options=this.setOptions;parse=this.parseMarkdown(!0);parseInline=this.parseMarkdown(!1);Parser=w;Renderer=$;TextRenderer=A;Lexer=O;Tokenizer=_;Hooks=L;constructor(...e){this.use(...e)}walkTokens(e,t){let n=[];for(let s of e)switch(z(n,t.call(this,s)),s.type){case"table":{let r=s;for(let o of r.header)z(n,this.walkTokens(o.tokens,t));for(let o of r.rows)for(let i of o)z(n,this.walkTokens(i.tokens,t));break}case"list":{let r=s;z(n,this.walkTokens(r.items,t));break}default:{let r=s;this.defaults.extensions?.childTokens?.[r.type]?this.defaults.extensions.childTokens[r.type].forEach(o=>{let i=r[o].flat(1/0);z(n,this.walkTokens(i,t))}):r.tokens&&z(n,this.walkTokens(r.tokens,t))}}return n}use(...e){let t=this.defaults.extensions||{renderers:Object.create(null),childTokens:Object.create(null)};return e.forEach(n=>{let s={...n};if(s.async=this.defaults.async||s.async||!1,n.extensions&&(n.extensions.forEach(r=>{if(!r.name)throw new Error("extension name required");if("renderer"in r){let o=t.renderers[r.name];o?t.renderers[r.name]=function(...i){let l=r.renderer.apply(this,i);return l===!1&&(l=o.apply(this,i)),l}:t.renderers[r.name]=r.renderer}if("tokenizer"in r){if(!r.level||r.level!=="block"&&r.level!=="inline")throw new Error("extension level must be 'block' or 'inline'");let o=t[r.level];o?o.unshift(r.tokenizer):t[r.level]=[r.tokenizer],r.start&&(r.level==="block"?t.startBlock?t.startBlock.push(r.start):t.startBlock=[r.start]:r.level==="inline"&&(t.startInline?t.startInline.push(r.start):t.startInline=[r.start]))}"childTokens"in r&&r.childTokens&&(t.childTokens[r.name]=r.childTokens)}),s.extensions=t),n.renderer){let r=this.defaults.renderer||new $(this.defaults);for(let o in n.renderer){if(!(o in r))throw new Error(`renderer '${o}' does not exist`);if(["options","parser"].includes(o))continue;let i=o,l=n.renderer[i],p=r[i];r[i]=(...h)=>{let u=l.apply(r,h);return u===!1&&(u=p.apply(r,h)),u===!1?"":u??""}}s.renderer=r}if(n.tokenizer){let r=this.defaults.tokenizer||new _(this.defaults);for(let o in n.tokenizer){if(!(o in r))throw new Error(`tokenizer '${o}' does not exist`);if(["options","rules","lexer"].includes(o))continue;let i=o,l=n.tokenizer[i],p=r[i];r[i]=(...h)=>{let u=l.apply(r,h);return u===!1&&(u=p.apply(r,h)),u}}s.tokenizer=r}if(n.hooks){let r=this.defaults.hooks||new L;for(let o in n.hooks){if(!(o in r))throw new Error(`hook '${o}' does not exist`);if(["options","block"].includes(o))continue;let i=o,l=n.hooks[i],p=r[i];L.passThroughHooks.has(o)?r[i]=h=>{if(r.options.async&&L.passThroughHooksRespectAsync.has(o))return(async()=>{let d=await l.call(r,h);return p.call(r,d)})();let u=l.call(r,h);return p.call(r,u)}:r[i]=(...h)=>{if(r.options.async)return(async()=>{let d=await l.apply(r,h);return d===!1&&(d=await p.apply(r,h)),d})();let u=l.apply(r,h);return u===!1&&(u=p.apply(r,h)),u}}s.hooks=r}if(n.walkTokens){let r=this.defaults.walkTokens,o=n.walkTokens;s.walkTokens=function(i){let l=[];return z(l,o.call(this,i)),r&&z(l,r.call(this,i)),l}}this.defaults={...this.defaults,...s}}),this}setOptions(e){return this.defaults={...this.defaults,...e},this}lexer(e,t){return O.lex(e,t??this.defaults)}parser(e,t){return w.parse(e,t??this.defaults)}parseMarkdown(e){return(n,s)=>{let r={...s},o={...this.defaults,...r},i=this.onError(!!o.silent,!!o.async);if(this.defaults.async===!0&&r.async===!1)return i(new Error("marked(): The async option was set to true by an extension. Remove async: false from the parse options object to return a Promise."));if(typeof n>"u"||n===null)return i(new Error("marked(): input parameter is undefined or null"));if(typeof n!="string")return i(new Error("marked(): input parameter is of type "+Object.prototype.toString.call(n)+", string expected"));if(o.hooks&&(o.hooks.options=o,o.hooks.block=e),o.async)return(async()=>{let l=o.hooks?await o.hooks.preprocess(n):n,h=await(o.hooks?await o.hooks.provideLexer(e):e?O.lex:O.lexInline)(l,o),u=o.hooks?await o.hooks.processAllTokens(h):h;o.walkTokens&&await Promise.all(this.walkTokens(u,o.walkTokens));let k=await(o.hooks?await o.hooks.provideParser(e):e?w.parse:w.parseInline)(u,o);return o.hooks?await o.hooks.postprocess(k):k})().catch(i);try{o.hooks&&(n=o.hooks.preprocess(n));let p=(o.hooks?o.hooks.provideLexer(e):e?O.lex:O.lexInline)(n,o);o.hooks&&(p=o.hooks.processAllTokens(p)),o.walkTokens&&this.walkTokens(p,o.walkTokens);let u=(o.hooks?o.hooks.provideParser(e):e?w.parse:w.parseInline)(p,o);return o.hooks&&(u=o.hooks.postprocess(u)),u}catch(l){return i(l)}}}onError(e,t){return n=>{if(n.message+=`
++Please report this to https://github.com/markedjs/marked.`,e){let s="<p>An error occurred:</p><pre>"+S(n.message+"",!0)+"</pre>";return t?Promise.resolve(s):s}if(t)return Promise.reject(n);throw n}}};var v=new Q;function m(a,e){return v.parse(a,e)}m.options=m.setOptions=function(a){return v.setOptions(a),m.defaults=v.defaults,ie(m.defaults),m};m.getDefaults=D;m.defaults=P;function ve(...a){return v.use(...a),m.defaults=v.defaults,ie(m.defaults),m}m.use=ve;m.walkTokens=function(a,e){return v.walkTokens(a,e)};m.parseInline=v.parseInline;m.Parser=w;m.parser=w.parse;m.Renderer=$;m.TextRenderer=A;m.Lexer=O;m.lexer=O.lex;m.Tokenizer=_;m.Hooks=L;m.parse=m;var Ft=m.options,Qt=m.setOptions,Ut=m.walkTokens,Wt=m.parseInline,Kt=m,Xt=w.parse,Vt=O.lex;
++
++if(__exports != exports)module.exports = exports;return module.exports}));
++//# sourceMappingURL=marked.umd.js.map
+diff --git a/uv.lock b/uv.lock
+index 84b152c..75eae03 100644
+--- a/uv.lock
++++ b/uv.lock
+@@ -865,6 +865,63 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/e7/c8/e2645aa8ed02fd4c7a2f59d68783b65b1f3cbdfe39a6308e156509d1fee8/googleapis_common_protos-1.75.0-py3-none-any.whl", hash = "sha256:961ed60399c457ceb0ee8f285a84c870aabc9c6a832b9d37bb281b5bebde43ed", size = 300631, upload-time = "2026-05-07T08:03:30.345Z" },
+ ]
+ 
++[[package]]
++name = "greenlet"
++version = "3.5.6"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/3e/6e/0091f175ccd02b02bc8811bbcbcc6ac2e980be116e3b2f7a736ca322bf84/greenlet-3.5.6.tar.gz", hash = "sha256:8e67c43bdfc88d5fee6db0d3e40175b362fc95fb85f0412d233b9b203c53a575", size = 207653, upload-time = "2026-09-14T15:42:51.806Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/f1/a1/e720a38852366c589e1a46cf570b886507ad2cf591050c203365638baab0/greenlet-3.5.6-cp313-cp313-macosx_11_0_universal2.whl", hash = "sha256:f96f0e30b5a95c7631b12bfe214cbc90ec8fe8cfa36920596c10514a65743519", size = 294627, upload-time = "2026-09-14T14:24:40.102Z" },
++    { url = "https://files.pythonhosted.org/packages/eb/c3/58187858df41354a11e6a55b421e7af9059798abdab3a384cc51b8567c38/greenlet-3.5.6-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c75116c9de79949de23006e2d9b35ee82874c594fcf5c0311b439acaa14b8441", size = 614356, upload-time = "2026-09-14T15:12:03.399Z" },
++    { url = "https://files.pythonhosted.org/packages/ce/b9/3a7e67d5f05c9760b1ad411fa52264bd69cc08e22a2ebfb4018b90628ced/greenlet-3.5.6-cp313-cp313-manylinux_2_24_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:cad5782f93f7f738b62c6527b6f32a60694d924029f299a8b524758cfa53d815", size = 626756, upload-time = "2026-09-14T15:20:44.269Z" },
++    { url = "https://files.pythonhosted.org/packages/c6/7c/40400455f5b5a65bb83e94fde66d1be9e5ec518638113f8083ace746c309/greenlet-3.5.6-cp313-cp313-manylinux_2_24_s390x.manylinux_2_28_s390x.whl", hash = "sha256:a93ee7c6e8fd0f8a83525a51bd777be57ee17787e91d805bd8d6faf9dcada18e", size = 632632, upload-time = "2026-09-14T15:25:07.813Z" },
++    { url = "https://files.pythonhosted.org/packages/85/cb/ab0c123c514ed4e94c0dc9ee2e86362633e6b998cfc05de7fc9ac2eb9690/greenlet-3.5.6-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f98e8215e172f567ce80eeaed9107fb4d32b6c44f26983d9b8334658136a205a", size = 623779, upload-time = "2026-09-14T14:36:01.104Z" },
++    { url = "https://files.pythonhosted.org/packages/f9/67/1f35cff30a6c51c3f23b63d4afcc7313ab4f97490ba3676fa78178984b27/greenlet-3.5.6-cp313-cp313-manylinux_2_39_riscv64.whl", hash = "sha256:7f731ebac68ea06d628658295cb2d217b10186329fcf9a3b6a149045059bf92e", size = 434933, upload-time = "2026-09-14T15:28:38.858Z" },
++    { url = "https://files.pythonhosted.org/packages/a5/26/fda8a5a06e7073333ccb038133c5893b9e0c4fe29d5992a17e83c241bc6e/greenlet-3.5.6-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:df19e2d0b1620039af5102563fbd96e8938c7f5c3f5828528d641d9fc585525e", size = 1584930, upload-time = "2026-09-14T15:10:08.234Z" },
++    { url = "https://files.pythonhosted.org/packages/2f/37/50f8813163148d6234e08b23dcad6a9e37f01d148c8ec976e4c44ea2d918/greenlet-3.5.6-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:06c0e933290fba8ffe53ead4ae1b8044b0e9754b75cebf381aa2bc3e50d82fac", size = 1647590, upload-time = "2026-09-14T14:35:51.173Z" },
++    { url = "https://files.pythonhosted.org/packages/86/da/b7669b09586365654083a62bd0724cf06cb74bd5085a15cdd161271f992f/greenlet-3.5.6-cp313-cp313-win_amd64.whl", hash = "sha256:5b602b4201b965a8354d74e232364a66ff243dd142e350d035f46169bb36e13d", size = 324086, upload-time = "2026-09-14T14:23:48.428Z" },
++    { url = "https://files.pythonhosted.org/packages/e5/5d/c9663cfe84a2a9e0aa96f066f5b0594c227ea4c647511e087e2e11d4ac0a/greenlet-3.5.6-cp313-cp313-win_arm64.whl", hash = "sha256:876077e7ebb8c84ed068e2b23d4c62ebb010d60df84b9591af1be2f39010ffb2", size = 308211, upload-time = "2026-09-14T14:28:01.634Z" },
++    { url = "https://files.pythonhosted.org/packages/66/c0/d254544ae2b8bdd311aef000fafc02828c2771b17d994b3075620ea7cc6e/greenlet-3.5.6-cp314-cp314-macosx_11_0_universal2.whl", hash = "sha256:8cddea1b8339451c2fb3388e138347b6126744f33b611bdb55b7357361cfef46", size = 295221, upload-time = "2026-09-14T14:25:11.583Z" },
++    { url = "https://files.pythonhosted.org/packages/18/18/eb54be16b9cc3971e09ca5b73334e1b8c804a4630d9addaaf218a4fe300f/greenlet-3.5.6-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c59acfa8eb73a1e0d484392dc002bdf001fd4ce73394e0132df3d1ab6093d7cb", size = 660992, upload-time = "2026-09-14T15:12:04.876Z" },
++    { url = "https://files.pythonhosted.org/packages/8f/b4/e193efe65671dcf294bc51fcc59efb52d154adf8612c4ea016da0d2c486c/greenlet-3.5.6-cp314-cp314-manylinux_2_24_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:a3b4a01c6da07ef9f80d4fe8933b994bc99747bcea3eab0330a9c34d3c12655b", size = 673428, upload-time = "2026-09-14T15:20:45.756Z" },
++    { url = "https://files.pythonhosted.org/packages/fd/21/631bb45fafde1dca782152377c0676d182ec924820064047f533a3627b28/greenlet-3.5.6-cp314-cp314-manylinux_2_24_s390x.manylinux_2_28_s390x.whl", hash = "sha256:dd0b83bed3405b586a3133629f1d1a5bc7bfd64822a3b7ab342bdc68e6dbc61b", size = 677688, upload-time = "2026-09-14T15:25:09.279Z" },
++    { url = "https://files.pythonhosted.org/packages/45/ac/28fa7a9e50f2859466214c4ac584d776db52c1604ad4dd158960a5af2a1f/greenlet-3.5.6-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9a09d59bef1db94f384b5bcc2d523694d338f3df6b757aeeaf7baca5d0c0be88", size = 670773, upload-time = "2026-09-14T14:36:02.577Z" },
++    { url = "https://files.pythonhosted.org/packages/40/30/2b0a73e68e1e18e30b601d0d183cfdfc2beca4de5a6843c630f0fc9fb90c/greenlet-3.5.6-cp314-cp314-manylinux_2_39_riscv64.whl", hash = "sha256:fdacf26402389bdd89857ad3c045a26fe8f3314f9a8b28226f82f88463a65b77", size = 480475, upload-time = "2026-09-14T15:28:40.741Z" },
++    { url = "https://files.pythonhosted.org/packages/c3/cd/fb7d6cdd86ff3427c1494854f0e35437eba05142be91f530f6da75e09e19/greenlet-3.5.6-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:8b7c73d1cef3d9ae963e9ff03f6222df43efbb9054ffd2f1969c935b7fc84c02", size = 1631900, upload-time = "2026-09-14T15:10:09.745Z" },
++    { url = "https://files.pythonhosted.org/packages/f6/40/143bdbb20a516628cb15074ae52ed17d850b450292609c7a6fccac6dbece/greenlet-3.5.6-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:8b27df301f56e3b3d2298095c8f7d6b68f2521f6b1693e901fa039bdbae34424", size = 1693740, upload-time = "2026-09-14T14:35:52.959Z" },
++    { url = "https://files.pythonhosted.org/packages/c9/9e/019642432e6ae283301df1361227d47610709d2dc69a38f95edef266d713/greenlet-3.5.6-cp314-cp314-win_amd64.whl", hash = "sha256:f8f0bd690e1a41294ac87905e8121c81a3761ec2583c768f13467428606c8c7a", size = 327473, upload-time = "2026-09-14T14:28:12.948Z" },
++    { url = "https://files.pythonhosted.org/packages/e9/7f/8aafc7bf70c948786dba7221d0dc0838e5329bebc6d434ef2208b4f0e760/greenlet-3.5.6-cp314-cp314-win_arm64.whl", hash = "sha256:8cda13494d86a4f12429641117cb6ac4bbbc9c30a33f711f7d3a2e5fbe4b0b7e", size = 311095, upload-time = "2026-09-14T14:28:00.7Z" },
++    { url = "https://files.pythonhosted.org/packages/14/7e/7a205688a5b3074933b18a906608d46d106e9a79d776bdab5a4abf4b4feb/greenlet-3.5.6-cp314-cp314t-macosx_11_0_universal2.whl", hash = "sha256:97c5a53e8c1754df58e73f047a99e287d4da1bdfe64b0072fb25c87000897951", size = 305352, upload-time = "2026-09-14T14:21:31.962Z" },
++    { url = "https://files.pythonhosted.org/packages/78/cb/9c4a57a9d9dd0256e20b8f7f4f06554c2c92badebf0ab73ce344321b78b9/greenlet-3.5.6-cp314-cp314t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:fea4427d1ffdb3b523d7daa6712038428a4c16c450b9777bdd1221cfee0eab49", size = 672671, upload-time = "2026-09-14T15:12:06.347Z" },
++    { url = "https://files.pythonhosted.org/packages/97/52/c6729681ebbd298f4decd28746815acc8a0b0a0fde21d2df33776fd4d042/greenlet-3.5.6-cp314-cp314t-manylinux_2_24_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:73a29b5ba642e35433166a03a3e02935e7238c4b3467fbd77523b99edea23e5b", size = 679489, upload-time = "2026-09-14T15:20:47.291Z" },
++    { url = "https://files.pythonhosted.org/packages/71/76/3c11c21e0716b1f1dc7c1a4b3d690abb1d3b448c69a9d32049fecb64010a/greenlet-3.5.6-cp314-cp314t-manylinux_2_24_s390x.manylinux_2_28_s390x.whl", hash = "sha256:61a61b4a95a4f97922c3a6f5606d3e360851584bd47e500a5161373c53810e3d", size = 681303, upload-time = "2026-09-14T15:25:11.088Z" },
++    { url = "https://files.pythonhosted.org/packages/58/c5/2b6c721ba8b8963da42d5a0f57f25b8aaeb1fe9bdd156875e57f3be648a2/greenlet-3.5.6-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:460e70b033aba8ed47e2ac9b5d0d2157b05a34fbfa30a241400aef4118902cdc", size = 676608, upload-time = "2026-09-14T14:36:03.959Z" },
++    { url = "https://files.pythonhosted.org/packages/3f/26/3ae402202452cd5941bbbd483e5a74297e2397e7aa3182c2a5e3ab7d5666/greenlet-3.5.6-cp314-cp314t-manylinux_2_39_riscv64.whl", hash = "sha256:fe3170a69fe039b18ad18171e66faa9a75f6fe9d78f968fd9b54e09fbd714d81", size = 510112, upload-time = "2026-09-14T15:28:42.112Z" },
++    { url = "https://files.pythonhosted.org/packages/b2/04/0d018e0d05bcdde19a0fcb907834155f1fc853a9bedd3f3f5e6acadcae19/greenlet-3.5.6-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:ca80a49b53ed1d22f7282da7255f7bb2fd1935fd0f623d8613fda38745f18961", size = 1641479, upload-time = "2026-09-14T15:10:11.216Z" },
++    { url = "https://files.pythonhosted.org/packages/59/bb/f02ef9073919158f6403fe3701d4ed4403d646720e7201dfc6e9d264bac3/greenlet-3.5.6-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:916f92f2a8db10508f739d0b5e00b83defe5d1115a997c54532a6d7cf8c95404", size = 1698758, upload-time = "2026-09-14T14:35:54.336Z" },
++    { url = "https://files.pythonhosted.org/packages/08/a5/1f48fe647473a2dcccfd1839b2ff2c78eb57009be776b4da071e901c9bff/greenlet-3.5.6-cp314-cp314t-win_amd64.whl", hash = "sha256:886bcf1870af74c32bc310fd00a6b803445e17e51b7d5a107c7b35c0f362cc16", size = 331574, upload-time = "2026-09-14T14:27:18.451Z" },
++    { url = "https://files.pythonhosted.org/packages/cd/72/3882855a75838faeb54a58aeef4fd77d20b2a86d4bad570c70d41b565dcf/greenlet-3.5.6-cp315-cp315-macosx_11_0_universal2.whl", hash = "sha256:3ac3494c381dab876cad7d0b22f3a722f3e0c8deb3a65b9e7f35ad7f58b8fcb3", size = 295926, upload-time = "2026-09-14T14:27:21.16Z" },
++    { url = "https://files.pythonhosted.org/packages/10/1f/be4d957d8a9b90bcbe8db206548a42134d96222d43e5ed3fc4708fb6e24b/greenlet-3.5.6-cp315-cp315-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:602024dae6d77e161f4b89491b62ca1d4f19949d79d47b2db057e476d21179d6", size = 666910, upload-time = "2026-09-14T15:12:07.901Z" },
++    { url = "https://files.pythonhosted.org/packages/a1/af/60d62571a7d6de961e4ce7625d6c2faf359345659fc782d2cdf517c34577/greenlet-3.5.6-cp315-cp315-manylinux_2_24_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:f8e63209c3e1e828ee6a457529b4a6d8b05d050fe0ae03a7ae49e967c5d312e0", size = 677415, upload-time = "2026-09-14T15:20:48.817Z" },
++    { url = "https://files.pythonhosted.org/packages/f5/41/b3114c97c10e796010f00a30f51c81470072bca4b53e396ccca87484fcf7/greenlet-3.5.6-cp315-cp315-manylinux_2_24_s390x.manylinux_2_28_s390x.whl", hash = "sha256:9133d68624b1f2e89ec2f554d56aea8a5b0d7168cd9320200ba58d4d794845a4", size = 681337, upload-time = "2026-09-14T15:25:12.812Z" },
++    { url = "https://files.pythonhosted.org/packages/fb/16/ac9e547b611539aaed1870eb1d6ddc57abdd5924b3a99bb9b5f0b44176b8/greenlet-3.5.6-cp315-cp315-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ccadce0130fd813ec86ebfe969a6c58b42acc1d0fe55a47525375b740e07b605", size = 675927, upload-time = "2026-09-14T14:36:05.34Z" },
++    { url = "https://files.pythonhosted.org/packages/48/1b/d41861c2fa00968e39e467a495ca8db9ce9b6310a5d9b57561b3d0dc48fa/greenlet-3.5.6-cp315-cp315-manylinux_2_39_riscv64.whl", hash = "sha256:5adcbbfe78bdc242c71740a02e0991cc1b2f34d33c8bb15ca45eee8fd1140942", size = 487339, upload-time = "2026-09-14T15:28:43.497Z" },
++    { url = "https://files.pythonhosted.org/packages/c4/b1/b7ba08d6431121741f1d30be0d5d292e76873325179a63586cd9217b62f6/greenlet-3.5.6-cp315-cp315-musllinux_1_2_aarch64.whl", hash = "sha256:9297fb9c39b9a2c039dbcd306c410bd6906b95244dec3bba4318d36c718c164c", size = 1637236, upload-time = "2026-09-14T15:10:12.442Z" },
++    { url = "https://files.pythonhosted.org/packages/af/c5/3b1cbc68f0c082022fc8717f7fe4b8b13b8d583c52352be37f4e9f55bcd2/greenlet-3.5.6-cp315-cp315-musllinux_1_2_x86_64.whl", hash = "sha256:b374e79ffa7511afc11773aef40a4ccea6191fba1c856ea2f9c56738dca69d7a", size = 1698526, upload-time = "2026-09-14T14:35:56.039Z" },
++    { url = "https://files.pythonhosted.org/packages/de/56/12941ed2711400451c89d544e10f831800a2770f19dd55eac8f0f7f2003b/greenlet-3.5.6-cp315-cp315-win_amd64.whl", hash = "sha256:7969bffa322c097bd46ae595ada6a931cefda613f18ba64587e9cff4cb320756", size = 327739, upload-time = "2026-09-14T14:23:55.768Z" },
++    { url = "https://files.pythonhosted.org/packages/c5/3b/576b9ed5ac929252e340cf60b4bcb6a8515350dc20797064b1922dc4ea75/greenlet-3.5.6-cp315-cp315-win_arm64.whl", hash = "sha256:8dba0129b93e7091dfefaf4cf7000172741bff7f47bf6326fcf17f32fbb54d6b", size = 311715, upload-time = "2026-09-14T14:28:25.154Z" },
++    { url = "https://files.pythonhosted.org/packages/16/c2/86cfc5555a98e12b86966ddbd24fd39af32f71f2f785c6595b7feb2db156/greenlet-3.5.6-cp315-cp315t-macosx_11_0_universal2.whl", hash = "sha256:de3de000d459402cda015068fd135aa50c0bf6f2477a80d4da1e646f123b4e78", size = 306244, upload-time = "2026-09-14T14:27:57.565Z" },
++    { url = "https://files.pythonhosted.org/packages/14/6d/83ffc9d05a75a80ab3a7595dbb1d9604e5d4fc2996d73a8ae2dbd1284900/greenlet-3.5.6-cp315-cp315t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:45663c01a4de48b9a64a2ee1509d92d1dfd3afb02b2ccfc9333029d11aef996a", size = 676578, upload-time = "2026-09-14T15:12:09.468Z" },
++    { url = "https://files.pythonhosted.org/packages/5d/d6/c2cf684810e5caded075970aaadea654ecb58b8382b9aecf1d231b936894/greenlet-3.5.6-cp315-cp315t-manylinux_2_24_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:3deccbb57a481e3a408fe61cdfd5c13e0678fc0a30fdd09597917ca87b4be877", size = 684203, upload-time = "2026-09-14T15:20:50.261Z" },
++    { url = "https://files.pythonhosted.org/packages/f2/d1/039c353d5593a97a89699e989324c9bc86af499e6c6152fe0180f5742204/greenlet-3.5.6-cp315-cp315t-manylinux_2_24_s390x.manylinux_2_28_s390x.whl", hash = "sha256:63aff70fe5aac59c72215f42ec39fcb59ff46774fa966e717f8ecb6ee2273577", size = 686023, upload-time = "2026-09-14T15:25:14.528Z" },
++    { url = "https://files.pythonhosted.org/packages/62/19/00e1bee5d2af890dc8f400b54d0b0f9b489965f92bc12b407ff72cc6f469/greenlet-3.5.6-cp315-cp315t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:311018b46472fb26ee85870847fb89eb64cc8aaddb617400789d87076f7cfeec", size = 681253, upload-time = "2026-09-14T14:36:06.742Z" },
++    { url = "https://files.pythonhosted.org/packages/8a/62/97ceb8e0b2ea96046cdf8e95b042715020ebb12d83ea0690db80a8f03d23/greenlet-3.5.6-cp315-cp315t-manylinux_2_39_riscv64.whl", hash = "sha256:520648db8fb92eef7b3e6013f5a6f901cdf0d6685f639c2f7a245879f865bef7", size = 517058, upload-time = "2026-09-14T15:28:44.924Z" },
++    { url = "https://files.pythonhosted.org/packages/89/58/c9275fd0ca195d1d3402931bcce8cfcc74726ff76efb1883d229e6e1a3d7/greenlet-3.5.6-cp315-cp315t-musllinux_1_2_aarch64.whl", hash = "sha256:7f924a5a9d5890649566f2f6682e0d8ad8ca23028bacffbbac36dbd7fd680176", size = 1645988, upload-time = "2026-09-14T15:10:13.758Z" },
++    { url = "https://files.pythonhosted.org/packages/e0/36/b35747582fa4f1a5453f8f3002405dbac788e450cec7674dc2d204b6ccb5/greenlet-3.5.6-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:de9923832f2d8c1a5ecd8d7260465a6ca5a86888a0d129e3bd5cf0406d2fc5bf", size = 1702383, upload-time = "2026-09-14T14:35:58.143Z" },
++    { url = "https://files.pythonhosted.org/packages/ed/69/6ec22ac9351e474d2a134d0ff9400dc80362d1c20f0721088ffffdfc205b/greenlet-3.5.6-cp315-cp315t-win_amd64.whl", hash = "sha256:2ab5f42ac6c238eb71770715e6e909ad9a1a92b6c681ccb64cd5a0f07edb953f", size = 331845, upload-time = "2026-09-14T14:27:41.723Z" },
++    { url = "https://files.pythonhosted.org/packages/30/cf/697c051fd534e223461fb8b523890e21a24eeca229cd50624cff6f02fabd/greenlet-3.5.6-cp315-cp315t-win_arm64.whl", hash = "sha256:f9fe868463ec7e1363733af77e38a5fda3e9b63940337048c945d69e0c80ff24", size = 315070, upload-time = "2026-09-14T14:22:21.476Z" },
++]
++
+ [[package]]
+ name = "griffelib"
+ version = "2.0.2"
+@@ -1396,6 +1453,7 @@ dependencies = [
+ dev = [
+     { name = "pyright" },
+     { name = "pytest" },
++    { name = "pytest-playwright" },
+     { name = "pytest-timeout" },
+     { name = "ruff" },
+ ]
+@@ -1421,6 +1479,7 @@ requires-dist = [
+ dev = [
+     { name = "pyright", specifier = ">=1.1.411" },
+     { name = "pytest", specifier = ">=9.1.1" },
++    { name = "pytest-playwright", specifier = ">=0.10.0" },
+     { name = "pytest-timeout", specifier = ">=2.4.0" },
+     { name = "ruff", specifier = ">=0.16.4" },
+ ]
+@@ -2037,6 +2096,25 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/81/e6/cd9575ac904136b3cbf7aa7ee819ef86eedb7274e46f230e94ea4342e729/platformdirs-4.10.0-py3-none-any.whl", hash = "sha256:fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a", size = 22743, upload-time = "2026-05-28T03:32:52.175Z" },
+ ]
+ 
++[[package]]
++name = "playwright"
++version = "1.64.1"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "greenlet" },
++    { name = "pyee" },
++]
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/8d/c8/cc677856d89a0c077673b40ab915ed5597bf1347b205cabe70121c431ca9/playwright-1.64.1-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:29453ff76e25c17d0b45658cacd6b92e9eec46e8db21e134fb3b7143df50f013", size = 44508971, upload-time = "2026-10-22T16:29:58.12Z" },
++    { url = "https://files.pythonhosted.org/packages/72/4f/572bbbe60a5787ca61a84bad934c3ce19c08c2bc9c0e9781bf0d99cad1a6/playwright-1.64.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:59f7b041284ce8d1b72098ae50ca48a2d83692eec25154ab5ba79d4b6b4fe8a9", size = 43155232, upload-time = "2026-10-22T16:30:02.415Z" },
++    { url = "https://files.pythonhosted.org/packages/44/fa/468f313a56d33a6420705147c8d47bef558f087856edf38c5b13eef8aa6c/playwright-1.64.1-py3-none-macosx_11_0_universal2.whl", hash = "sha256:6a6f99adad1ae40e6ee62efe89785db861ce7ddd57651521cb31894183cc4ae3", size = 44508977, upload-time = "2026-10-22T16:30:07.632Z" },
++    { url = "https://files.pythonhosted.org/packages/15/b9/e481a34572933b5cf179d5637c98da488c732ee339dff5b73a0624d2e42b/playwright-1.64.1-py3-none-manylinux1_x86_64.whl", hash = "sha256:577b8d88778c245cfbd145ae17cf53044f084b1b46c55c69081d4069d56057e2", size = 48471931, upload-time = "2026-10-22T16:30:12.831Z" },
++    { url = "https://files.pythonhosted.org/packages/0c/11/545f25e47ec54e1e8a2892ef9994fc2b298f909ab37b88578e3a1f87ac2e/playwright-1.64.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a29fda44725e11b0b625c4bff6458a1f6dbee97b88c9788d12e18a8344458c2d", size = 48150994, upload-time = "2026-10-22T16:30:18.297Z" },
++    { url = "https://files.pythonhosted.org/packages/33/87/8ff7af99387ee72ae9b46a66ece7a0c0aa63f73320ecf6dd3dd087fa840a/playwright-1.64.1-py3-none-win32.whl", hash = "sha256:d3c48b31da426c2f3562d0919cb9ea4e5415f6dbd29d7211fa4d66cca24fbd2f", size = 38801828, upload-time = "2026-10-22T16:30:23.154Z" },
++    { url = "https://files.pythonhosted.org/packages/96/0a/64db6851aa1852a4f76be28eea71d4e2bf9f3ce493ee2e66939426729046/playwright-1.64.1-py3-none-win_amd64.whl", hash = "sha256:5e240a79464434c9260957b9ef59a5808e02e96e3fcabdc717fd7485260b9730", size = 38801836, upload-time = "2026-10-22T16:30:28.092Z" },
++    { url = "https://files.pythonhosted.org/packages/c5/4b/d7ddde9467a5fcfe6a0d3c954732332e98a4f4a9025fd42c8d091c16e5f9/playwright-1.64.1-py3-none-win_arm64.whl", hash = "sha256:983ccd085453ea5a7588193657fc349a6ffbf7bf7ba663fd58dc81e4aa3af9d9", size = 34693875, upload-time = "2026-10-22T16:30:32.724Z" },
++]
++
+ [[package]]
+ name = "pluggy"
+ version = "1.6.0"
+@@ -2508,6 +2586,18 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/ae/8d/f1af3832f5e6eb13ba94ee809e72b8ecb5eef226d27ee0bef7d963d943c7/pydantic_settings-2.14.1-py3-none-any.whl", hash = "sha256:6e3c7edfd8277687cdc598f56e5cff0e9bfff0910a3749deaa8d4401c3a2b9de", size = 60964, upload-time = "2026-05-08T13:40:04.958Z" },
+ ]
+ 
++[[package]]
++name = "pyee"
++version = "14.0.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "typing-extensions" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/1d/f1/fdedc2c75c3e31a330659c85e5793bb18b3397981fbf0844c6dee5b18926/pyee-14.0.0.tar.gz", hash = "sha256:76dd0f4314ecd27f02dc73589dea7fd3853f9b6176d8ef9b122860657e3602de", size = 98760, upload-time = "2026-08-13T04:26:11.021Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/81/12/5347938b1f9a6453f0dbdfcc3e2388a1320ef9b9ec17fbefbc4ab647ea98/pyee-14.0.0-py3-none-any.whl", hash = "sha256:3ac2d3229a9677f7de2c33d7f52fe25b638a46b19c413fea2edc8c6d0a644e4d", size = 15553, upload-time = "2026-08-13T04:26:09.916Z" },
++]
++
+ [[package]]
+ name = "pygments"
+ version = "2.20.0"
+@@ -2618,6 +2708,20 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/24/25/1de2678b631f5a49215c6c96fff41ba892b0a34df68d6d80292b1b48aa7f/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
+ ]
+ 
++[[package]]
++name = "pytest-playwright"
++version = "0.10.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "playwright" },
++    { name = "pytest" },
++    { name = "python-slugify" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/91/de/1c45f90a545771201ac11aead321ced92b66190da56f2138ee1ee78cee8a/pytest_playwright-0.10.0.tar.gz", hash = "sha256:47baf574dfb120bb53675d05c9784f8bf94e04c6dd7477dc56159ce732191952", size = 22634, upload-time = "2026-10-08T22:38:46.758Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/09/15/ab14dfdfd6756389e0a5467417863cf6fffa18ecfba0a68bfdc15dc5895a/pytest_playwright-0.10.0-py3-none-any.whl", hash = "sha256:8314d1af726e2c15531635902ece3ee47ed83f5a75c937a7eda8686d3dae6c0d", size = 22485, upload-time = "2026-10-08T22:38:49.089Z" },
++]
++
+ [[package]]
+ name = "pytest-timeout"
+ version = "2.4.0"
+@@ -2660,6 +2764,18 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/e1/04/e8135ebd1ad02c56ec633277529b2602ff99ff634be76cdba5744cf554fd/python_multipart-0.0.32-py3-none-any.whl", hash = "sha256:ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23", size = 30042, upload-time = "2026-06-04T16:18:57.319Z" },
+ ]
+ 
++[[package]]
++name = "python-slugify"
++version = "9.1.3"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "text-unidecode" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/bd/e8/26b1af09d728d604dc16427a39f53985b22a170dbd61addac3f48db73f03/python_slugify-9.1.3.tar.gz", hash = "sha256:90e997f2e0987239ce95e12f700086eb18e1d1d3ee22624fbbdbd095afca42b6", size = 66093, upload-time = "2026-10-07T01:06:20.101Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/47/67/5598c98725332a6a4084c7b622d5a1ebe7d6745c1d2f434c9e4e89e04cba/python_slugify-9.1.3-py3-none-any.whl", hash = "sha256:9aced0670e54c5603e2335c0fa9a4011ad4bc41ecb3c46e8097294c46fd60ed4", size = 16032, upload-time = "2026-10-07T01:06:18.891Z" },
++]
++
+ [[package]]
+ name = "pywin32"
+ version = "311"
+@@ -3096,6 +3212,15 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/d7/c1/eb8f9debc45d3b7918a32ab756658a0904732f75e555402972246b0b8e71/tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55", size = 28926, upload-time = "2026-02-07T10:45:32.24Z" },
+ ]
+ 
++[[package]]
++name = "text-unidecode"
++version = "1.3"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/ab/e2/e9a00f0ccb71718418230718b3d900e71a5d16e701a3dae079a21e9cd8f8/text-unidecode-1.3.tar.gz", hash = "sha256:bad6603bb14d279193107714b288be206cac565dfa49aa5b105294dd5c4aab93", size = 76885, upload-time = "2019-08-30T21:36:45.405Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/a6/a5/c0b6468d3824fe3fde30dbb5e1f687b291608f9473681bbf7dabbf5a87d7/text_unidecode-1.3-py2.py3-none-any.whl", hash = "sha256:1311f10e8b895935241623731c2ba64f4c455287888b18189350b67134a822e8", size = 78154, upload-time = "2019-08-30T21:37:03.543Z" },
++]
++
+ [[package]]
+ name = "tiktoken"
+ version = "0.13.0"
+diff --git a/web/app.js b/web/app.js
+index 1e37c09..a3c72fb 100644
+--- a/web/app.js
++++ b/web/app.js
+@@ -59,10 +59,12 @@ function renderConversation(scrollTop) {
+         // would otherwise render as broken markup.
+         const userTurn = document.createElement("div");
+         userTurn.className = "user-turn";
++        userTurn.dataset.testid = "user-turn";
+         userTurn.textContent = turn.prompt;
+ 
+         const assistantTurn = document.createElement("div");
+         assistantTurn.className = "assistant-turn";
++        assistantTurn.dataset.testid = "assistant-turn";
+         assistantTurn.innerHTML = marked.parse(turn.answer);
+         // every new answer redraws the whole conversation, so only the
+         // newest one gets the fade-in or the older ones would replay it too
+@@ -116,6 +118,7 @@ function renderCitations(items) {
+         const href = safeUrl(citation.url);
+         const card = document.createElement(href ? "a" : "div");
+         card.className = "citation-card";
++        card.dataset.testid = "citation";
+         card.style.setProperty("--i", index); // style.css staggers the fade-in by this
+         if (href) {
+             card.href = href;
+@@ -151,6 +154,7 @@ function renderCitations(items) {
+ function renderError(message) {
+     const block = document.createElement("div");
+     block.className = "turn";
++    block.dataset.testid = "error";
+     block.textContent = message;
+     response.appendChild(block);
+     response.scrollTop = response.scrollHeight;
+@@ -270,6 +274,7 @@ function appendLogItem(list, entry) {
+ function buildProgressBox(state, label, log) {
+     const box = document.createElement("details");
+     box.className = `progress ${state}`;
++    box.dataset.testid = "progress";
+ 
+     const summary = document.createElement("summary");
+     const dot = document.createElement("span");
+@@ -320,6 +325,7 @@ function startPending(prompt) {
+ 
+     const userTurn = document.createElement("div");
+     userTurn.className = "user-turn";
++    userTurn.dataset.testid = "user-turn";
+     userTurn.textContent = prompt;
+ 
+     progressLog = [];
+diff --git a/web/index.html b/web/index.html
+index 70e0c22..99197e8 100644
+--- a/web/index.html
++++ b/web/index.html
+@@ -46,6 +46,6 @@
+     </main>
+ 
+     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+-    <script src="/app.js?v=12"></script>
++    <script src="/app.js?v=13"></script>
+ </body>
+ </html>
+-- 
+2.43.0
+
