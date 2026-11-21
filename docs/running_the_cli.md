@@ -82,7 +82,7 @@ The Cloudflare tunnel is only needed if you're publishing the app online. Withou
 Turns PDFs into chunk and definition files, one pair per document.
 
 ```bash
-mrr pd [--doc KEY] [--get-pdfs | --handle-pdfs | --ingest]
+mrr pd [--doc KEY] [--get-pdfs | --handle-pdfs | --ingest | --test-stats | --save-stats]
 ```
 
 | Flag            | What it does |
@@ -91,11 +91,17 @@ mrr pd [--doc KEY] [--get-pdfs | --handle-pdfs | --ingest]
 | `--get-pdfs`    | Download PDFs from each toolbelt's URL. |
 | `--handle-pdfs` | Apply each toolbelt's PDF handlers (page removal, redactions). |
 | `--ingest`      | Extract chunks and definitions and write them to `data/processed/`. |
-| *(no flag)*     | All three in order: get, handle, ingest. |
+| `--test-stats`  | Run the golden stats pytest (`tests/extraction_ops/test_jsonl_stats.py`): every document and the tests of the comparison itself, or just one document with `--doc`. Exits 1 on any failure. Needs pytest, which is a dev dependency, so on the server use `MRR_PYTHON=host`. |
+| `--save-stats`  | Write the golden stats from the processed files, for every document or just the `--doc` one. |
+| *(no flag)*     | All three in order: get, handle, ingest. Stats are never part of this. |
 
-**Document keys:** `code`, `handbook`, `supplemental`, `poca`, `fiu`, `tcivpen`, `antiterror`, `rao`, `terrorfr`, `dbroa`, `sanctions`.
+**Document keys:** run `mrr pd --help` for the full list.
 
 **Output:** `data/processed/chunks/<key>.jsonl` and `data/processed/definitions/<key>.jsonl`. Running with `--doc` only rewrites that document's two files. A document with no definitions gets an empty definitions file, so stale definitions can never hang around.
+
+**Golden stats:** `data/processed/golden/<key>.json` describes the processed files for one document, so an ingest that silently loses or changes chunks is caught. It holds, for chunks and for definitions, the count and the total, largest, smallest and average number of characters (chunks measure `body`, definitions measure `definition`), plus one entry per record in file order: the `chunk_id` (or the term) followed by a short hash of everything else in the record. The pytest `tests/extraction_ops/test_jsonl_stats.py` runs the same comparison for every document.
+
+After an intended change, run `mrr pd --ingest --doc KEY`, then `mrr pd --test-stats --doc KEY` and read what it reports. If that is what you meant, run `mrr pd --save-stats --doc KEY` and commit the golden file with the new processed files.
 
 **Watch out:**
 
@@ -108,6 +114,8 @@ mrr pd [--doc KEY] [--get-pdfs | --handle-pdfs | --ingest]
 mrr pd --ingest                       # re-ingest everything
 mrr pd --ingest --doc poca            # re-ingest just POCA
 mrr pd --handle-pdfs --doc handbook   # apply handlers to a freshly downloaded Handbook PDF
+mrr pd --test-stats                   # check every document against its golden stats
+mrr pd --save-stats --doc poca        # accept POCA's current output as the new golden
 ```
 
 ---
@@ -128,6 +136,20 @@ mrr embed [--rebuild]
 It starts Qdrant first if needed, and restarts the app at the end so it picks up any new definitions.
 
 The first full embed takes a while (possibly up to 20 minutes on a modest machine). Put the kettle on.
+
+**Checking the result:** the app refuses to start if Qdrant's point count does not match the chunks in `data/processed/chunks/`, or if the collection's vector settings are wrong, and tells you to run `mrr embed`. That is what you will see after a deploy that brought new chunks but no embed. For a deeper check, run the Qdrant tests on a machine that can reach Qdrant:
+
+```bash
+uv run pytest -m qdrant
+```
+
+The Qdrant tests check that every chunk has a point and every point a chunk, that every payload equals its chunk, and that the stored vectors still match a fresh embedding of five randomly chosen chunks (a changed model or a changed `build_embedding_text` is invisible to the incremental embed, so this is how you find out you need `--rebuild`). A failing vector check prints its seed; repeat the same sample with `VERIFY_SEED=<seed> uv run pytest -m qdrant -k vectors`. They skip themselves if Qdrant is not reachable.
+
+A missing `sectors` payload index only slows sector-filtered searches, so the app starts anyway and logs a warning. `mrr embed` only creates that index when it creates the collection. If you see the warning, add the index once:
+
+```bash
+uv run python -c "from qdrant_client import QdrantClient, models; QdrantClient(url='http://localhost:6333').create_payload_index('manx-reg-rag-db', 'sectors', models.PayloadSchemaType.KEYWORD)"
+```
 
 ---
 

@@ -1,0 +1,47 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 9,
+      "chars_total": 5752,
+      "chars_max": 1356,
+      "chars_min": 70,
+      "chars_avg": 639.1
+    },
+    "entries": [
+      "Financial Services (Civil Penalties) Regulations 2015, 3 Interpretation - 12cb5d94d26f318f  #a85ff8a2",
+      "Financial Services (Civil Penalties) Regulations 2015, 4 Application - f664c6141ad6764e  #eca5c36d",
+      "Financial Services (Civil Penalties) Regulations 2015, 5 Discretionary civil penalties - 0de01a130ceb19d2  #bf1c58e9",
+      "Financial Services (Civil Penalties) Regulations 2015, 5 Discretionary civil penalties - 41925d93a0a057ff  #3b88ec85",
+      "Financial Services (Civil Penalties) Regulations 2015, 6 Administrative civil penalties - b5df8b5d3febb907  #b4a40354",
+      "Financial Services (Civil Penalties) Regulations 2015, 7 Revocation - 212e97845056ff52  #577f226f",
+      "Financial Services (Civil Penalties) Regulations 2015, SCHEDULE - Table 1 - Discretionary civil penalties (regulation 5) - ebc91229dd763e01  #6df3ba9d",
+      "Financial Services (Civil Penalties) Regulations 2015, SCHEDULE - Table 1 - Discretionary civil penalties (regulation 5) - 06ea93a0682e15ad  #1e1703ea",
+      "Financial Services (Civil Penalties) Regulations 2015, SCHEDULE - Table 2 - Administrative civil penalties (regulation 6) - 0646295b0e82a754  #45631f01"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 14,
+      "chars_total": 2907,
+      "chars_max": 1358,
+      "chars_min": 27,
+      "chars_avg": 207.6
+    },
+    "entries": [
+      "the Act  #62a5ae5c",
+      "section  #9d4b7644",
+      "Authority  #6dc2ba3e",
+      "business day  #b6f993bc",
+      "direction  #38cd2c46",
+      "licence condition  #0227981a",
+      "licenceholder  #eef7b884",
+      "regulated activity  #56d8db8f",
+      "serious regulatory failing  #74c043b2",
+      "relevant business line(s)  #f69c6690",
+      "relevant income  #2989176e",
+      "return  #4121a52c",
+      "Rule Book  #17902d50",
+      "specified period  #6723b4be"
+    ]
+  }
+}

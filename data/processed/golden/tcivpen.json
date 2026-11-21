@@ -1,0 +1,39 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 5,
+      "chars_total": 4610,
+      "chars_max": 1457,
+      "chars_min": 92,
+      "chars_avg": 922.0
+    },
+    "entries": [
+      "Anti-Money Laundering And Countering The Financing Of Terrorism (Civil Penalties) Regulations 2019, 4 Application - 5960db2cd9fc4e2c  #6ec54ee4",
+      "Anti-Money Laundering And Countering The Financing Of Terrorism (Civil Penalties) Regulations 2019, 5 Civil Penalties - 00d071fea97d8365  #b98594d7",
+      "Anti-Money Laundering And Countering The Financing Of Terrorism (Civil Penalties) Regulations 2019, 5 Civil Penalties - 794d38dbe973963b  #2eb8e1ce",
+      "Anti-Money Laundering And Countering The Financing Of Terrorism (Civil Penalties) Regulations 2019, 5 Civil Penalties - 4fdf2cf03fa2741b  #6505f409",
+      "Anti-Money Laundering And Countering The Financing Of Terrorism (Civil Penalties) Regulations 2019, SCHEDULE - 2e391fa828e8d577  #bb558c91"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 10,
+      "chars_total": 1502,
+      "chars_max": 351,
+      "chars_min": 44,
+      "chars_avg": 150.2
+    },
+    "entries": [
+      "accounting year  #455d144c",
+      "AML/CFT  #6e016cdd",
+      "Authority  #6dc2ba3e",
+      "business day  #f07d13d1",
+      "the Code  #4ecd485c",
+      "competent authority  #887f2253",
+      "contravention  #5479481d",
+      "income  #d77dd5ac",
+      "relevant person  #7086c730",
+      "senior management  #dec10c56"
+    ]
+  }
+}

@@ -1,16 +1,19 @@
 import logging
+from pathlib import Path
 
 from pydantic_ai.models import infer_model
 from qdrant_client import QdrantClient
 
 from config import (
+    CHUNKS_DIR,
     COLLECTION,
     DEFINITIONS_DIR,
     MODEL,
     QDRANT_URL,
 )
 from db_ops.utils import load_jsonl_dir
-from extraction_ops.models import Definition
+from db_ops.verify import check_config, check_counts, check_indexes
+from extraction_ops.models import Chunk, Definition
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +50,35 @@ async def check_definitions_file() -> None:
     logger.info("definitions from %d documents reachable", len(definitions))
 
 
+async def check_index_matches_data(
+    dense_size: int,
+    client: QdrantClient | None = None,
+    chunk_dir: Path = CHUNKS_DIR,
+) -> None:
+    """Refuse to start when the collection and the chunk jsonl have drifted apart.
+
+    The usual cause is a deploy that pulled new jsonl without running `mrr embed`.
+    """
+    client = client or QdrantClient(url=QDRANT_URL)
+    chunks = load_jsonl_dir(chunk_dir, Chunk)
+    problems = check_counts(client, COLLECTION, chunks) + check_config(
+        client, COLLECTION, dense_size
+    )
+    if problems:
+        for problem in problems:
+            logger.critical("%s", problem)
+        logger.critical("qdrant does not match the chunk jsonl: run mrr embed")
+        raise RuntimeError(
+            f"collection [{COLLECTION}] does not match the chunk jsonl: run mrr embed"
+        )
+    # a missing index only slows sector-filtered searches, so it warns instead of stopping the app
+    for problem in check_indexes(client, COLLECTION):
+        logger.warning("%s (searches still work, they are just slower)", problem)
+    logger.info(
+        "collection [%s] matches the [%d] chunks in the jsonl", COLLECTION, len(chunks)
+    )
+
+
 async def check_agent() -> None:
     try:
         infer_model(MODEL)
@@ -56,9 +88,10 @@ async def check_agent() -> None:
     logger.info("%s model constructed successfully", MODEL)
 
 
-async def run_startup_checks() -> None:
+async def run_startup_checks(dense_size: int) -> None:
     logger.info("running startup checks")
     await check_qdrant()
+    await check_index_matches_data(dense_size)
     await check_definitions_file()
     await check_agent()
     logger.info("all startup checks passed")

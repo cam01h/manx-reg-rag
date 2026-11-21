@@ -1,7 +1,7 @@
 import pytest
+
 from extraction_ops.chunking import merge_undersized_sections
 from extraction_ops.models import CleanSection, ToolBelt
-
 
 test_1 = [
     CleanSection(headers=("section 1", "merge two"), body="this is a short section"),

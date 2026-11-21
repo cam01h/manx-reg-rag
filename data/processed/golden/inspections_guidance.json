@@ -1,0 +1,39 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 16,
+      "chars_total": 12188,
+      "chars_max": 1492,
+      "chars_min": 146,
+      "chars_avg": 761.8
+    },
+    "entries": [
+      "Inspections Guidance for Firms, STATUS OF GUIDANCE - 48e7c960648d2ead  #91a45047",
+      "Inspections Guidance for Firms, 1. Background - 342dc1210126d2e6  #e94a1697",
+      "Inspections Guidance for Firms, 1. Background - e66a79a8d84c358d  #84222706",
+      "Inspections Guidance for Firms, 2. Inspections - 007203d8fd73d702  #06ca1a4b",
+      "Inspections Guidance for Firms, 3. Purpose of this Guidance Note - e88dab788156c95c  #c5a15609",
+      "Inspections Guidance for Firms, 4. How are Firms selected for an inspection? - ccf6d9b17daf21e0  #31297335",
+      "Inspections Guidance for Firms, 5. Who undertakes inspections? - d304e7f95315b67e  #db3f42a0",
+      "Inspections Guidance for Firms, 6. The inspection process - fc0c6da582ed9368  #2e1e6af5",
+      "Inspections Guidance for Firms, 6. The inspection process, 6.1 Pre-inspection - 5cc190814af1d003  #dcc08c26",
+      "Inspections Guidance for Firms, 6. The inspection process, 6.1 Pre-inspection - b5877b1fd9972bc8  #dbf77abd",
+      "Inspections Guidance for Firms, 6. The inspection process, 6.2 On-site - 701a9c9cfebb8dd8  #532bc831",
+      "Inspections Guidance for Firms, 6. The inspection process, 6.2 On-site - b9887b62a2e6c08c  #bccd24bc",
+      "Inspections Guidance for Firms, 6. The inspection process, 6.3 Post-inspection - ac83a1d09525b1c5  #6bda39eb",
+      "Inspections Guidance for Firms, 6. The inspection process, 6.3 Post-inspection - efae85bbe14e842e  #56707348",
+      "Inspections Guidance for Firms, 6. The inspection process, 6.4 Inspection Remediation - 9f3c81d47ee8ce49  #1d289736",
+      "Inspections Guidance for Firms, 6. The inspection process, 6.4 Inspection Remediation - 553869df829ca87a  #817249e8"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 0,
+      "chars_total": 0,
+      "chars_max": 0,
+      "chars_min": 0,
+      "chars_avg": 0.0
+    },
+    "entries": []
+  }
+}

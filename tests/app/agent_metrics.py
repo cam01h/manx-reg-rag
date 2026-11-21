@@ -1,34 +1,37 @@
 import asyncio
+import json
+import logging
+import time
 from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
+
 import logfire
-import time
-from datetime import datetime, timezone
-import json
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from pydantic_ai import Agent, AgentRunResult, ToolCallPart, ToolReturnPart
 from qdrant_client import QdrantClient
+
+from app.deps import AppDeps
+from app.llm import agent
 from app.models import AgentResponse
-from tests.app.judge import grounding_judge, anchor_judge, JUDGE_MODEL
 from config import (
+    DENSE_MODEL_NAME,
     FINAL_RETURN_TOP_N,
     MODEL,
     PRE_RERANK_POOL,
     PROJECT_ROOT,
     QDRANT_URL,
     REASONING_EFFORT,
-    DENSE_MODEL_NAME,
-    SPARSE_MODEL_NAME,
     RERANKING_MODEL_NAME,
     RETRIEVAL_MODE,
+    SPARSE_MODEL_NAME,
     setup_logging,
 )
-from app.llm import agent
-from app.deps import AppDeps
 from db_ops.models import ServedPayload
 from tests.app.agent_metrics_test_data import AGENT_TEST_DATA
+from tests.app.judge import JUDGE_MODEL, anchor_judge, grounding_judge
 from tests.app.models import (
     AgentTest,
     Anchor,
@@ -38,7 +41,6 @@ from tests.app.models import (
     RunResult,
     ToolCallRecord,
 )
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -268,7 +270,7 @@ def result_to_dict(result: RunResult) -> dict:
 
 def write_results(results: list[RunResult], config: dict) -> Path:
     payload = {
-        "run_at": datetime.now(timezone.utc).isoformat(),
+        "run_at": datetime.now(UTC).isoformat(),
         "config": config,
         "results": [result_to_dict(r) for r in results],
     }
@@ -276,7 +278,7 @@ def write_results(results: list[RunResult], config: dict) -> Path:
     AGENT_TEST_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     path = (
         AGENT_TEST_RESULTS_DIR
-        / f"{datetime.now(timezone.utc):%Y-%m-%d_%H-%M}_{config['label']}.json"
+        / f"{datetime.now(UTC):%Y-%m-%d_%H-%M}_{config['label']}.json"
     )
     path.write_text(json.dumps(payload, indent=2))
     return path

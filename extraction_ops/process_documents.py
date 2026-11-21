@@ -1,16 +1,18 @@
 import argparse
 import json
 import logging
+import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from config import CHUNKS_DIR, DEFINITIONS_DIR, setup_logging
+from config import CHUNKS_DIR, DEFINITIONS_DIR, PROJECT_ROOT, setup_logging
 from extraction_ops import TOOLBELT_REGISTRY
 from extraction_ops.md_ops import pdf_to_output
 from extraction_ops.pdf_ops import apply_pdf_handlers, get_pdf_from_url
 
 from .chunking import extract_to_chunks
 from .definitions import attach_definitions, extract_to_definitions
+from .jsonl_stats import save_golden
 from .models import Chunk, Definition, ToolBelt
 
 logger = logging.getLogger(__name__)
@@ -73,6 +75,38 @@ def ingest(toolbelts: dict[str, ToolBelt]) -> None:
         ingest_document(key, tools)
 
 
+def save_stats(toolbelts: dict[str, ToolBelt]) -> None:
+    for key in toolbelts:
+        path = save_golden(key)
+        logger.info("[%s] golden stats written to [%s]", key, path)
+
+
+STATS_TEST_FILE = PROJECT_ROOT / "tests/extraction_ops/test_jsonl_stats.py"
+STATS_TEST_NAME = "test_committed_jsonl_matches_its_golden"
+
+
+def run_stats_tests(doc: str | None) -> int:
+    """Run the golden stats pytest and return its exit code.
+
+    With a doc, only that document's comparison runs. Without one, the whole file
+    runs: every document, plus the tests of the comparison logic itself.
+    """
+    try:
+        import pytest
+    except ImportError:
+        logger.error(
+            "pytest is not installed here (it is a dev dependency); "
+            "run on your dev machine instead: MRR_PYTHON=host mrr pd --test-stats"
+        )
+        return 1
+    target = str(STATS_TEST_FILE)
+    if doc is not None:
+        target += f"::{STATS_TEST_NAME}[{doc}]"
+    return int(
+        pytest.main([target, "-q", "--disable-warnings", "-p", "no:cacheprovider"])
+    )
+
+
 def build_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Ingest documents from url to formatted chunks and definitions"
@@ -98,6 +132,16 @@ def build_cli() -> argparse.Namespace:
         action="store_true",
         help="process each pdf into chunks and definitions, written to per-document jsonl files",
     )
+    group.add_argument(
+        "--test-stats",
+        action="store_true",
+        help="run the golden stats pytest (one document with --doc, otherwise all); exits 1 on any failure",
+    )
+    group.add_argument(
+        "--save-stats",
+        action="store_true",
+        help="write the golden stats from the processed jsonl (one document with --doc, otherwise all)",
+    )
     return parser.parse_args()
 
 
@@ -110,6 +154,10 @@ def main() -> None:
         handle_pdfs(toolbelts)
     elif args.ingest:
         ingest(toolbelts)
+    elif args.test_stats:
+        sys.exit(run_stats_tests(args.doc))
+    elif args.save_stats:
+        save_stats(toolbelts)
     else:
         get_pdfs(toolbelts)
         handle_pdfs(toolbelts)

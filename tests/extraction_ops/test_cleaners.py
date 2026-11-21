@@ -1,6 +1,6 @@
 import pytest
-from extraction_ops.md_ops import clean_md_to_lines
 
+from extraction_ops.md_ops import clean_md_to_lines
 
 # test 1
 dirty_1 = "fancy double quotes: the word “hello” is considered a greeting"

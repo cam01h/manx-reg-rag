@@ -1,0 +1,49 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 18,
+      "chars_total": 14294,
+      "chars_max": 1480,
+      "chars_min": 54,
+      "chars_avg": 794.1
+    },
+    "entries": [
+      "Sanctions Act 2024, Introductory, 1 Short title - fb5e66dbe2a8de7c  #0175ee70",
+      "Sanctions Act 2024, Introductory, 2 Commencement - 9b556faca9f0446b  #896a36df",
+      "Sanctions Act 2024, Introductory, 3 Interpretation - bd34a737aaf289a8  #0a7473bd",
+      "Sanctions Act 2024, Implementation of UK sanctions, 4 Implementation of UK sanctions provisions - be0a23a5662df1ca  #1db15382",
+      "Sanctions Act 2024, Implementation of UK sanctions, 4 Implementation of UK sanctions provisions - baa85ae30566bd72  #bd1e60ec",
+      "Sanctions Act 2024, Implementation of UK sanctions, 4 Implementation of UK sanctions provisions - 8a03aff83e76f092  #07576d03",
+      "Sanctions Act 2024, Implementation of UK sanctions, 5 Powers in relation to ships in Manx waters under UK sanctions provisions - 5ad47604fbcb21dd  #ab840c44",
+      "Sanctions Act 2024, Implementation of UK sanctions, 5 Powers in relation to ships in Manx waters under UK sanctions provisions - 93def690d1d962fc  #0e0cb04f",
+      "Sanctions Act 2024, Implementation of UK sanctions, 7 Power to impose monetary penalties - 50cb329f5b9db5b4  #e99a97ad",
+      "Sanctions Act 2024, Implementation of UK sanctions, 7 Power to impose monetary penalties - a7611ea7f857e5f2  #9656a735",
+      "Sanctions Act 2024, Implementation of UK sanctions, 8 Monetary penalties: procedural rights - 81885f743306f91d  #4a0cf798",
+      "Sanctions Act 2024, Implementation of UK sanctions, 9 Monetary penalties: bodies (whether or not incorporated) - f855ef4678c303e3  #dc5323fb",
+      "Sanctions Act 2024, Implementation of UK sanctions, 10 Monetary penalties: supplementary - 5beb7afd47af2ed5  #b076d070",
+      "Sanctions Act 2024, Miscellaneous, 11 Regulations: additional provisions - 22024ffca7e74077  #ef762b01",
+      "Sanctions Act 2024, Miscellaneous, 12 Right of appeal - 511f9ea318933371  #4079241e",
+      "Sanctions Act 2024, Miscellaneous, 13 Data protection - 5078ab9b5390d8f6  #44488798",
+      "Sanctions Act 2024, Miscellaneous, 14 Protection for acts done for purposes of compliance - 388a27476fe13e31  #cac2ad49",
+      "Sanctions Act 2024, Miscellaneous, 15 Crown application - af9a4e4277a4b73d  #3b83a6c3"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 7,
+      "chars_total": 1614,
+      "chars_max": 1145,
+      "chars_min": 25,
+      "chars_avg": 230.6
+    },
+    "entries": [
+      "Guernsey  #63abb202",
+      "Jersey  #cc29a52c",
+      "SAMLA  #c4b7b283",
+      "UK  #49325ec9",
+      "UK blocking provision  #0a660bcb",
+      "UK financial sanctions provision  #dd995597",
+      "UK sanctions provision  #548a874d"
+    ]
+  }
+}

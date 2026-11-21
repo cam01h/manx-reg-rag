@@ -1,6 +1,7 @@
+from pathlib import Path
+
 import httpx
 import pytest
-from pathlib import Path
 
 from extraction_ops import TOOLBELT_REGISTRY
 from extraction_ops.pdf_ops import get_pdf_from_url

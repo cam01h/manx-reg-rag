@@ -1,0 +1,37 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 14,
+      "chars_total": 12251,
+      "chars_max": 1431,
+      "chars_min": 257,
+      "chars_avg": 875.1
+    },
+    "entries": [
+      "Guidelines on Expected Practice for Trust Service Providers, Introduction - c64cf213c9190f09  #722d098c",
+      "Guidelines on Expected Practice for Trust Service Providers, Conduct of business - 9e6da491a69ff5b3  #c6627145",
+      "Guidelines on Expected Practice for Trust Service Providers, Client take on - df2528329f991f00  #59a9b293",
+      "Guidelines on Expected Practice for Trust Service Providers, Client take on - df20bb674d2d2db3  #59f52ee0",
+      "Guidelines on Expected Practice for Trust Service Providers, Record keeping - 47766c4d4d9b3061  #6afea109",
+      "Guidelines on Expected Practice for Trust Service Providers, Record keeping - b4630f45d254570b  #3c1f0d93",
+      "Guidelines on Expected Practice for Trust Service Providers, Management of trust property - 61a3d2e44b8e10a4  #e89a5951",
+      "Guidelines on Expected Practice for Trust Service Providers, Accounts - 42cd7aa810fd36da  #6232a56e",
+      "Guidelines on Expected Practice for Trust Service Providers, Independence of trustee - 824e66e1bcb40799  #4f8d80e5",
+      "Guidelines on Expected Practice for Trust Service Providers, Independence of trustee - 5db9ad3f4b6314cb  #c33717e9",
+      "Guidelines on Expected Practice for Trust Service Providers, Nominee settlors - 0eeff8c06b6b399b  #3c3b6ee2",
+      "Guidelines on Expected Practice for Trust Service Providers, Conflict of interests - cef2454ac04f1224  #253ec803",
+      "Guidelines on Expected Practice for Trust Service Providers, Conflict of interests - 21a277fa4ed8035c  #95951434",
+      "Guidelines on Expected Practice for Trust Service Providers, Conclusion - d357b1e4e05b274a  #29488e83"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 0,
+      "chars_total": 0,
+      "chars_max": 0,
+      "chars_min": 0,
+      "chars_avg": 0.0
+    },
+    "entries": []
+  }
+}

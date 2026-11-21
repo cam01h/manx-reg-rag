@@ -1,0 +1,70 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 37,
+      "chars_total": 35362,
+      "chars_max": 1483,
+      "chars_min": 126,
+      "chars_avg": 955.7
+    },
+    "entries": [
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.1. Introduction - 6ce0b54bfd7a667a  #2784bc19",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.1. Introduction - 1dce459dce2833b2  #b20a0791",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.2. Types of attacks and practical measures - b990041ca24b69a1  #52687396",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.2. Types of attacks and practical measures - 19d3dd67b5276304  #31ec74d5",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.2. Types of attacks and practical measures - 75ded457de79855c  #dedf0a7c",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.2. Types of attacks and practical measures - 78372124c141ad00  #29a3378d",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.2. Types of attacks and practical measures - f08a51cee8252eaa  #819eb223",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.2. Types of attacks and practical measures - 02173640da30d5a4  #ec135d19",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.3. Legal and regulatory requirements - 0fb25de3bf1d2472  #274d7cca",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.3. Legal and regulatory requirements - 7bbf77a9f30ef02f  #dd2e165f",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.3. Legal and regulatory requirements - cb41ddb052f3ea0e  #93af7fbe",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.3. Legal and regulatory requirements - fdceb6fbd35bdde7  #1f1776ea",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.4. Examples of incidents - e2d7285ecac550d9  #5f9337a9",
+      "Regulatory Guidance - Cyber Security, 1. Cyber security, 1.5. Other resources - 6562bca2274c3903  #6d102992",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008 - 296d52d07e78a36c  #965c0e34",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 1. Cyber Security Framework & Governance - 3a7865665ab7d4d5  #370aa4af",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 2. Risk, Controls and Monitoring - b88dd8516a8afd09  #3964fd8f",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 2. Risk, Controls and Monitoring - f5e5a1a9e24885d2  #47f4d08b",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 2. Risk, Controls and Monitoring - f292ab4c04748e17  #19ce290e",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 2. Risk, Controls and Monitoring - 873a71d8503eeaff  #10c765de",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 2. Risk, Controls and Monitoring - a4c26ba5e1b5fb3e  #4b96b18a",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 3. Outsourcing - eab028e435a998b1  #d98d07e9",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 3. Outsourcing - 7be599aa567ccc2d  #6f37039c",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 4. Contingency Planning & Incident Response - 458cfcbae146ac74  #26658739",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 5. Reporting Incidents - 78ee7443948792f1  #9ffc747e",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 5. Reporting Incidents - 91b07070ef3cf588  #7154ca12",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 5. Reporting Incidents - 9bc4eab1db591931  #162f065b",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 6. Insurance Cover - 22957974e2b9e777  #b43e7511",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 7. Stakeholder Interests - dc8d395edf0747be  #0a9b2217",
+      "Regulatory Guidance - Cyber Security, Appendix 1 - Key legal and regulatory requirements under the FSA2008 and IA2008, 7. Stakeholder Interests - abaf4d4138da61a3  #1595ccb0",
+      "Regulatory Guidance - Cyber Security, Appendix 2 - Examples of cyber security incidents, Example 1 - Payment Requests - f2ab6ec5a3bb966e  #57f2e7ac",
+      "Regulatory Guidance - Cyber Security, Appendix 2 - Examples of cyber security incidents, Example 1 - Payment Requests - bca815e0f69387ff  #2423e094",
+      "Regulatory Guidance - Cyber Security, Appendix 2 - Examples of cyber security incidents, Example 2 - Information Request - e7b71682ee573ca0  #10099103",
+      "Regulatory Guidance - Cyber Security, Appendix 2 - Examples of cyber security incidents, Example 3 - Ransom Demand - 9b6651e9841aba3c  #effe852f",
+      "Regulatory Guidance - Cyber Security, Appendix 2 - Examples of cyber security incidents, Example 3 - Ransom Demand - 7ca03cb39f718a3d  #974edcd1",
+      "Regulatory Guidance - Cyber Security, Appendix 3 - Other resources - 204ecc20b315c39f  #d8edc051",
+      "Regulatory Guidance - Cyber Security, Appendix 3 - Other resources - b30bf0290b6ee47b  #2dc6f10b"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 9,
+      "chars_total": 523,
+      "chars_max": 116,
+      "chars_min": 18,
+      "chars_avg": 58.1
+    },
+    "entries": [
+      "Authority  #ae05124b",
+      "CGC2010  #a0d5bff6",
+      "CGC2020  #eb22c6bc",
+      "CGC2021  #56283792",
+      "CISA2008  #71ffdf4d",
+      "FSA2008  #95f84c91",
+      "IA2008  #53318c99",
+      "RBSA2000  #f5531aa2",
+      "Rule Book  #e7f1e7fa"
+    ]
+  }
+}

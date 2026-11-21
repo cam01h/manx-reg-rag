@@ -1,0 +1,40 @@
+{
+  "chunks": {
+    "stats": {
+      "count": 5,
+      "chars_total": 4073,
+      "chars_max": 1406,
+      "chars_min": 69,
+      "chars_avg": 814.6
+    },
+    "entries": [
+      "Insurance (Civil Penalties) Regulations 2023, 4 Application - 7cd81097856b0190  #874a5617",
+      "Insurance (Civil Penalties) Regulations 2023, 5 Discretionary civil penalties - d41571221c8d5df6  #709f858c",
+      "Insurance (Civil Penalties) Regulations 2023, 5 Discretionary civil penalties - 55d691571dd01ba0  #9fbaec95",
+      "Insurance (Civil Penalties) Regulations 2023, SCHEDULE - Discretionary civil penalties (regulation 5) - 562445d19071168b  #b0b9c85f",
+      "Insurance (Civil Penalties) Regulations 2023, SCHEDULE - Discretionary civil penalties (regulation 5) - 1091c734babfc846  #16b1bd03"
+    ]
+  },
+  "defs": {
+    "stats": {
+      "count": 11,
+      "chars_total": 2557,
+      "chars_max": 1335,
+      "chars_min": 23,
+      "chars_avg": 232.5
+    },
+    "entries": [
+      "the Act  #66dabac8",
+      "section  #9d4b7644",
+      "business day  #b6f993bc",
+      "commission  #85d2f15b",
+      "customers  #6a71721e",
+      "fee income  #85a8b52f",
+      "insurance contracts  #7f01f737",
+      "investment contracts  #fc332774",
+      "regulated entity  #1076f513",
+      "serious regulatory failing  #2406b051",
+      "relevant income  #d3f5ac34"
+    ]
+  }
+}

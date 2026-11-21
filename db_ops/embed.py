@@ -21,6 +21,7 @@ from extraction_ops.models import Chunk
 
 from .utils import (
     build_dense_vector,
+    build_embedding_text,
     build_point_id,
     build_sparse_vector,
     load_jsonl_dir,
@@ -48,10 +49,6 @@ def get_existing_point_ids(client: QdrantClient) -> set[str]:
         if offset_id is None:
             break
     return point_ids
-
-
-def build_embedding_text(chunk: Chunk) -> str:
-    return f"{'\n'.join(h for h in chunk.headers if h)}\n{chunk.body}"
 
 
 def build_point(
